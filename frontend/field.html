@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+         background: #f2f2f7; color: #1c1c1e; min-height: 100vh; }
+
+  /* ヘッダー */
+  .header { background: #1c1c1e; padding: 14px 20px; display: flex;
+            align-items: center; justify-content: space-between; }
+  .header-left   { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .header-title { color: #fff; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.05em; }
+  .header-hint  { color: rgba(255,255,255,0.45); font-size: 0.65rem; line-height: 1.3; }
+  .header-user  {
+    color: rgba(255,255,255,0.75); font-size: 0.8rem; cursor: pointer;
+    flex-shrink: 0; text-align: right; max-width: 46%; word-break: break-all;
+    background: transparent; border: none; font-family: inherit; margin: 0;
+    padding: 10px 4px 10px 14px; -webkit-tap-highlight-color: transparent;
+    border-radius: 8px; line-height: 1.35;
+    text-decoration: underline dotted rgba(255,255,255,0.3);
+    text-underline-offset: 3px;
+  }
+  .header-user:active { opacity: 0.72; }
+
+  /* メインコンテンツ */
+  .main { max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* カード */
+  .card { background: #fff; border-radius: 16px; padding: 24px 20px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px; }
+  .card-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+                color: #8e8e93; text-transform: uppercase; margin-bottom: 16px; }
+
+  /* 入力 */
+  .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .input-num  { flex: 1; font-size: 1.5rem; font-weight: 700; border: none;
+                border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
+                background: transparent; font-family: inherit; color: #1c1c1e; }
+  .input-num:focus { border-bottom-color: #007aff; }
+  .input-text { width: 100%; font-size: 1rem; font-weight: 600; border: none;
+                border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
+                background: transparent; font-family: inherit; color: #1c1c1e; }
+  .input-text:focus { border-bottom-color: #007aff; }
+  .input-unit { font-size: 0.9rem; color: #8e8e93; flex-shrink: 0; }
+  .field-label { font-size: 0.72rem; font-weight: 600; color: #8e8e93;
+                 margin-bottom: 4px; letter-spacing: 0.04em; }
+  .readonly-block { background: #f2f2f7; border-radius: 12px; padding: 14px 16px;
+                     margin-bottom: 16px; font-size: 0.88rem; line-height: 1.55; }
+  .readonly-block .ro-line { display: flex; justify-content: space-between;
+                             gap: 12px; padding: 4px 0; border-bottom: 1px solid #e5e5ea; }
+  .readonly-block .ro-line:last-child { border-bottom: none; }
+  .readonly-block .ro-k { color: #8e8e93; flex-shrink: 0; }
+  .readonly-block .ro-v { font-weight: 600; text-align: right; word-break: break-word; }
+  .subhead { font-size: 0.7rem; font-weight: 700; color: #636366;
+             letter-spacing: 0.06em; margin: 16px 0 10px; }
+  .pattern-row { display: flex; flex-direction: column; gap: 10px; margin-top: 14px;
+                  padding-top: 14px; border-top: 1px solid #e5e5ea; }
+  .pattern-check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem;
+                    line-height: 1.45; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .pattern-check input { width: 1.15rem; height: 1.15rem; margin-top: 2px; flex-shrink: 0;
+                         accent-color: #007aff; }
+
+  /* ボタン */
+  .btn-primary { width: 100%; padding: 16px; background: #007aff; color: #fff;
+                 border: none; border-radius: 14px; font-size: 1rem; font-weight: 700;
+                 font-family: inherit; cursor: pointer; margin-top: 8px; }
+  .btn-primary:disabled { opacity: 0.4; cursor: default; }
+  .btn-secondary { width: 100%; padding: 13px; background: #f2f2f7; color: #636366;
+                   border: none; border-radius: 14px; font-size: 0.9rem;
+                   font-family: inherit; cursor: pointer; margin-top: 8px; }
+
+  /* 複数行入力 */
+  .multi-rows { margin-bottom: 4px; }
+  .multi-row-line {
+    display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px;
+    padding-bottom: 12px; border-bottom: 1px solid #e5e5ea;
+  }
+  .multi-row-line:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .multi-row-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .btn-line-remove {
+    flex-shrink: 0; width: 44px; min-height: 44px; align-self: flex-start;
+    border: none; background: #f2f2f7; color: #8e8e93; font-size: 1.35rem; line-height: 1;
+    border-radius: 10px; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-line-remove:active { opacity: 0.75; }
+  .btn-add-row {
+    width: 100%; padding: 12px; margin-top: 10px; background: #fff;
+    border: 1.5px dashed #c7c7cc; border-radius: 12px; color: #007aff;
+    font-weight: 600; font-size: 0.9rem; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-add-row:active { opacity: 0.85; }
+  .readonly-block .ro-v.prelines { white-space: pre-line; text-align: right; }
+  .done-val.prelines { white-space: pre-line; }
+
+  /* 補助テキスト */
+  .sub-text  { font-size: 0.78rem; color: #8e8e93; margin-top: 8px; line-height: 1.6; }
+  .prev-info { font-size: 0.8rem; color: #8e8e93; padding: 10px 0 4px; }
+  .started-info { font-size: 0.74rem; color: #34c759; padding-bottom: 12px; }
+
+  /* 完了画面 */
+  .done-check { font-size: 3rem; text-align: center; margin-bottom: 8px; }
+  .done-title { font-size: 1.1rem; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  .done-date  { font-size: 0.8rem; color: #8e8e93; text-align: center; margin-bottom: 20px; }
+  .done-row   { display: flex; justify-content: space-between; padding: 8px 0;
+                border-bottom: 1px solid #f2f2f7; font-size: 0.9rem; }
+  .done-row:last-child { border-bottom: none; }
+  .done-val   { font-weight: 700; }
+
+  /* 担当者選択オーバーレイ */
+  .overlay { position: fixed; inset: 0; background: #1c1c1e; z-index: 100;
+             display: flex; align-items: center; justify-content: center; }
+  .overlay.hidden { display: none; }
+  .overlay-box { width: 100%; max-width: 360px; padding: 32px 24px; }
+  .overlay-title { color: #fff; font-size: 1.2rem; font-weight: 700;
+                   margin-bottom: 6px; text-align: center; }
+  .overlay-sub   { color: #8e8e93; font-size: 0.82rem; text-align: center; margin-bottom: 28px; }
+  .overlay-input { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.1);
+                   border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px;
+                   color: #fff; font-size: 1rem; font-family: inherit; outline: none;
+                   margin-bottom: 12px; }
+  .overlay-btn   { width: 100%; padding: 15px; background: #007aff; color: #fff;
+                   border: none; border-radius: 14px; font-size: 1rem; font-weight: 700;
+                   font-family: inherit; cursor: pointer; }
+
+  .user-field-wrap { position: relative; width: 100%; }
+  .user-suggest {
+    position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px;
+    max-height: 200px; overflow-y: auto; background: #2c2c2e;
+    border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); z-index: 10;
+    display: none;
+  }
+  .user-suggest.active { display: block; }
+  .user-suggest div {
+    padding: 12px 14px; color: #fff; font-size: 0.92rem; cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .user-suggest div:last-child { border-bottom: none; }
+  .user-suggest div:hover { background: rgba(255,255,255,0.08); }
+  .user-unreg-hint {
+    color: rgba(255,255,255,0.55); font-size: 0.78rem; margin-top: 10px;
+    line-height: 1.55; display: none;
+  }
+
+  /* トースト */
+  .toast { position: fixed; bottom: 32px; left: 50%;
+           transform: translateX(-50%) translateY(20px);
+           background: rgba(28,28,30,0.88); color: #fff;
+           padding: 11px 22px; border-radius: 30px; font-size: 0.88rem;
+           opacity: 0; transition: opacity 0.2s, transform 0.2s;
+           pointer-events: none; white-space: nowrap; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* 画面 */
+  .screen { display: none; }
+  .screen.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- 担当者選択オーバーレイ -->
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <div class="overlay-title">MEASURE OS</div>
+    <div class="overlay-sub">班長リストから選ぶか、名前を入力して開始できます</div>
+    <div class="user-field-wrap">
+      <input class="overlay-input" id="user-input" placeholder="例: 田中" autocomplete="off"
+             style="margin-bottom:0;width:100%;box-sizing:border-box;"
+             oninput="onUserInput()" onfocus="onUserFocus()" onblur="onUserBlurDelayed()"
+             onkeydown="onUserKeydown(event)" />
+      <div id="user-suggest" class="user-suggest" role="listbox"></div>
+    </div>
+    <p id="user-unreg-hint" class="user-unreg-hint">未登録の担当者名です。このまま続行できます</p>
+    <button class="overlay-btn" onclick="confirmUser()">この名前で使用する</button>
+  </div>
+</div>
+
+<!-- ヘッダー -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">MEASURE OS</div>
+    <div class="header-hint" id="header-hint">担当者名（右上）をタップで変更・班長候補を表示</div>
+  </div>
+  <button type="button" class="header-user" id="header-user" onclick="changeUser()"
+          aria-label="担当者を変更し班長リストから選ぶ">---</button>
+</div>
+
+<!-- ================================================
+     画面: 実績入力
+     ================================================ -->
+<div id="screen-actual" class="screen active">
+  <div class="main">
+
+    <!-- 前日の予告 -->
+    <div id="prev-section" style="display:none;">
+      <p class="prev-info" id="prev-info"></p>
+    </div>
+
+    <!-- 着手済み表示 -->
+    <div class="started-info" id="started-info" style="display:none;"></div>
+
+    <div class="card">
+      <div class="card-label">今日の実績</div>
+      <div class="subhead">予告（参照）</div>
+      <div class="readonly-block" id="actual-planned-summary"></div>
+      <div class="subhead">実績（入力）</div>
+      <div id="actual-inputs-mfg">
+        <div class="field-label">商品名・対象名と数量（複数行可）</div>
+        <div id="actual-rows-mfg" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
+      </div>
+      <div id="actual-inputs-log" style="display:none;">
+        <div class="field-label">作業内容と数量（複数行可）</div>
+        <div id="actual-rows-log" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
+      </div>
+      <p class="sub-text">予告と違う内容でも、そのまま記録できます。空欄のまま送信も可です。</p>
+      <div class="subhead" style="margin-top:16px;">異常の分類（任意）</div>
+      <div class="pattern-row">
+        <label class="pattern-check">
+          <input type="checkbox" id="pattern-a-cb" />
+          <span><strong>A</strong> プロセス不備（手順ミス）</span>
+        </label>
+        <label class="pattern-check">
+          <input type="checkbox" id="pattern-b-cb" />
+          <span><strong>B</strong> 結果不備（数値ズレ）</span>
+        </label>
+      </div>
+      <button class="btn-primary" id="actual-btn" onclick="submitActual()">実績を記録する</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================================================
+     画面: 予告入力
+     ================================================ -->
+<div id="screen-planned" class="screen">
+  <div class="main">
+    <div class="card">
+      <div class="card-label">明日の予告（任意）</div>
+      <div id="planned-block-mfg">
+        <div class="field-label">商品名・対象名と数量（予定・複数行可）</div>
+        <div id="planned-rows-mfg" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
+      </div>
+      <div id="planned-block-log" style="display:none;">
+        <div class="field-label">作業内容と数量（予定・複数行可）</div>
+        <div id="planned-rows-log" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
+      </div>
+      <p class="field-label" style="margin-top:10px;">単位</p>
+      <p class="sub-text" style="margin-top:0;"><span id="planned-unit">個</span>（会社設定）</p>
+      <p class="sub-text">候補がなくても入力できます。すべて空欄でもかまいません。</p>
+      <button type="button" class="btn-primary" id="planned-btn" onclick="submitPlanned()">予告を記録</button>
+      <button type="button" class="btn-primary" id="planned-start-btn" onclick="submitStartFromPlanned()">着手して実績入力へ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================
+     画面: 完了
+     ================================================ -->
+<div id="screen-done" class="screen">
+  <div class="main">
+    <div class="card">
+      <div class="done-check">✓</div>
+      <div class="done-title">本日の記録が完了しました</div>
+      <div class="done-date" id="done-date"></div>
+      <div id="done-rows"></div>
+    </div>
+    <button class="btn-primary" id="next-day-btn" onclick="startNextDay()">次の営業日を開始する</button>
+    <button class="btn-secondary" onclick="backToActual()">内容を修正する</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<datalist id="dl-item-name"></datalist>
+<datalist id="dl-work-label"></datalist>
+
+<script>
+// =================================================================
+// 状態
+// =================================================================
+let unitId    = null;
+let bizDate   = null;   // "YYYY-MM-DD"
+let unitVal   = "個";
+let inputMode = "manufacturing";   // manufacturing | logistics
+let submitting = false;
+let _candidateRows = [];      // 候補表示用（工程で絞り込み後、なければ全件）
+let _candidateRowsAll = [];   // 未登録ヒント用＝会社マスタ全件（サーバ判定と整合）
+let _blurTimer = null;
+/** 最後にサーバと整合した予告明細（着手許可の比較用） */
+let _plannedSavedFingerprint = "[]";
+/** 空明細で「予告を記録」成功直後のみ、着手可 */
+let _plannedAllowEmptyAfterSave = false;
+
+const MSG_PLANNED_UNSAVED =
+  "予告内容が未保存です。先に「予告を記録」してください。";
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function dispStr(v) {
+  if (v == null || String(v).trim() === "") return "—";
+  return String(v);
+}
+
+function isLogistics() {
+  return inputMode === "logistics";
+}
+
+function syncInputModeFromPayload(data) {
+  if (data && data.input_mode === "logistics") inputMode = "logistics";
+  else if (data && data.input_mode) inputMode = "manufacturing";
+  applyInputModePanels();
+}
+
+function applyInputModePanels() {
+  const log = isLogistics();
+  const pm = document.getElementById("planned-block-mfg");
+  const pl = document.getElementById("planned-block-log");
+  const am = document.getElementById("actual-inputs-mfg");
+  const al = document.getElementById("actual-inputs-log");
+  if (pm) pm.style.display = log ? "none" : "block";
+  if (pl) pl.style.display = log ? "block" : "none";
+  if (am) am.style.display = log ? "none" : "block";
+  if (al) al.style.display = log ? "block" : "none";
+}
+
+// ─── 複数行入力（予告・実績） ─────────────────────────────────
+function plannedRowsHost() {
+  return document.getElementById(isLogistics() ? "planned-rows-log" : "planned-rows-mfg");
+}
+
+function actualRowsHost() {
+  return document.getElementById(isLogistics() ? "actual-rows-log" : "actual-rows-mfg");
+}
+
+function makeInputLineRow(placeholder, listId) {
+  const wrap = document.createElement("div");
+  wrap.className = "multi-row-line";
+  wrap.innerHTML =
+    `<div class="multi-row-fields">
+       <input class="input-text" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />
+       <div class="input-row">
+         <input class="input-num" type="number" data-line-qty="" inputmode="decimal" placeholder="数量" min="0" step="any" />
+         <span class="input-unit line-unit-suffix"></span>
+       </div>
+     </div>
+     <button type="button" class="btn-line-remove" aria-label="この行を削除">×</button>`;
+  const labIn = wrap.querySelector("[data-line-label]");
+  labIn.placeholder = placeholder;
+  labIn.setAttribute("list", listId);
+  wrap.querySelector(".line-unit-suffix").textContent = unitVal;
+  wrap.querySelector(".btn-line-remove").addEventListener("click", () => removeInputLineRow(wrap));
+  return wrap;
+}
+
+function removeInputLineRow(lineEl) {
+  const host = lineEl.parentElement;
+  if (!host) return;
+  const rows = host.querySelectorAll(".multi-row-line");
+  if (rows.length <= 1) {
+    const a = lineEl.querySelector("[data-line-label]");
+    const b = lineEl.querySelector("[data-line-qty]");
+    if (a) a.value = "";
+    if (b) b.value = "";
+    return;
+  }
+  lineEl.remove();
+}
+
+function addPlannedRow() {
+  const host = plannedRowsHost();
+  if (!host) return;
+  const log = isLogistics();
+  host.appendChild(makeInputLineRow("候補から選ぶか入力", log ? "dl-work-label" : "dl-item-name"));
+}
+
+function addActualRow() {
+  const host = actualRowsHost();
+  if (!host) return;
+  const log = isLogistics();
+  host.appendChild(makeInputLineRow("候補から選ぶか入力", log ? "dl-work-label" : "dl-item-name"));
+}
+
+function parseQtyInput(raw) {
+  const t = String(raw ?? "").trim();
+  if (t === "") return null;
+  const n = Number(t.replace(",", "."));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** 空行はスキップ。不完全行は { error } */
+function scanHostLines(host) {
+  if (!host) return { lines: [] };
+  const out = [];
+  for (const row of host.querySelectorAll(".multi-row-line")) {
+    const labEl = row.querySelector("[data-line-label]");
+    const qtyEl = row.querySelector("[data-line-qty]");
+    const lb = (labEl && labEl.value || "").trim();
+    const rawQ = qtyEl ? qtyEl.value : "";
+    const q = parseQtyInput(rawQ);
+    if (!lb && String(rawQ).trim() === "") continue;
+    if (lb && (String(rawQ).trim() === "" || q === null)) {
+      return { error: "名前だけ入力された行があります。数量も入力してください" };
+    }
+    if (!lb && q !== null && !Number.isNaN(q)) {
+      return { error: "数量だけ入力された行があります。名前と数量をセットで入力してください" };
+    }
+    if (Number.isNaN(q)) {
+      return { error: "数量の形式が不正な行があります" };
+    }
+    out.push({ label: lb, value: q });
+  }
+  return { lines: out };
+}
+
+function syncLineUnitSuffixes() {
+  document.querySelectorAll(".line-unit-suffix").forEach((el) => {
+    el.textContent = unitVal;
+  });
+}
+
+/** scan / サーバ双方で同一形式の JSON 文字列にそろえる */
+function fingerprintPlannedLinesNormalized(lines) {
+  const arr = (lines || []).map((L) => {
+    const label = String(L.label != null ? L.label : "").trim();
+    const value = Number(L.value);
+    return { label, value };
+  }).filter((x) => x.label && Number.isFinite(x.value));
+  return JSON.stringify(arr);
+}
+
+function plannedFingerprintFromServerPayload(data) {
+  if (!data || typeof data !== "object") return "[]";
+  let raw = [];
+  if (Array.isArray(data.planned_lines) && data.planned_lines.length) {
+    raw = data.planned_lines;
+  } else {
+    raw = legacyPlannedLinesFromScalars(data);
+  }
+  return fingerprintPlannedLinesNormalized(raw);
+}
+
+function legacyPlannedLinesFromScalars(prefill) {
+  const lines = [];
+  if (!prefill || typeof prefill !== "object") return lines;
+  if (isLogistics()) {
+    const lab = (prefill.planned_work_label && String(prefill.planned_work_label).trim())
+      ? prefill.planned_work_label
+      : (prefill.planned_work_type ? String(prefill.planned_work_type) : "");
+    const pv = prefill.planned_value;
+    if (lab || pv != null) lines.push({ label: lab || "", value: pv != null ? pv : "" });
+  } else {
+    const n = (prefill.planned_item_name && String(prefill.planned_item_name).trim()) || "";
+    const pv = prefill.planned_value;
+    if (n || pv != null) lines.push({ label: n, value: pv != null ? pv : "" });
+  }
+  return lines;
+}
+
+function legacyActualLinesFromScalars(data) {
+  const lines = [];
+  if (!data || typeof data !== "object") return lines;
+  if (isLogistics()) {
+    const lab = (data.actual_work_label && String(data.actual_work_label).trim())
+      ? data.actual_work_label
+      : (data.actual_work_type ? String(data.actual_work_type) : "");
+    const av = data.actual_value;
+    if (lab || av != null) lines.push({ label: lab || "", value: av != null ? av : "" });
+  } else {
+    const n = (data.actual_item_name && String(data.actual_item_name).trim()) || "";
+    const av = data.actual_value;
+    if (n || av != null) lines.push({ label: n, value: av != null ? av : "" });
+  }
+  return lines;
+}
+
+function fillRowsHost(host, lineObjs, placeholder, listId) {
+  if (!host) return;
+  host.innerHTML = "";
+  const src = (lineObjs && lineObjs.length) ? lineObjs : [{}];
+  for (const L of src) {
+    const row = makeInputLineRow(placeholder, listId);
+    const lab = L.label != null ? String(L.label) : "";
+    const v = L.value;
+    row.querySelector("[data-line-label]").value = lab;
+    row.querySelector("[data-line-qty]").value =
+      v !== null && v !== undefined && String(v).trim() !== "" ? String(v) : "";
+    host.appendChild(row);
+  }
+  syncLineUnitSuffixes();
+}
+
+function setPlannedRowsFromData(prefill) {
+  _plannedAllowEmptyAfterSave = false;
+  const host = plannedRowsHost();
+  const log = isLogistics();
+  const listId = log ? "dl-work-label" : "dl-item-name";
+  let lines = [];
+  if (prefill && Array.isArray(prefill.planned_lines) && prefill.planned_lines.length) {
+    lines = prefill.planned_lines;
+  } else {
+    lines = legacyPlannedLinesFromScalars(prefill);
+  }
+  if (!lines.length) {
+    fillRowsHost(host, [{}], "候補から選ぶか入力", listId);
+  } else {
+    fillRowsHost(host, lines, "候補から選ぶか入力", listId);
+  }
+  if (prefill && typeof prefill === "object") {
+    _plannedSavedFingerprint = plannedFingerprintFromServerPayload(prefill);
+  } else {
+    _plannedSavedFingerprint = "[]";
+  }
+}
+
+function setActualRowsFromData(data) {
+  const host = actualRowsHost();
+  const log = isLogistics();
+  const listId = log ? "dl-work-label" : "dl-item-name";
+  let lines = [];
+  if (data && Array.isArray(data.actual_lines) && data.actual_lines.length) {
+    lines = data.actual_lines;
+  } else {
+    lines = legacyActualLinesFromScalars(data);
+  }
+  if (!lines.length) {
+    fillRowsHost(host, [{}], "候補から選ぶか入力", listId);
+    return;
+  }
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId);
+}
+
+function renderLinesSummaryReadonly(lines) {
+  if (!lines || !lines.length) return "";
+  return lines.map((l) =>
+    `<div class="ro-line"><span class="ro-k">${escHtml(l.label)}</span>` +
+    `<span class="ro-v">${escHtml(String(l.value))} ${escHtml(unitVal)}</span></div>`
+  ).join("");
+}
+
+function renderPlannedSummaryForActual(data) {
+  const sum = document.getElementById("actual-planned-summary");
+  if (!sum) return;
+  const pl = data.planned_lines;
+  if (pl && pl.length) {
+    sum.innerHTML = renderLinesSummaryReadonly(pl);
+    return;
+  }
+  const qv = (q) => (q != null ? `${q} ${unitVal}` : "—");
+  if (isLogistics()) {
+    const plab = logisticsPlannedLabel(data);
+    sum.innerHTML =
+      `<div class="ro-line"><span class="ro-k">作業内容</span><span class="ro-v">${escHtml(dispStr(plab))}</span></div>` +
+      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+  } else {
+    sum.innerHTML =
+      `<div class="ro-line"><span class="ro-k">商品名・対象</span><span class="ro-v">${escHtml(dispStr(data.planned_item_name))}</span></div>` +
+      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+  }
+}
+
+function hasWorkPlanned(data) {
+  if (!data) return false;
+  if (data.planned_lines && data.planned_lines.length > 0) return true;
+  return data.planned_value != null
+    || (data.planned_work_type && String(data.planned_work_type).trim() !== "")
+    || (data.planned_work_label && String(data.planned_work_label).trim() !== "")
+    || (data.planned_item_name && String(data.planned_item_name).trim() !== "");
+}
+
+async function loadCompanyInputMode() {
+  const cfg = getConfig();
+  try {
+    const res = await fetch(`/settings/${encodeURIComponent(cfg.company)}`);
+    if (res.ok) {
+      const s = await res.json();
+      inputMode = s.input_mode === "logistics" ? "logistics" : "manufacturing";
+    }
+  } catch (_) { /* 既定 manufacturing */ }
+  applyInputModePanels();
+}
+
+/** 物流モード: 作業ラベル列、なければ旧作業種別列（移行前データ用） */
+function logisticsPlannedLabel(d) {
+  const a = d.planned_work_label && String(d.planned_work_label).trim();
+  if (a) return d.planned_work_label;
+  const b = d.planned_work_type && String(d.planned_work_type).trim();
+  return b ? d.planned_work_type : null;
+}
+
+function logisticsActualLabel(d) {
+  const a = d.actual_work_label && String(d.actual_work_label).trim();
+  if (a) return d.actual_work_label;
+  const b = d.actual_work_type && String(d.actual_work_type).trim();
+  return b ? d.actual_work_type : null;
+}
+
+/**
+ * 表示用の連結ラベル（例: 902c · 3000s）を単一候補に分解。
+ * 区切り: 中黒 U+00B7 / 全角中黒 U+30FB、およびスラッシュ。
+ */
+function splitSuggestionLabels(raw) {
+  if (raw == null) return [];
+  const s = String(raw).trim();
+  if (!s) return [];
+  const sep = "\x01";
+  const normalized = s
+    .replace(/\s*[\u00B7\u30FB]\s*/g, sep)
+    .replace(/\s*\/\s*/g, sep);
+  const parts = normalized.split(sep).map((p) => p.trim()).filter(Boolean);
+  return parts.length ? parts : [s];
+}
+
+function addSuggestionTokens(targetSet, raw) {
+  for (const piece of splitSuggestionLabels(raw)) {
+    if (piece) targetSet.add(piece);
+  }
+}
+
+async function fillDatalistsFromWorkList() {
+  const cfg = getConfig();
+  try {
+    const res = await fetch(`/work/list?company_id=${encodeURIComponent(cfg.company)}`);
+    if (!res.ok) return;
+    const rows = await res.json();
+    const nm = new Set();
+    const wl = new Set();
+    for (const r of rows) {
+      addSuggestionTokens(nm, r.planned_item_name);
+      addSuggestionTokens(nm, r.actual_item_name);
+      addSuggestionTokens(wl, r.planned_work_label);
+      addSuggestionTokens(wl, r.actual_work_label);
+      addSuggestionTokens(wl, r.planned_work_type);
+      addSuggestionTokens(wl, r.actual_work_type);
+      for (const x of r.planned_lines || []) {
+        if (x && x.label) {
+          const lb = String(x.label).trim();
+          if (lb) {
+            nm.add(lb);
+            wl.add(lb);
+          }
+        }
+      }
+      for (const x of r.actual_lines || []) {
+        if (x && x.label) {
+          const lb = String(x.label).trim();
+          if (lb) {
+            nm.add(lb);
+            wl.add(lb);
+          }
+        }
+      }
+    }
+    const fillDl = (id, set) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = "";
+      [...set].sort().slice(0, 80).forEach((v) => {
+        const o = document.createElement("option");
+        o.value = v;
+        el.appendChild(o);
+      });
+    };
+    fillDl("dl-item-name", nm);
+    fillDl("dl-work-label", wl);
+  } catch (_) { /* 候補なしでも入力可 */ }
+}
+
+// =================================================================
+// URLパラメータ
+// =================================================================
+function param(key, fallback) {
+  const v = new URLSearchParams(location.search).get(key);
+  if (v === null || v === "") return fallback;
+  return v;
+}
+
+function getConfig() {
+  return {
+    company:  param("company_id", null) || param("company", "company_a"),
+    task:     param("task_id", null)     || param("task", "task_01"),
+    process:  param("process_id", null)  || param("process", "proc_01"),
+    user:     localStorage.getItem("mo_user") || "",
+  };
+}
+
+// =================================================================
+// 班長マスタ（候補）
+// =================================================================
+function parseFieldUsersRaw(raw) {
+  const rows = [];
+  if (!raw || !String(raw).trim()) return rows;
+  for (const part of raw.split(",")) {
+    const p = part.trim();
+    if (!p) continue;
+    const i = p.indexOf(":");
+    const name = (i >= 0 ? p.slice(0, i) : p).trim();
+    const proc = i >= 0 ? p.slice(i + 1).trim() : "";
+    if (name) rows.push({ name, proc, label: proc ? `${name}（${proc}）` : name });
+  }
+  return rows;
+}
+
+/** 現在の process_id に工程が一致する班長がいればその候補だけ、いなければ全候補 */
+function filterCandidatesByProcess(allRows) {
+  const pid = (getConfig().process || "").trim();
+  if (!pid) return allRows;
+  const matched = allRows.filter(r => r.proc && r.proc === pid);
+  return matched.length ? matched : allRows;
+}
+
+async function loadFieldMasterList() {
+  const company = getConfig().company;
+  try {
+    const res = await fetch(`/settings/${encodeURIComponent(company)}`);
+    const data = await res.json();
+    const all = parseFieldUsersRaw(data.field_users || "");
+    _candidateRowsAll = all;
+    _candidateRows = filterCandidatesByProcess(all);
+  } catch (_) {
+    _candidateRows = [];
+    _candidateRowsAll = [];
+  }
+}
+
+function hideSuggest() {
+  const box = document.getElementById("user-suggest");
+  box.classList.remove("active");
+  box.innerHTML = "";
+}
+
+function renderSuggest() {
+  const input = document.getElementById("user-input");
+  const q = input.value.trim().toLowerCase();
+  const box = document.getElementById("user-suggest");
+  if (!_candidateRows.length) {
+    box.classList.remove("active");
+    box.innerHTML = "";
+    return;
+  }
+  const filtered = !q
+    ? _candidateRows.slice(0, 8)
+    : _candidateRows.filter(c =>
+        c.name.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
+      ).slice(0, 12);
+  if (!filtered.length) {
+    box.classList.remove("active");
+    box.innerHTML = "";
+    return;
+  }
+  box.innerHTML = "";
+  filtered.forEach(c => {
+    const d = document.createElement("div");
+    d.textContent = c.label;
+    d.addEventListener("mousedown", (e) => { e.preventDefault(); pickCandidate(c.name); });
+    box.appendChild(d);
+  });
+  box.classList.add("active");
+}
+
+function pickCandidate(name) {
+  document.getElementById("user-input").value = name;
+  hideSuggest();
+  updateUnregisteredHint();
+}
+
+function updateUnregisteredHint() {
+  const el = document.getElementById("user-unreg-hint");
+  const v = document.getElementById("user-input").value.trim();
+  if (!v) {
+    el.style.display = "none";
+    return;
+  }
+  const inMaster = _candidateRowsAll.some(c => c.name === v);
+  const hasMaster = _candidateRowsAll.length > 0;
+  el.style.display = (!hasMaster || !inMaster) ? "block" : "none";
+}
+
+function onUserInput() {
+  updateUnregisteredHint();
+  renderSuggest();
+}
+
+function onUserFocus() {
+  renderSuggest();
+}
+
+function onUserBlurDelayed() {
+  clearTimeout(_blurTimer);
+  _blurTimer = setTimeout(() => hideSuggest(), 200);
+}
+
+function onUserKeydown(ev) {
+  if (ev.key === "Enter") {
+    hideSuggest();
+    confirmUser();
+  }
+  if (ev.key === "Escape") hideSuggest();
+}
+
+// =================================================================
+// 担当者
+// =================================================================
+function confirmUser() {
+  const name = document.getElementById("user-input").value.trim();
+  if (!name) { toast("名前を入力してください"); return; }
+  hideSuggest();
+  localStorage.setItem("mo_user", name);
+  document.getElementById("overlay").classList.add("hidden");
+  document.getElementById("header-user").textContent = name;
+  init();
+}
+
+async function changeUser() {
+  document.getElementById("user-input").value = getConfig().user;
+  document.getElementById("overlay").classList.remove("hidden");
+  await loadFieldMasterList();
+  updateUnregisteredHint();
+  renderSuggest();
+  setTimeout(() => document.getElementById("user-input").focus(), 100);
+}
+
+// =================================================================
+// 初期化
+// =================================================================
+async function init() {
+  const cfg  = getConfig();
+  if (!cfg.user) { return; }
+  document.getElementById("header-user").textContent = cfg.user;
+  await loadCompanyInputMode();
+
+  let data = await api("POST", "/work", {
+    company_id: cfg.company, task_id: cfg.task,
+    process_id: cfg.process, user_id: cfg.user,
+  });
+  if (!data || data.__error) {
+    toast(data && data.message ? data.message : "読み込みに失敗しました");
+    return;
+  }
+
+  syncInputModeFromPayload(data);
+  applyUnit(data.unit);
+  unitId  = data.id;
+  bizDate = data.business_date;
+
+  // 実績まで終わっている → 次営業日は画面だけ先に進める（行は予告/着手まで作らない）
+  if (data.actual_at) {
+    const nx = await fetchNextBusinessDate(data.business_date);
+    if (nx && nx.business_date) {
+      bizDate = nx.business_date;
+      unitId  = null;
+      applyUnit(data.unit);
+      await showPlanned();
+      return;
+    }
+    showDone(data);
+    return;
+  }
+
+  // 予告 → 着手 → 実績 のどこから再開するか（予告済みでも自動着手しない）
+  if (!data.started_at && !data.actual_at) {
+    if (hasWorkPlanned(data)) {
+      await showPlanned(data);
+      return;
+    }
+    await showPlanned();
+    return;
+  }
+  await showActual(data);
+}
+
+// =================================================================
+// 画面切り替え
+// =================================================================
+function show(name) {
+  ["actual","planned","done"].forEach(n => {
+    document.getElementById(`screen-${n}`).classList.toggle("active", n === name);
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function applyUnit(u) {
+  unitVal = u || "個";
+  const pu = document.getElementById("planned-unit");
+  if (pu) pu.textContent = unitVal;
+  syncLineUnitSuffixes();
+}
+
+async function showActual(data) {
+  syncInputModeFromPayload(data);
+  await fillDatalistsFromWorkList();
+
+  // 前日予告の表示
+  const prevSec  = document.getElementById("prev-section");
+  const prevInfo = document.getElementById("prev-info");
+  const ppl = data.prev_planned_lines;
+  const hasPrev = (ppl && ppl.length > 0)
+    || data.prev_planned_value != null
+    || (data.prev_planned_work_type && String(data.prev_planned_work_type).trim() !== "")
+    || (data.prev_planned_work_label && String(data.prev_planned_work_label).trim() !== "")
+    || (data.prev_planned_item_name && String(data.prev_planned_item_name).trim() !== "");
+  if (hasPrev) {
+    const parts = [];
+    if (ppl && ppl.length) {
+      prevInfo.classList.add("prelines");
+      prevInfo.style.whiteSpace = "pre-line";
+      prevInfo.textContent = "前日の予告：\n" + ppl.map((l) =>
+        `${l.label}　${l.value} ${unitVal}`).join("\n");
+    } else {
+      prevInfo.classList.remove("prelines");
+      prevInfo.style.whiteSpace = "";
+      if (isLogistics()) {
+        const plab = data.prev_planned_work_label && String(data.prev_planned_work_label).trim()
+          ? data.prev_planned_work_label
+          : (data.prev_planned_work_type && String(data.prev_planned_work_type).trim()
+            ? data.prev_planned_work_type : null);
+        if (plab) parts.push(`作業：${plab}`);
+        if (data.prev_planned_value != null)
+          parts.push(`数量：${data.prev_planned_value} ${unitVal}`);
+      } else {
+        if (data.prev_planned_item_name && String(data.prev_planned_item_name).trim())
+          parts.push(`商品：${data.prev_planned_item_name}`);
+        if (data.prev_planned_value != null)
+          parts.push(`数量：${data.prev_planned_value} ${unitVal}`);
+      }
+      prevInfo.textContent = "前日の予告：" + (parts.length ? parts.join(" / ") : "—");
+    }
+    prevSec.style.display = "block";
+  } else {
+    prevSec.style.display = "none";
+  }
+
+  // 当日の予告（参照）
+  renderPlannedSummaryForActual(data);
+
+  // 着手済み表示
+  const stInfo = document.getElementById("started-info");
+  if (data.started_at) {
+    const t = toJST(data.started_at);
+    stInfo.textContent  = `着手済み ✓  ${t}`;
+    stInfo.style.display = "block";
+  } else {
+    stInfo.style.display = "none";
+  }
+
+  // 実績フォーム
+  setActualRowsFromData(data);
+  document.getElementById("pattern-a-cb").checked = data.pattern_a === true;
+  document.getElementById("pattern-b-cb").checked = data.pattern_b === true;
+  const btn = document.getElementById("actual-btn");
+  btn.textContent = "実績を記録する";
+  btn.disabled    = false;
+  submitting      = false;
+
+  show("actual");
+}
+
+async function showPlanned(prefill) {
+  await loadCompanyInputMode();
+  if (prefill && typeof prefill === "object") syncInputModeFromPayload(prefill);
+  await fillDatalistsFromWorkList();
+  if (prefill && typeof prefill === "object") {
+    setPlannedRowsFromData(prefill);
+  } else {
+    setPlannedRowsFromData(null);
+  }
+  const btn = document.getElementById("planned-btn");
+  btn.textContent = "予告を記録";
+  btn.disabled    = false;
+  const sbtn = document.getElementById("planned-start-btn");
+  if (sbtn) {
+    sbtn.disabled    = false;
+    sbtn.textContent = "着手して実績入力へ";
+  }
+  show("planned");
+}
+
+function showDone(data) {
+  syncInputModeFromPayload(data);
+  bizDate = data.business_date;
+  document.getElementById("done-date").textContent = `営業日：${data.business_date}`;
+
+  function plannedDoneText() {
+    if (data.planned_lines && data.planned_lines.length) {
+      return data.planned_lines.map((l) => `${l.label}　${l.value} ${unitVal}`).join("\n");
+    }
+    if (isLogistics()) {
+      const a = dispStr(logisticsPlannedLabel(data));
+      const b = data.planned_value != null ? `${data.planned_value} ${unitVal}` : "—";
+      return `作業：${a}\n数量：${b}`;
+    }
+    const a = dispStr(data.planned_item_name);
+    const b = data.planned_value != null ? `${data.planned_value} ${unitVal}` : "—";
+    return `商品：${a}\n数量：${b}`;
+  }
+
+  function actualDoneText() {
+    if (data.actual_lines && data.actual_lines.length) {
+      return data.actual_lines.map((l) => `${l.label}　${l.value} ${unitVal}`).join("\n");
+    }
+    if (isLogistics()) {
+      const a = dispStr(logisticsActualLabel(data));
+      const b = data.actual_value != null ? `${data.actual_value} ${unitVal}` : "未入力";
+      return `作業：${a}\n数量：${b}`;
+    }
+    const a = dispStr(data.actual_item_name);
+    const b = data.actual_value != null ? `${data.actual_value} ${unitVal}` : "未入力";
+    return `商品：${a}\n数量：${b}`;
+  }
+
+  const rows = [
+    { label: "【予告】", value: escHtml(plannedDoneText()), pre: true },
+    { label: "【実績】", value: escHtml(actualDoneText()), pre: true },
+    { label: "差分（数量）", value: escHtml(data.diff_value != null ? `${data.diff_value} ${unitVal}` : "—"), pre: false },
+    { label: "着手時刻", value: escHtml(data.started_at ? toJST(data.started_at) : "未記録"), pre: false },
+  ];
+
+  document.getElementById("done-rows").innerHTML = rows.map((r) =>
+    `<div class="done-row"><span>${r.label}</span><span class="done-val${r.pre ? " prelines" : ""}">${r.value}</span></div>`
+  ).join("");
+
+  const nb = document.getElementById("next-day-btn");
+  nb.textContent = "次の営業日を開始する";
+  nb.disabled    = false;
+
+  show("done");
+}
+
+// =================================================================
+// 実績送信
+// =================================================================
+async function submitActual() {
+  if (submitting) return;
+  submitting = true;
+  const btn = document.getElementById("actual-btn");
+  btn.disabled    = true;
+  btn.textContent = "記録中...";
+
+  const scanned = scanHostLines(actualRowsHost());
+  if (scanned.error) {
+    toast(scanned.error);
+    btn.disabled    = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+    return;
+  }
+  const payload = {
+    lines: scanned.lines,
+    actual_work_type: null,
+    actual_work_label: null,
+    actual_item_name: null,
+    actual_value: null,
+    pattern_a: document.getElementById("pattern-a-cb").checked,
+    pattern_b: document.getElementById("pattern-b-cb").checked,
+  };
+  const data = await api("POST", `/work/${unitId}/actual`, payload);
+
+  if (!data || data.__error) {
+    btn.disabled    = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+    toast(data && data.message ? data.message : "送信に失敗しました");
+    return;
+  }
+
+  toast("実績を記録しました");
+  const nextD = data.next_business_date
+    || (await fetchNextBusinessDate(data.business_date))?.business_date;
+  if (!nextD) {
+    toast("次の営業日へ進めませんでした");
+    setTimeout(() => showDone(data), 500);
+    submitting = false;
+    btn.disabled    = false;
+    btn.textContent = "実績を記録する";
+    return;
+  }
+  applyUnit(data.unit);
+  bizDate = nextD;
+  unitId  = null;
+  btn.disabled    = false;
+  btn.textContent = "実績を記録する";
+  setTimeout(() => { void showPlanned(); }, 500);
+  submitting = false;
+}
+
+// =================================================================
+// 予告送信
+// =================================================================
+async function submitPlanned() {
+  const btn = document.getElementById("planned-btn");
+  btn.disabled    = true;
+  btn.textContent = "記録中...";
+
+  const cfg = getConfig();
+  let id = unitId;
+  if ((id == null || id === "") && bizDate) {
+    const w = await api("POST", "/work", {
+      company_id:    cfg.company,
+      task_id:       cfg.task,
+      process_id:    cfg.process,
+      user_id:       cfg.user,
+      business_date: bizDate,
+    });
+    if (!w || w.__error || !w.id) {
+      btn.disabled    = false;
+      btn.textContent = "予告を記録";
+      toast(w && w.message ? w.message : "作業記録の準備に失敗しました");
+      return;
+    }
+    unitId = w.id;
+    id     = w.id;
+    syncInputModeFromPayload(w);
+  }
+  if (!id) {
+    btn.disabled    = false;
+    btn.textContent = "予告を記録";
+    toast("営業日が不明です");
+    return;
+  }
+
+  const scanned = scanHostLines(plannedRowsHost());
+  if (scanned.error) {
+    toast(scanned.error);
+    btn.disabled    = false;
+    btn.textContent = "予告を記録";
+    return;
+  }
+  const plannedBody = {
+    lines: scanned.lines,
+    planned_work_type: null,
+    planned_work_label: null,
+    planned_item_name: null,
+    planned_value: null,
+  };
+  const data = await api("POST", `/work/${id}/planned`, plannedBody);
+
+  if (!data || data.__error) {
+    btn.disabled    = false;
+    btn.textContent = "予告を記録";
+    toast(data && data.message ? data.message : "送信に失敗しました");
+    return;
+  }
+
+  unitId = data.id;
+  applyUnit(data.unit);
+  syncInputModeFromPayload(data);
+  toast("予告を保存しました");
+  btn.disabled    = false;
+  btn.textContent = "予告を記録";
+  const sbtn = document.getElementById("planned-start-btn");
+  if (sbtn) {
+    sbtn.disabled    = false;
+    sbtn.textContent = "着手して実績入力へ";
+  }
+  setPlannedRowsFromData(data);
+  if (plannedFingerprintFromServerPayload(data) === "[]") {
+    _plannedAllowEmptyAfterSave = true;
+  } else {
+    _plannedAllowEmptyAfterSave = false;
+  }
+  show("planned");
+}
+
+async function submitStartFromPlanned() {
+  const sbtn = document.getElementById("planned-start-btn");
+  const host = plannedRowsHost();
+  const scanned = scanHostLines(host);
+  if (scanned.error) {
+    toast(MSG_PLANNED_UNSAVED);
+    return;
+  }
+  const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
+  if (currentFp === "[]" && !_plannedAllowEmptyAfterSave) {
+    toast("予告が確定していません。先に「予告を記録」してください。空でも保存できます。");
+    return;
+  }
+  if (currentFp !== _plannedSavedFingerprint) {
+    toast(MSG_PLANNED_UNSAVED);
+    return;
+  }
+
+  sbtn.disabled    = true;
+  sbtn.textContent = "着手中...";
+
+  const cfg = getConfig();
+  let id = unitId;
+  try {
+    if ((id == null || id === "") && bizDate) {
+      const w = await api("POST", "/work", {
+        company_id:    cfg.company,
+        task_id:       cfg.task,
+        process_id:    cfg.process,
+        user_id:       cfg.user,
+        business_date: bizDate,
+      });
+      if (!w || w.__error || !w.id) {
+        toast(w && w.message ? w.message : "作業記録の準備に失敗しました");
+        return;
+      }
+      unitId = w.id;
+      id     = w.id;
+      syncInputModeFromPayload(w);
+    }
+    if (!id) {
+      toast("営業日が不明です");
+      return;
+    }
+
+    const st = await api("POST", `/work/${id}/start`, {});
+    let row = (st && !st.__error) ? st : null;
+    if (!row) {
+      row = await api("POST", "/work", {
+        company_id:    cfg.company,
+        task_id:       cfg.task,
+        process_id:    cfg.process,
+        user_id:       cfg.user,
+        business_date: bizDate || undefined,
+      });
+    }
+    if (!row || row.__error || !row.id) {
+      toast(row && row.message ? row.message : "着手に失敗しました");
+      return;
+    }
+    applyUnit(row.unit);
+    syncInputModeFromPayload(row);
+    _plannedAllowEmptyAfterSave = false;
+    toast("着手を記録しました");
+    await showActual(row);
+  } finally {
+    sbtn.disabled    = false;
+    sbtn.textContent = "着手して実績入力へ";
+  }
+}
+
+// =================================================================
+// 次の営業日
+// =================================================================
+async function startNextDay() {
+  if (!bizDate) return;
+  const btn = document.getElementById("next-day-btn");
+  btn.disabled    = true;
+  btn.textContent = "開始中...";
+
+  const nx = await fetchNextBusinessDate(bizDate);
+  if (!nx || !nx.business_date) {
+    btn.disabled    = false;
+    btn.textContent = "次の営業日を開始する";
+    toast("開始に失敗しました");
+    return;
+  }
+
+  unitId  = null;
+  bizDate = nx.business_date;
+  btn.disabled    = false;
+  btn.textContent = "次の営業日を開始する";
+  toast("次の作業を開始しました");
+  setTimeout(() => { void showPlanned(); }, 400);
+}
+
+function backToActual() {
+  show("actual");
+}
+
+// =================================================================
+// ユーティリティ
+// =================================================================
+async function api(method, path, body = null) {
+  try {
+    const res = await fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body && method !== "GET" ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      let msg = "送信に失敗しました";
+      const d = data.detail;
+      if (typeof d === "string") msg = d;
+      else if (Array.isArray(d) && d.length && d[0].msg) msg = String(d[0].msg);
+      return { __error: true, message: msg };
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchNextBusinessDate(currentBizDate) {
+  const cfg = getConfig();
+  const q = new URLSearchParams({
+    company_id: cfg.company,
+    current_business_date: currentBizDate,
+  });
+  try {
+    const res = await fetch(`/work/next-business-date?${q}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+/** API 日時: TZ なしは UTC。debug / 現場表示を Asia/Tokyo に統一 */
+function parseApiUtc(iso) {
+  if (iso == null || String(iso).trim() === "") return null;
+  const s = String(iso).trim();
+  if (s.endsWith("Z") || s.endsWith("z")) return new Date(s);
+  if (/[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{2}:\d{2}:\d{2}$/.test(s)) return new Date(s);
+  return new Date(s + "Z");
+}
+
+function toJST(isoStr) {
+  if (!isoStr) return "—";
+  const d = parseApiUtc(isoStr);
+  if (!d || Number.isNaN(d.getTime())) return String(isoStr);
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2400);
+}
+
+// =================================================================
+// 起動
+// =================================================================
+const user = getConfig().user;
+if (!user) {
+  document.getElementById("overlay").classList.remove("hidden");
+  loadFieldMasterList().then(() => {
+    setTimeout(() => document.getElementById("user-input").focus(), 200);
+  });
+} else {
+  document.getElementById("overlay").classList.add("hidden");
+  init();
+}
+</script>
+</body>
+</html>

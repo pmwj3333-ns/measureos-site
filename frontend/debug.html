@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS - Debug</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+         background: #1c1c1e; color: #e5e5ea; min-height: 100vh; font-size: 0.85rem; }
+
+  .header { padding: 16px 20px; border-bottom: 1px solid #2c2c2e;
+            display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 0.9rem; color: #8e8e93; font-weight: 600; flex-shrink: 0; }
+  .search-row { display: flex; gap: 8px; flex: 1; }
+  .search-row input { flex: 1; padding: 8px 12px; background: #2c2c2e; border: none;
+                      border-radius: 8px; color: #fff; font-size: 0.85rem;
+                      font-family: inherit; outline: none; }
+  .search-row button { padding: 8px 14px; background: #007aff; color: #fff; border: none;
+                       border-radius: 8px; font-size: 0.82rem; cursor: pointer;
+                       font-family: inherit; white-space: nowrap; }
+
+  .table-wrap { overflow-x: auto; padding: 0 0 40px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th    { padding: 10px 12px; background: #2c2c2e; color: #8e8e93;
+          text-align: left; font-weight: 600; white-space: nowrap;
+          position: sticky; top: 0; }
+  td    { padding: 10px 12px; border-bottom: 1px solid #2c2c2e;
+          white-space: nowrap; }
+  tr:hover td { background: #2c2c2e; cursor: pointer; }
+
+  .flag-true  { color: #ff453a; font-weight: 700; }
+  .flag-false { color: #3a3a3c; }
+  .diff-pos   { color: #ff9f0a; }
+  .diff-neg   { color: #30d158; }
+  .diff-zero  { color: #636366; }
+
+  .pat-cell   { color: #a1a1a6; font-weight: 600; }
+  .st-blue    { color: #64b5f6; font-weight: 600; }
+  .st-red     { color: #ff453a; font-weight: 600; }
+  .st-closed  { color: #30d158; font-weight: 600; }
+  .st-dash    { color: #636366; }
+
+  .empty { padding: 40px; text-align: center; color: #636366; }
+  .toast { position: fixed; bottom: 24px; left: 50%;
+           transform: translateX(-50%) translateY(10px);
+           background: rgba(255,255,255,0.12); color: #fff;
+           padding: 10px 20px; border-radius: 20px; opacity: 0;
+           transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+           font-size: 0.82rem; z-index: 99; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .hint { font-size: 0.72rem; color: #636366; margin-left: 8px; }
+
+  .debug-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid #2c2c2e;
+    background: #161618;
+  }
+  .debug-section-title {
+    font-size: 0.78rem;
+    color: #8e8e93;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .debug-block { margin-bottom: 18px; }
+  .debug-block:last-child { margin-bottom: 0; }
+  .debug-warn {
+    font-size: 0.72rem;
+    color: #636366;
+    line-height: 1.45;
+    margin-top: 8px;
+    max-width: 720px;
+  }
+  .search-row button.btn-danger {
+    background: #ff453a;
+  }
+  .search-row button.btn-danger:active { opacity: 0.9; }
+
+  .detail-overlay {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    align-items: center; justify-content: center; padding: 16px;
+    background: rgba(0,0,0,0.55);
+  }
+  .detail-overlay.open { display: flex; }
+  .detail-box {
+    background: #2c2c2e; border-radius: 12px; padding: 14px 16px 16px;
+    max-width: min(640px, 96vw); width: 100%; max-height: 80vh; overflow: auto;
+    border: 1px solid #3a3a3c;
+  }
+  .detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .detail-meta { font-size: 0.75rem; color: #8e8e93; line-height: 1.45; word-break: break-all; }
+  .detail-close {
+    flex-shrink: 0; width: 32px; height: 32px; border: none; border-radius: 8px;
+    background: #3a3a3c; color: #e5e5ea; font-size: 1.1rem; line-height: 1; cursor: pointer;
+    font-family: inherit;
+  }
+  .detail-close:active { opacity: 0.85; }
+  .detail-sub { font-size: 0.7rem; color: #8e8e93; font-weight: 600; margin: 12px 0 6px; }
+  .detail-sub:first-of-type { margin-top: 0; }
+  .detail-lines {
+    font-size: 0.82rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>DEBUG<span class="hint">一覧の行をクリックで予告・実績の明細を表示</span></h1>
+  <div class="search-row">
+    <input id="company-input" placeholder="company_id（例: company_a）"
+           onkeydown="if(event.key==='Enter') loadLogs()" />
+    <button onclick="loadLogs()">取得</button>
+  </div>
+</div>
+
+<div class="debug-section">
+  <div class="debug-section-title">デバッグ操作（ローカル・検証専用）</div>
+
+  <div class="debug-block">
+    <div class="debug-section-title" style="margin-bottom: 6px;">履歴クリア</div>
+    <div class="search-row" style="flex-wrap: wrap;">
+      <button type="button" class="btn-danger" onclick="debugReset()">work_unit / work_anomaly を全削除</button>
+    </div>
+    <p class="debug-warn">POST /work/debug-reset。テストデータをまっさらにします。本番では使用しないでください。</p>
+  </div>
+
+  <div class="debug-block">
+    <div class="debug-section-title" style="margin-bottom: 6px;">business_date 手動変更</div>
+    <p class="debug-warn" style="margin-top: 0; margin-bottom: 10px;">※これは日跨ぎテスト専用です。本番では使用しません</p>
+    <div class="search-row" style="flex-wrap: wrap;">
+      <input id="dbg-unit-id" type="number" placeholder="work_unit id" style="max-width: 120px; flex: 0 1 auto;" />
+      <input id="dbg-biz-date" placeholder="YYYY-MM-DD（例: 2026-04-04）" style="max-width: 200px; flex: 0 1 auto;" />
+      <button type="button" onclick="debugSetBusinessDate()">適用</button>
+    </div>
+    <p class="debug-warn">POST /work/debug-set-business-date。通常の検証では business_date を手動変更しない前提です。</p>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table id="log-table">
+    <thead>
+      <tr>
+        <th>id</th>
+        <th>user</th>
+        <th>source</th>
+        <th>unreg</th>
+        <th title="DB の business_date">business_date</th>
+        <th title="calc 時の now_jst（POST /work 自動時のみ。next-day は —）">now_jst</th>
+        <th title="行作成時の API">bd API</th>
+        <th>started_at</th>
+        <th>actual_at</th>
+        <th>planned_label</th>
+        <th>planned</th>
+        <th>actual_label</th>
+        <th>actual</th>
+        <th>diff</th>
+        <th>user_pattern</th>
+        <th>system_pattern</th>
+        <th>status</th>
+        <th>missing</th>
+        <th>inv_flow</th>
+        <th>diff_ano</th>
+      </tr>
+    </thead>
+    <tbody id="log-body">
+      <tr><td colspan="20" class="empty">company_id を入力して「取得」してください</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="detail-overlay" class="detail-overlay" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+  <div class="detail-box">
+    <div class="detail-head">
+      <div class="detail-meta" id="detail-meta"></div>
+      <button type="button" class="detail-close" onclick="closeDetail()" aria-label="閉じる">×</button>
+    </div>
+    <div class="detail-sub">business_date（行作成時の記録）</div>
+    <div class="detail-lines" id="detail-biz"></div>
+    <div class="detail-sub">分類（申告と自動判定は別）</div>
+    <div class="detail-lines" id="detail-patterns"></div>
+    <div class="detail-sub" id="detail-title">予告明細（行ごと）</div>
+    <div class="detail-lines" id="detail-planned"></div>
+    <div class="detail-sub">実績明細（行ごと）</div>
+    <div class="detail-lines" id="detail-actual"></div>
+  </div>
+</div>
+
+<script>
+function esc(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function lblPlanned(r) {
+  const log = r.input_mode === "logistics";
+  const v = log
+    ? (r.planned_work_label != null && String(r.planned_work_label).trim() !== ""
+        ? r.planned_work_label : null)
+    : (r.planned_item_name != null && String(r.planned_item_name).trim() !== ""
+        ? r.planned_item_name : null);
+  return v != null ? v : "—";
+}
+
+function lblActual(r) {
+  const log = r.input_mode === "logistics";
+  const v = log
+    ? (r.actual_work_label != null && String(r.actual_work_label).trim() !== ""
+        ? r.actual_work_label : null)
+    : (r.actual_item_name != null && String(r.actual_item_name).trim() !== ""
+        ? r.actual_item_name : null);
+  return v != null ? v : "—";
+}
+
+/** API の planned_lines / actual_lines を優先。無い場合は単一ラベル＋合計から 1 行合成 */
+function linesForDetail(r, kind) {
+  const key = kind === "p" ? "planned_lines" : "actual_lines";
+  const arr = r[key];
+  if (Array.isArray(arr) && arr.length) {
+    return arr
+      .filter((x) => x && (String(x.label || "").trim() !== "" || x.value != null))
+      .map((x) => ({
+        label: String(x.label != null ? x.label : "").trim() || "—",
+        value: x.value,
+      }));
+  }
+  const lbl = kind === "p" ? lblPlanned(r) : lblActual(r);
+  const val = kind === "p" ? r.planned_value : r.actual_value;
+  if (lbl !== "—" && val != null) return [{ label: lbl, value: val }];
+  if (val != null) return [{ label: "（ラベルなし）", value: val }];
+  return [];
+}
+
+/** work_unit 作成経路（business_date_source）— 詳細モーダル用 */
+function bizApiLabel(src) {
+  const m = {
+    post_work_auto: "POST /work（自動算出）",
+    post_work_explicit: "POST /work（business_date 指定）",
+    post_work_next_day: "POST /work/next-day",
+  };
+  return m[src] || "—";
+}
+
+/** 一覧の bd API 列（短いラベル） */
+function bizApiShortLabel(src) {
+  if (src === "post_work_auto") return "POST /work";
+  if (src === "post_work_explicit") return "POST /work 指定";
+  if (src === "post_work_next_day") return "next-day";
+  return "—";
+}
+
+function bizNowJstSummary(r) {
+  const d = r.business_date_debug;
+  if (d && d.now_jst) return String(d.now_jst).replace("T", " ").slice(0, 25);
+  return "—";
+}
+
+function formatDetailLines(lines, unit) {
+  if (!lines.length) return "—";
+  const u = unit ? ` ${unit}` : "";
+  return lines.map((l) => `${l.label} : ${l.value}${u}`).join("\n");
+}
+
+function closeDetail() {
+  document.getElementById("detail-overlay").classList.remove("open");
+}
+
+function openDetail(r) {
+  const u = r.unit || "個";
+  const pLines = linesForDetail(r, "p");
+  const aLines = linesForDetail(r, "a");
+  const pSum = r.planned_value != null ? `${r.planned_value} ${u}` : "—";
+  const aSum = r.actual_value != null ? `${r.actual_value} ${u}` : "—";
+
+  document.getElementById("detail-meta").textContent =
+    `#${r.id}  ${r.user_id}  ${r.business_date}  /  予告合計 ${pSum}  /  実績合計 ${aSum}`;
+
+  let bizTxt = "";
+  if (r.business_date_source || r.business_date_debug || r.created_at) {
+    bizTxt += `作成経路: ${bizApiLabel(r.business_date_source)}\n`;
+    bizTxt += `business_date_source: ${r.business_date_source || "—"}\n`;
+    bizTxt += `created_at（JST）: ${fmtDateTimeJST(r.created_at)}\n`;
+    if (r.business_date_debug) {
+      bizTxt += "\n" + JSON.stringify(r.business_date_debug, null, 2);
+    } else {
+      bizTxt += "\n（debug JSON なし）";
+    }
+  } else {
+    bizTxt = "business_date デバッグ未記録（移行前の行）";
+  }
+  document.getElementById("detail-biz").textContent = bizTxt;
+
+  const up = userPattern(r);
+  const syDisp = systemPatternDisplay(r);
+  document.getElementById("detail-patterns").textContent =
+    `user_pattern（現場の申告）: ${up}\n` +
+    `system_pattern（自動判定）: ${syDisp}\n` +
+    `※ * は自動判定。A=プロセス不備系（missing/inv_flow） B=結果不備系（diff_ano）`;
+
+  document.getElementById("detail-planned").textContent = formatDetailLines(pLines, u);
+  document.getElementById("detail-actual").textContent = formatDetailLines(aLines, u);
+
+  document.getElementById("detail-overlay").classList.add("open");
+}
+
+let _logRows = [];
+
+document.getElementById("detail-overlay").addEventListener("click", (ev) => {
+  if (ev.target === ev.currentTarget) closeDetail();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.getElementById("detail-overlay").classList.contains("open")) {
+    closeDetail();
+  }
+});
+
+/** 現場がチェックした A/B（pattern_a / pattern_b）。未選択は — */
+function userPattern(r) {
+  const a = r.pattern_a === true;
+  const b = r.pattern_b === true;
+  if (!a && !b) return "—";
+  const parts = [];
+  if (a) parts.push("A");
+  if (b) parts.push("B");
+  return parts.join(",");
+}
+
+function userPatternCell(r) {
+  const t = userPattern(r);
+  return { text: t, cls: t === "—" ? "st-dash" : "pat-cell" };
+}
+
+/**
+ * システム自動判定の A/B 相当（API のフラグから合成）
+ * A: プロセス不備系（未入力・着手なし実績など）→ is_missing / is_invalid_flow
+ * B: 結果不備系（合計差・明細不一致など）→ is_diff_anomaly
+ */
+function systemPattern(r) {
+  const parts = [];
+  if (r.is_missing || r.is_invalid_flow) parts.push("A");
+  if (r.is_diff_anomaly) parts.push("B");
+  if (!parts.length) return "—";
+  return parts.join(",");
+}
+
+/** 一覧・詳細用: 自動判定であることを示すため A→A* , A,B→A*,B*（なしは —） */
+function systemPatternDisplay(r) {
+  const raw = systemPattern(r);
+  if (raw === "—") return "—";
+  return raw.split(",").map((s) => `${s.trim()}*`).join(",");
+}
+
+function systemPatternCell(r) {
+  const t = systemPatternDisplay(r);
+  return { text: t, cls: t === "—" ? "st-dash" : "pat-cell" };
+}
+
+/** API の status（DB）を表示。null / 不明は normal 扱い */
+function statusCell(r) {
+  const st = String(r.status || "normal").trim().toLowerCase();
+  if (st === "closed") return { text: "完", cls: "st-closed" };
+  if (st === "red") return { text: "赤", cls: "st-red" };
+  if (st === "blue") return { text: "青", cls: "st-blue" };
+  return { text: "—", cls: "st-dash" };
+}
+
+async function debugReset() {
+  if (!confirm("work_unit と work_anomaly をすべて削除します。よろしいですか？")) return;
+  const res = await fetch("/work/debug-reset", { method: "POST" });
+  let data = {};
+  try {
+    data = await res.json();
+  } catch { /* ignore */ }
+  if (!res.ok) {
+    toast("履歴クリア失敗: " + (data.detail || res.status));
+    return;
+  }
+  toast(
+    "クリア完了（work_unit: " +
+      (data.deleted_work_unit_rows ?? "?") +
+      " / work_anomaly: " +
+      (data.deleted_work_anomaly_rows ?? "?") +
+      "）"
+  );
+  loadLogs();
+}
+
+async function debugSetBusinessDate() {
+  const id = parseInt(document.getElementById("dbg-unit-id").value, 10);
+  const business_date = document.getElementById("dbg-biz-date").value.trim();
+  if (!Number.isFinite(id) || !business_date) {
+    toast("work_unit id と business_date を入力してください");
+    return;
+  }
+  const res = await fetch("/work/debug-set-business-date", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, business_date }),
+  });
+  let data = {};
+  try {
+    data = await res.json();
+  } catch { /* ignore */ }
+  if (!res.ok) {
+    const msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data);
+    toast("失敗: " + (msg || res.status));
+    return;
+  }
+  toast("business_date を更新しました");
+  loadLogs();
+}
+
+async function loadLogs() {
+  const company = document.getElementById("company-input").value.trim();
+  if (!company) { toast("company_id を入力してください"); return; }
+
+  const res = await fetch(`/work/list?company_id=${encodeURIComponent(company)}`);
+  if (!res.ok) { toast("取得失敗: " + res.status); return; }
+  const data = await res.json();
+
+  const tbody = document.getElementById("log-body");
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="20" class="empty">データがありません</td></tr>';
+    return;
+  }
+
+  _logRows = data;
+  tbody.innerHTML = data.map((r, idx) => {
+    const up = userPatternCell(r);
+    const sp = systemPatternCell(r);
+    const st  = statusCell(r);
+    return `
+    <tr class="log-row" data-row-idx="${idx}">
+      <td>${r.id}</td>
+      <td>${r.user_id}</td>
+      <td>${r.user_source ?? "—"}</td>
+      <td class="${r.is_unregistered_user ? 'flag-true' : 'flag-false'}">${r.is_unregistered_user ? "true" : "false"}</td>
+      <td>${r.business_date}</td>
+      <td title="${esc(bizNowJstSummary(r))}">${esc(bizNowJstSummary(r))}</td>
+      <td title="${esc(bizApiLabel(r.business_date_source))}">${esc(bizApiShortLabel(r.business_date_source))}</td>
+      <td>${fmtTimeJST(r.started_at)}</td>
+      <td>${fmtTimeJST(r.actual_at)}</td>
+      <td>${esc(lblPlanned(r))}</td>
+      <td>${r.planned_value ?? "—"}</td>
+      <td>${esc(lblActual(r))}</td>
+      <td>${r.actual_value  ?? "—"}</td>
+      <td>${diffCell(r.diff_value)}</td>
+      <td class="${up.cls}">${esc(up.text)}</td>
+      <td class="${sp.cls}">${esc(sp.text)}</td>
+      <td class="${st.cls}">${esc(st.text)}</td>
+      <td class="${r.is_missing      ? 'flag-true' : 'flag-false'}">${r.is_missing      ? "✗" : "—"}</td>
+      <td class="${r.is_invalid_flow ? 'flag-true' : 'flag-false'}">${r.is_invalid_flow ? "✗" : "—"}</td>
+      <td class="${r.is_diff_anomaly ? 'flag-true' : 'flag-false'}">${r.is_diff_anomaly ? "✗" : "—"}</td>
+    </tr>
+`;
+  }).join("");
+
+  tbody.querySelectorAll("tr.log-row").forEach((tr) => {
+    tr.addEventListener("click", () => {
+      const i = tr.getAttribute("data-row-idx");
+      const row = _logRows[+i];
+      if (row) openDetail(row);
+    });
+  });
+}
+
+/** API 日時: TZ なしは UTC（Python naive isoformat）、Z / offset 付きはそのまま */
+function parseApiUtc(iso) {
+  if (iso == null || String(iso).trim() === "") return null;
+  const s = String(iso).trim();
+  if (s.endsWith("Z") || s.endsWith("z")) return new Date(s);
+  if (/[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{2}:\d{2}:\d{2}$/.test(s)) return new Date(s);
+  return new Date(s + "Z");
+}
+
+/** 一覧: M/D HH:mm（Asia/Tokyo） */
+function fmtTimeJST(iso) {
+  const d = parseApiUtc(iso);
+  if (!d || Number.isNaN(d.getTime())) return iso ? esc(String(iso)) : "—";
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const g = (t) => parts.find((p) => p.type === t)?.value ?? "";
+  const mo = g("month");
+  const da = g("day");
+  const hr = g("hour");
+  const mi = g("minute");
+  return esc(`${mo}/${da} ${hr}:${mi}`);
+}
+
+/** 詳細: 日付＋時刻（Asia/Tokyo） */
+function fmtDateTimeJST(iso) {
+  const d = parseApiUtc(iso);
+  if (!d || Number.isNaN(d.getTime())) return iso ? String(iso) : "—";
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function diffCell(v) {
+  if (v == null) return '<span class="diff-zero">—</span>';
+  if (v > 0)    return `<span class="diff-pos">+${v}</span>`;
+  if (v < 0)    return `<span class="diff-neg">${v}</span>`;
+  return `<span class="diff-zero">0</span>`;
+}
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2400);
+}
+
+// URL に company があれば自動ロード
+const c = new URLSearchParams(location.search).get("company");
+if (c) { document.getElementById("company-input").value = c; loadLogs(); }
+</script>
+</body>
+</html>

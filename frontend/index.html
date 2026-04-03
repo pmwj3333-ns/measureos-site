@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEASURE OS｜フェーズ1 入力フォーム</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Sans", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.05em; }
+    header span {
+      background: #4ade80;
+      color: #1a1a2e;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 28px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .step {
+      background: #1a1a2e;
+      color: #fff;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input:focus, select:focus { border-color: #6366f1; }
+
+    .hint { font-size: 0.78rem; color: #999; margin-top: 4px; }
+
+    button {
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 24px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2d2d4e; }
+
+    .result {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      display: none;
+    }
+    .result.ok { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+    .result.ng { background: #fff1f2; border: 1px solid #fca5a5; color: #991b1b; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .status-normal { background: #e5e7eb; color: #374151; }
+    .status-blue   { background: #dbeafe; color: #1d4ed8; }
+    .status-closed { background: #d1fae5; color: #065f46; }
+
+    .anomaly-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .anomaly-item {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.87rem;
+      line-height: 1.8;
+    }
+    .anomaly-item strong { color: #1e40af; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .divider { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+
+    .last-id-hint {
+      font-size: 0.8rem;
+      color: #6366f1;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>MEASURE OS</h1>
+  <span>フェーズ1</span>
+</header>
+
+<div class="container">
+
+  <!-- STEP 0: 企業設定 -->
+  <div class="card">
+    <div class="card-title"><div class="step">0</div> 企業設定（初回のみ）</div>
+    <div class="form-row">
+      <div>
+        <label>企業ID</label>
+        <input id="s-company_id" value="company_a" />
+        <p class="hint">半角英数字・アンダーバー使用可（例: company_a）</p>
+      </div>
+      <div class="two-col">
+        <div>
+          <label>営業日の切替時刻</label>
+          <input id="s-day_boundary_time" value="00:00" />
+          <p class="hint">HH:MM 形式</p>
+        </div>
+        <div>
+          <label>業務終了時刻</label>
+          <input id="s-work_end_time" value="17:00" />
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <label>赤化判定時刻</label>
+          <input id="s-judgement_time" value="13:00" />
+        </div>
+        <div>
+          <label>数値ズレの許容範囲</label>
+          <input id="s-tolerance_value" type="number" value="2" />
+          <p class="hint">この値を超えたら異常（青）</p>
+        </div>
+      </div>
+    </div>
+    <button onclick="registerSettings()">企業設定を登録する</button>
+    <div id="r-settings" class="result"></div>
+  </div>
+
+  <!-- STEP 1: 予告 -->
+  <div class="card">
+    <div class="card-title"><div class="step">1</div> 予告を登録する</div>
+    <div class="form-row">
+      <div>
+        <label>企業ID</label>
+        <input id="p-company_id" value="company_a" />
+      </div>
+      <div class="two-col">
+        <div>
+          <label>業務ID</label>
+          <input id="p-task_id" value="task_01" />
+        </div>
+        <div>
+          <label>工程ID</label>
+          <input id="p-process_id" value="proc_01" />
+        </div>
+      </div>
+      <div>
+        <label>担当者ID</label>
+        <input id="p-user_id" value="user_01" />
+      </div>
+      <div>
+        <label>予告数量</label>
+        <input id="p-planned_value" type="number" value="100" />
+      </div>
+    </div>
+    <button onclick="registerPlanned()">予告を登録する</button>
+    <div id="r-planned" class="result"></div>
+  </div>
+
+  <!-- STEP 2: 着手 -->
+  <div class="card">
+    <div class="card-title"><div class="step">2</div> 着手を記録する</div>
+    <div class="form-row">
+      <div>
+        <label>作業記録ID（予告登録後に表示されたID）</label>
+        <input id="st-unit_id" type="number" placeholder="例: 1" />
+        <p id="st-hint" class="last-id-hint" style="display:none"></p>
+      </div>
+    </div>
+    <button onclick="registerStarted()">着手する</button>
+    <div id="r-started" class="result"></div>
+  </div>
+
+  <!-- STEP 3: 実績 -->
+  <div class="card">
+    <div class="card-title"><div class="step">3</div> 実績を登録する</div>
+    <div class="form-row">
+      <div>
+        <label>作業記録ID</label>
+        <input id="a-unit_id" type="number" placeholder="例: 1" />
+        <p id="a-hint" class="last-id-hint" style="display:none"></p>
+      </div>
+      <div>
+        <label>実績数量</label>
+        <input id="a-actual_value" type="number" value="100" />
+      </div>
+      <hr class="divider" />
+      <div>
+        <label>異常区分（任意・複数選択可）</label>
+        <div style="display:flex; gap:16px; margin-top:6px;">
+          <label style="display:flex; align-items:center; gap:6px; color:#333; font-size:0.9rem;">
+            <input id="a-type_a" type="checkbox" style="width:auto;" />
+            A：プロセス不備（入力忘れ・手順跳びなど）
+          </label>
+        </div>
+        <div style="display:flex; gap:16px; margin-top:8px;">
+          <label style="display:flex; align-items:center; gap:6px; color:#333; font-size:0.9rem;">
+            <input id="a-type_b" type="checkbox" style="width:auto;" />
+            B：結果不備（設備トラブル・作業ミスなど）
+          </label>
+        </div>
+      </div>
+      <div>
+        <label>メモ（任意）</label>
+        <input id="a-memo" placeholder="例：材料トラブルで数量変更" />
+      </div>
+    </div>
+    <button onclick="registerActual()">実績を登録する</button>
+    <div id="r-actual" class="result"></div>
+  </div>
+
+  <!-- 異常一覧 -->
+  <div class="card">
+    <div class="card-title"><div class="step">4</div> 異常一覧を確認する</div>
+    <div class="form-row">
+      <div>
+        <label>企業ID</label>
+        <input id="al-company_id" value="company_a" />
+      </div>
+    </div>
+    <button onclick="loadAnomalies()">一覧を更新する</button>
+    <div id="r-anomalies" class="anomaly-list"></div>
+  </div>
+
+  <!-- 事務承認 -->
+  <div class="card">
+    <div class="card-title"><div class="step">5</div> 事務承認（異常を完了にする）</div>
+    <div class="form-row">
+      <div>
+        <label>作業記録ID</label>
+        <input id="ap-unit_id" type="number" placeholder="例: 1" />
+      </div>
+      <div>
+        <label>承認コメント（任意）</label>
+        <input id="ap-memo" placeholder="例：内容確認済み" />
+      </div>
+    </div>
+    <button onclick="approve()">承認して完了にする</button>
+    <div id="r-approve" class="result"></div>
+  </div>
+
+</div>
+
+<script>
+  const BASE = "";
+  let lastUnitId = null;
+
+  function parseApiUtc(iso) {
+    if (iso == null || String(iso).trim() === "") return null;
+    const s = String(iso).trim();
+    if (s.endsWith("Z") || s.endsWith("z")) return new Date(s);
+    if (/[+-]\d{2}:\d{2}$/.test(s) || /[+-]\d{2}:\d{2}:\d{2}$/.test(s)) return new Date(s);
+    return new Date(s + "Z");
+  }
+
+  function fmtDateTimeJST(iso) {
+    const d = parseApiUtc(iso);
+    if (!d || Number.isNaN(d.getTime())) return String(iso);
+    return new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(d);
+  }
+
+  function showResult(id, data, isError = false) {
+    const el = document.getElementById(id);
+    el.style.display = "block";
+    el.className = "result " + (isError ? "ng" : "ok");
+    if (isError) {
+      el.innerHTML = "❌ " + (data.detail || JSON.stringify(data));
+      return;
+    }
+    if (Array.isArray(data)) {
+      el.innerHTML = `✅ ${data.length} 件取得しました`;
+      return;
+    }
+    const statusLabel = {
+      normal: '<span class="status-badge status-normal">通常</span>',
+      blue:   '<span class="status-badge status-blue">⚠️ 異常（青）</span>',
+      closed: '<span class="status-badge status-closed">✅ 完了</span>',
+    };
+    const lines = [];
+    if (data.id !== undefined) {
+      lines.push(`✅ 登録完了 ／ 作業記録ID：<strong>${data.id}</strong>`);
+      lastUnitId = data.id;
+      updateIdHints(data.id);
+    }
+    if (data.business_date)  lines.push(`営業日：${data.business_date}`);
+    if (data.planned_value != null) lines.push(`予告数量：${data.planned_value}`);
+    if (data.started_at)     lines.push(`着手時刻（JST）：${fmtDateTimeJST(data.started_at)}`);
+    if (data.actual_value != null)  lines.push(`実績数量：${data.actual_value}`);
+    if (data.diff_value != null)    lines.push(`差分：${data.diff_value}`);
+    if (data.is_diff_anomaly)       lines.push(`⚠️ 数値乖離あり`);
+    if (data.status)         lines.push(`ステータス：${statusLabel[data.status] || data.status}`);
+    if (data.memo)           lines.push(`メモ：${data.memo}`);
+    el.innerHTML = lines.join("<br>");
+  }
+
+  function updateIdHints(id) {
+    ["st-hint", "a-hint"].forEach(hintId => {
+      const el = document.getElementById(hintId);
+      el.style.display = "block";
+      el.textContent = `👆 直前の登録ID：${id}（そのままコピーして使えます）`;
+    });
+    const stId = document.getElementById("st-unit_id");
+    const aId  = document.getElementById("a-unit_id");
+    const apId = document.getElementById("ap-unit_id");
+    if (!stId.value) stId.value = id;
+    if (!aId.value)  aId.value  = id;
+    if (!apId.value) apId.value = id;
+  }
+
+  async function api(path, method = "GET", body = null) {
+    const opts = {
+      method,
+      headers: { "Content-Type": "application/json" },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(BASE + path, opts);
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
+  }
+
+  async function registerSettings() {
+    try {
+      const data = await api("/企業設定/登録", "POST", {
+        company_id:        document.getElementById("s-company_id").value,
+        day_boundary_time: document.getElementById("s-day_boundary_time").value,
+        work_end_time:     document.getElementById("s-work_end_time").value,
+        judgement_time:    document.getElementById("s-judgement_time").value,
+        tolerance_value:   parseFloat(document.getElementById("s-tolerance_value").value),
+      });
+      showResult("r-settings", { ...data, id: undefined, _msg: "企業設定を登録しました" });
+      const el = document.getElementById("r-settings");
+      el.innerHTML = `✅ 登録完了<br>企業ID：${data.company_id}<br>営業日切替：${data.day_boundary_time}　業務終了：${data.work_end_time}<br>赤化判定：${data.judgement_time}　許容誤差：±${data.tolerance_value}`;
+    } catch (e) { showResult("r-settings", e, true); }
+  }
+
+  async function registerPlanned() {
+    try {
+      const data = await api("/作業記録/予告", "POST", {
+        company_id:    document.getElementById("p-company_id").value,
+        task_id:       document.getElementById("p-task_id").value,
+        process_id:    document.getElementById("p-process_id").value,
+        user_id:       document.getElementById("p-user_id").value,
+        planned_value: parseFloat(document.getElementById("p-planned_value").value),
+      });
+      showResult("r-planned", data);
+    } catch (e) { showResult("r-planned", e, true); }
+  }
+
+  async function registerStarted() {
+    const id = document.getElementById("st-unit_id").value;
+    if (!id) { alert("作業記録IDを入力してください"); return; }
+    try {
+      const data = await api(`/作業記録/${id}/着手`, "POST", {});
+      showResult("r-started", data);
+    } catch (e) { showResult("r-started", e, true); }
+  }
+
+  async function registerActual() {
+    const id = document.getElementById("a-unit_id").value;
+    if (!id) { alert("作業記録IDを入力してください"); return; }
+    try {
+      const data = await api(`/作業記録/${id}/実績`, "POST", {
+        actual_value:  parseFloat(document.getElementById("a-actual_value").value),
+        anomaly_type_a: document.getElementById("a-type_a").checked,
+        anomaly_type_b: document.getElementById("a-type_b").checked,
+        memo:          document.getElementById("a-memo").value || null,
+      });
+      showResult("r-actual", data);
+    } catch (e) { showResult("r-actual", e, true); }
+  }
+
+  async function loadAnomalies() {
+    const company_id = document.getElementById("al-company_id").value;
+    try {
+      const list = await api(`/作業記録/異常一覧?company_id=${company_id}`);
+      const container = document.getElementById("r-anomalies");
+      if (list.length === 0) {
+        container.innerHTML = '<div style="color:#888;font-size:0.9rem;margin-top:8px;">現在、異常中の作業はありません</div>';
+        return;
+      }
+      container.innerHTML = list.map(u => `
+        <div class="anomaly-item">
+          <strong>ID: ${u.id}</strong>　業務: ${u.task_id}　工程: ${u.process_id}　担当: ${u.user_id}<br>
+          営業日: ${u.business_date}　予告: ${u.planned_value ?? "未入力"}　実績: ${u.actual_value ?? "未入力"}　差分: ${u.diff_value ?? "-"}<br>
+          ${u.is_missing ? "⚠️ 未入力あり　" : ""}${u.is_diff_anomaly ? "⚠️ 数値乖離　" : ""}
+          ${u.memo ? `メモ: ${u.memo}` : ""}
+        </div>
+      `).join("");
+    } catch (e) {
+      document.getElementById("r-anomalies").innerHTML = `<div style="color:red">${e.detail || "エラーが発生しました"}</div>`;
+    }
+  }
+
+  async function approve() {
+    const id = document.getElementById("ap-unit_id").value;
+    if (!id) { alert("作業記録IDを入力してください"); return; }
+    try {
+      const data = await api(`/作業記録/${id}/承認`, "POST", {
+        memo: document.getElementById("ap-memo").value || null,
+      });
+      showResult("r-approve", data);
+    } catch (e) { showResult("r-approve", e, true); }
+  }
+</script>
+</body>
+</html>

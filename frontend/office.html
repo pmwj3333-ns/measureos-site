@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEASURE OS｜事務</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Sans", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      min-height: 100vh;
+    }
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    .role-badge {
+      background: #818cf8;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .toolbar {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar label { font-size: 0.82rem; color: #666; }
+    .toolbar input {
+      padding: 7px 12px;
+      border: 1px solid #ddd;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      width: 150px;
+    }
+    .toolbar button {
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .toolbar button:hover { background: #2d2d4e; }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+    .section-desc {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-bottom: 14px;
+    }
+
+    /* 異常カード */
+    .anomaly-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      border-left: 4px solid #60a5fa;
+    }
+    .anomaly-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .anomaly-id {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #dbeafe;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .anomaly-flags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .flag {
+      font-size: 0.75rem;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .flag-missing  { background: #fef9c3; color: #854d0e; }
+    .flag-diff     { background: #fee2e2; color: #991b1b; }
+    .flag-a        { background: #e0e7ff; color: #3730a3; }
+    .flag-b        { background: #fce7f3; color: #9d174d; }
+
+    .anomaly-body {
+      font-size: 0.86rem;
+      line-height: 2;
+      color: #374151;
+      margin-bottom: 14px;
+    }
+    .anomaly-body .label { color: #9ca3af; font-size: 0.78rem; }
+
+    .approve-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .approve-row input {
+      flex: 1;
+      min-width: 160px;
+      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 7px;
+      font-size: 0.88rem;
+    }
+    .approve-btn {
+      background: #059669;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 18px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .approve-btn:hover { background: #047857; }
+    .approve-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+
+    .approved-badge {
+      background: #d1fae5;
+      color: #065f46;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 20px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: #9ca3af;
+      font-size: 0.9rem;
+      background: #fff;
+      border-radius: 12px;
+    }
+
+    .result-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #059669;
+      color: #fff;
+      padding: 11px 24px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>MEASURE OS</h1>
+  <span class="role-badge">事務</span>
+</header>
+
+<div class="toolbar">
+  <label>企業ID</label>
+  <input id="company_id" value="company_a" />
+  <button onclick="loadAnomalies()">🔄 異常一覧を更新</button>
+  <span id="count-badge" style="font-size:0.82rem;color:#6b7280;"></span>
+</div>
+
+<div class="container">
+  <div>
+    <div class="section-title">異常中の作業一覧</div>
+    <div class="section-desc">青（異常あり）のレコードが表示されます。内容を確認して承認してください。</div>
+  </div>
+  <div id="anomaly-list"></div>
+</div>
+
+<!-- 商品マスター管理 -->
+<div style="max-width:800px;margin:0 auto;padding:0 16px 60px;">
+
+  <div style="margin-top:28px;">
+    <div style="font-size:0.95rem;font-weight:700;color:#374151;margin-bottom:4px;">商品マスター管理</div>
+    <div style="font-size:0.8rem;color:#9ca3af;margin-bottom:14px;">表記ゆれの修正・重複の統合ができます。削除はせず非表示扱いにします。</div>
+  </div>
+
+  <div style="background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 6px rgba(0,0,0,0.06);margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+      <label style="font-size:0.82rem;color:#666;">企業ID</label>
+      <input id="item-company" value="company_a" style="padding:7px 12px;border:1px solid #ddd;border-radius:7px;font-size:0.88rem;width:150px;" />
+      <button onclick="loadItemList()" style="background:#1a1a2e;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:0.88rem;font-weight:600;cursor:pointer;">商品一覧を取得</button>
+    </div>
+    <div id="item-list-office" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+  <!-- 統合パネル -->
+  <div style="background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
+    <div style="font-size:0.88rem;font-weight:700;margin-bottom:12px;">重複商品を統合する</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      <div>
+        <label style="font-size:0.78rem;color:#9ca3af;display:block;margin-bottom:3px;">残すID</label>
+        <input id="merge-keep" type="number" placeholder="例: 1" style="padding:8px 12px;border:1px solid #ddd;border-radius:7px;font-size:0.9rem;width:100px;" />
+      </div>
+      <div style="font-size:1.2rem;color:#9ca3af;margin-top:16px;">←</div>
+      <div>
+        <label style="font-size:0.78rem;color:#9ca3af;display:block;margin-bottom:3px;">統合して消すID</label>
+        <input id="merge-remove" type="number" placeholder="例: 2" style="padding:8px 12px;border:1px solid #ddd;border-radius:7px;font-size:0.9rem;width:100px;" />
+      </div>
+      <button onclick="mergeItems()" style="margin-top:16px;background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:0.88rem;font-weight:700;cursor:pointer;">統合する</button>
+    </div>
+    <div id="merge-result" style="font-size:0.85rem;color:#059669;display:none;"></div>
+  </div>
+
+</div>
+
+<div class="result-toast" id="toast"></div>
+
+<script>
+  async function api(path, method = "GET", body = null) {
+    const opts = { method, headers: { "Content-Type": "application/json" } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
+  }
+
+  function showToast(msg, color = "#059669") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.background = color;
+    t.style.display = "block";
+    setTimeout(() => { t.style.display = "none"; }, 2500);
+  }
+
+  async function loadAnomalies() {
+    const company_id = document.getElementById("company_id").value;
+    const list = document.getElementById("anomaly-list");
+    list.innerHTML = "";
+    try {
+      const data = await api(`/作業記録/異常一覧?company_id=${company_id}`);
+      document.getElementById("count-badge").textContent =
+        data.length > 0 ? `⚠️ ${data.length} 件の異常があります` : "異常なし";
+
+      if (data.length === 0) {
+        list.innerHTML = '<div class="empty">現在、異常中の作業はありません ✅</div>';
+        return;
+      }
+      data.forEach(u => {
+        list.appendChild(buildCard(u));
+      });
+    } catch (e) {
+      list.innerHTML = `<div class="empty" style="color:red">${e.detail || "取得に失敗しました"}</div>`;
+    }
+  }
+
+  function buildCard(u) {
+    const div = document.createElement("div");
+    div.className = "anomaly-card";
+    div.id = `card-${u.id}`;
+
+    const flags = [];
+    if (u.is_missing)    flags.push(`<span class="flag flag-missing">未入力あり</span>`);
+    if (u.is_diff_anomaly) flags.push(`<span class="flag flag-diff">数値乖離</span>`);
+    if (u.anomaly_type_a)  flags.push(`<span class="flag flag-a">A：プロセス不備</span>`);
+    if (u.anomaly_type_b)  flags.push(`<span class="flag flag-b">B：結果不備</span>`);
+
+    div.innerHTML = `
+      <div class="anomaly-header">
+        <span class="anomaly-id">ID: ${u.id}</span>
+        <div class="anomaly-flags">${flags.join("")}</div>
+      </div>
+      <div class="anomaly-body">
+        <span class="label">業務</span> ${u.task_id}　
+        <span class="label">工程</span> ${u.process_id}　
+        <span class="label">担当</span> ${u.user_id}<br>
+        <span class="label">営業日</span> ${u.business_date}　
+        <span class="label">予告</span> ${u.planned_value ?? "未入力"}　
+        <span class="label">実績</span> ${u.actual_value ?? "未入力"}　
+        <span class="label">差分</span> ${u.diff_value ?? "-"}<br>
+        ${u.memo ? `<span class="label">メモ</span> ${u.memo}` : ""}
+      </div>
+      <div class="approve-row" id="approve-row-${u.id}">
+        <input id="memo-${u.id}" type="text" placeholder="承認コメント（任意）" />
+        <button class="approve-btn" onclick="approve(${u.id})">✓ 承認して完了にする</button>
+      </div>
+    `;
+    return div;
+  }
+
+  async function approve(unitId) {
+    const memo = document.getElementById(`memo-${unitId}`).value;
+    try {
+      await api(`/作業記録/${unitId}/承認`, "POST", { memo: memo || null });
+      const row = document.getElementById(`approve-row-${unitId}`);
+      row.innerHTML = `<span class="approved-badge">✅ 承認済み</span>`;
+      const card = document.getElementById(`card-${unitId}`);
+      card.style.borderLeftColor = "#34d399";
+      showToast(`ID: ${unitId} を承認しました`);
+      setTimeout(() => loadAnomalies(), 1500);
+    } catch (e) {
+      showToast(e.detail || "承認に失敗しました", "#dc2626");
+    }
+  }
+
+  // 初回ロード
+  loadAnomalies();
+
+  // ---- 商品マスター管理 ----
+  async function loadItemList() {
+    const company_id = document.getElementById("item-company").value;
+    const list = document.getElementById("item-list-office");
+    const data = await api(`/対象/一覧?company_id=${company_id}`);
+    if (!data || data.length === 0) {
+      list.innerHTML = '<div style="color:#9ca3af;font-size:0.88rem;">登録された商品がありません</div>';
+      return;
+    }
+    const categoryOptions = [
+      ["generic","汎用"],["manufacturing","製造"],["inbound","入荷"],
+      ["picking","ピッキング"],["packing","梱包"],["shipping","出荷"],
+    ].map(([v,l]) => `<option value="${v}">${l}</option>`).join("");
+
+    list.innerHTML = data.map(i => {
+      const catOpts = [
+        ["generic","汎用"],["manufacturing","製造"],["inbound","入荷"],
+        ["picking","ピッキング"],["packing","梱包"],["shipping","出荷"],
+      ].map(([v,l]) => `<option value="${v}"${i.category===v?" selected":""}>${l}</option>`).join("");
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f9fafb;border-radius:8px;flex-wrap:wrap;">
+          <span style="font-size:0.75rem;color:#6366f1;background:#e0e7ff;padding:2px 8px;border-radius:12px;font-weight:700;">ID: ${i.id}</span>
+          <input id="item-name-${i.id}" value="${i.item_name}" style="flex:1;min-width:120px;padding:6px 10px;border:1px solid #ddd;border-radius:7px;font-size:0.9rem;" />
+          <input id="item-code-${i.id}" value="${i.item_code || ''}" placeholder="品番（任意）" style="width:100px;padding:6px 10px;border:1px solid #ddd;border-radius:7px;font-size:0.88rem;" />
+          <select id="item-cat-${i.id}" style="padding:6px 10px;border:1px solid #ddd;border-radius:7px;font-size:0.85rem;font-family:inherit;">${catOpts}</select>
+          <button onclick="editItem(${i.id})" style="background:#059669;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.82rem;font-weight:600;cursor:pointer;">保存</button>
+          <button onclick="deactivateItem(${i.id})" style="background:#f3f4f6;color:#9ca3af;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;cursor:pointer;">非表示</button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function editItem(itemId) {
+    const name = document.getElementById(`item-name-${itemId}`).value;
+    const code = document.getElementById(`item-code-${itemId}`).value;
+    const category = document.getElementById(`item-cat-${itemId}`).value;
+    await api(`/対象/${itemId}/編集`, "PUT", { item_name: name, item_code: code || null, category });
+    showToast(`ID:${itemId} を保存しました`);
+  }
+
+  async function deactivateItem(itemId) {
+    if (!confirm("この商品を非表示にしますか？")) return;
+    await api(`/対象/${itemId}`, "DELETE");
+    showToast("非表示にしました");
+    loadItemList();
+  }
+
+  async function mergeItems() {
+    const keep   = document.getElementById("merge-keep").value;
+    const remove = document.getElementById("merge-remove").value;
+    if (!keep || !remove) { alert("IDを両方入力してください"); return; }
+    const data = await api("/対象/統合", "POST", {
+      keep_id: parseInt(keep),
+      merge_ids: [parseInt(remove)],
+    });
+    const result = document.getElementById("merge-result");
+    result.style.display = "block";
+    const names = Array.isArray(data.統合した商品名) ? data.統合した商品名.join("、") : data.統合した商品名;
+    result.textContent = data.結果 ? `✅ ${names} → ID:${data.残したID} に統合しました` : "エラーが発生しました";
+    loadItemList();
+  }
+</script>
+</body>
+</html>

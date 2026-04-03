@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEASURE OS｜社労士</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Sans", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      min-height: 100vh;
+    }
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    .role-badge {
+      background: #34d399;
+      color: #1a1a2e;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 28px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 26px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      font-size: 0.82rem;
+      color: #9ca3af;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .form-row { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+
+    .field label { font-size: 0.82rem; color: #555; margin-bottom: 5px; display: block; }
+    .field input[type="text"],
+    .field input[type="number"],
+    .field input[type="date"] {
+      width: 100%;
+      padding: 10px 13px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .field input:focus { border-color: #6366f1; }
+    .field .hint { font-size: 0.76rem; color: #aaa; margin-top: 4px; }
+    .field select {
+      width: 100%; padding: 10px 13px; border: 1.5px solid #e5e7eb;
+      border-radius: 8px; font-size: 0.95rem; font-family: inherit;
+      outline: none; transition: border 0.2s; background: #fff; color: #1f2937;
+      appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+    }
+    .field select:focus { border-color: #6366f1; }
+    .company-selector { display: flex; gap: 8px; align-items: flex-end; }
+    .company-selector select { flex: 1; }
+    .company-selector .new-badge { font-size: 0.72rem; color: #6366f1; white-space: nowrap;
+      padding: 4px 8px; border: 1px solid #c7d2fe; border-radius: 6px; cursor: pointer; background: #f5f3ff; }
+    .company-selector .new-badge:hover { background: #ede9fe; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .submit-btn {
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: 11px 22px;
+      font-size: 0.93rem;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover { background: #2d2d4e; }
+
+    .result {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 9px;
+      font-size: 0.87rem;
+      line-height: 1.8;
+      display: none;
+    }
+    .result.ok { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
+    .result.ng { background: #fff1f2; border: 1.5px solid #fca5a5; color: #991b1b; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toggle-label {
+      font-size: 0.88rem;
+      color: #374151;
+    }
+    select {
+      padding: 9px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+    }
+    select:focus { border-color: #6366f1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>MEASURE OS</h1>
+  <span class="role-badge">社労士</span>
+</header>
+
+<div class="container">
+
+  <!-- 企業設定登録 -->
+  <div class="card">
+    <div class="card-title">企業設定を登録する</div>
+    <div class="card-desc">
+      クライアント企業のヒアリング内容をもとに設定してください。<br>
+      企業IDは一度登録すると変更できません（変更する場合は新規作成してください）。
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>企業ID</label>
+        <input id="s-company_id" type="text" placeholder="例: company_a" />
+        <p class="hint">半角英数字・アンダーバー使用可</p>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>営業日の切替時刻</label>
+          <input id="s-day_boundary" type="text" value="00:00"
+                 pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                 placeholder="HH:MM"
+                 oninput="validateTime(this)" />
+          <p class="hint">この時刻を基準に、作業日（business_date）が決まります</p>
+          <p class="hint err" id="err-day_boundary" style="display:none;color:#ef4444;">HH:MM 形式で入力してください（例: 00:00）</p>
+        </div>
+        <div class="field">
+          <label>業務終了時刻</label>
+          <input id="s-work_end" type="text" value="17:00"
+                 pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                 placeholder="HH:MM"
+                 oninput="validateTime(this)" />
+          <p class="hint">この時刻を超えた入力は例外（後入力）として扱われます</p>
+          <p class="hint err" id="err-work_end" style="display:none;color:#ef4444;">HH:MM 形式で入力してください（例: 17:00）</p>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>異常判定時刻</label>
+          <input id="s-judgement" type="text" value="13:00"
+                 pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                 placeholder="HH:MM"
+                 oninput="validateTime(this)" />
+          <p class="hint">異常が放置された場合、この時刻を基準に"放置状態（赤）"へ移行します</p>
+          <p class="hint err" id="err-judgement" style="display:none;color:#ef4444;">HH:MM 形式で入力してください（例: 13:00）</p>
+        </div>
+        <div class="field">
+          <label>数値ズレの許容範囲（±）</label>
+          <input id="s-tolerance" type="number" value="2" min="0" step="1"
+                 oninput="updateToleranceHint()" />
+          <p class="hint" id="tolerance-hint">
+            予告と実績の差が ±2 を超えると異常（青）として記録されます
+          </p>
+          <p class="hint err" id="err-tolerance" style="display:none;color:#ef4444;">0以上の整数を入力してください</p>
+        </div>
+      </div>
+      <div class="field">
+        <label>数量単位</label>
+        <input id="s-unit" type="text" value="個" placeholder="例: 個 / 件 / kg / 箱" />
+        <p class="hint">現場の数量入力欄に表示されます（例: 150 個）。未設定時は「個」を使用。</p>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="registerSettings()">企業設定を登録する</button>
+    <div id="r-settings" class="result"></div>
+  </div>
+
+  <!-- カレンダー登録 -->
+  <div class="card">
+    <div class="card-title">営業日カレンダーを登録する</div>
+    <div class="card-desc">
+      休日・祝日などを登録しておくと、business_date の算出に使われます。<br>
+      登録のない日は自動的に営業日として扱われます。<br>
+      <strong>連続した休日は期間指定でまとめて登録できます。</strong>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>企業ID</label>
+        <div class="company-selector">
+          <select id="c-company_id" onchange="syncCompany('c-company_id')"></select>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>開始日</label>
+          <input id="c-start-date" type="date" oninput="updateCalendarHint()" />
+          <p class="hint">単日登録の場合は開始日のみ入力</p>
+        </div>
+        <div class="field">
+          <label>終了日 <span style="font-weight:400;color:#aaa;">（期間登録の場合）</span></label>
+          <input id="c-end-date" type="date" oninput="updateCalendarHint()" />
+          <p class="hint">空欄の場合は開始日の1日分のみ登録</p>
+        </div>
+      </div>
+      <div class="field">
+        <label>区分</label>
+        <select id="c-is_workday">
+          <option value="false">休日（非営業日）</option>
+          <option value="true">営業日</option>
+        </select>
+      </div>
+      <p class="hint" id="c-range-hint" style="font-size:0.82rem;color:#6366f1;display:none;"></p>
+    </div>
+    <button class="submit-btn" id="c-submit-btn" onclick="registerCalendar()">カレンダーに登録する</button>
+    <div id="r-calendar" class="result"></div>
+  </div>
+
+  <!-- 商品マスター初期登録 -->
+  <div class="card">
+    <div class="card-title">商品・作業リストを登録する</div>
+    <div class="card-desc">
+      現場で選択できる商品・作業をあらかじめ登録しておきます。<br>
+      現場からの新規追加も可能ですが、初期リストを入れておくと選びやすくなります。
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>企業ID</label>
+        <div class="company-selector">
+          <select id="item-company" onchange="syncCompany('item-company')"></select>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>商品名・作業名</label>
+          <input id="item-name" type="text" placeholder="例: 商品A" />
+        </div>
+        <div class="field">
+          <label>品番・コード（任意）</label>
+          <input id="item-code" type="text" placeholder="例: SKU-001" />
+        </div>
+      </div>
+      <div class="field">
+        <label>対象区分（category）</label>
+        <select id="item-category">
+          <option value="generic">汎用 (generic)</option>
+          <option value="manufacturing">製造 (manufacturing)</option>
+          <option value="inbound">入荷 (inbound)</option>
+          <option value="picking">ピッキング (picking)</option>
+          <option value="packing">梱包 (packing)</option>
+          <option value="shipping">出荷 (shipping)</option>
+        </select>
+        <p class="hint">現場には表示されません。フェーズ2以降の分析・統制に使用します。</p>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="registerItem()">リストに追加する</button>
+    <div id="r-item" class="result"></div>
+
+    <div style="margin-top:18px;">
+      <button class="submit-btn" style="background:#f3f4f6;color:#374151;font-size:0.85rem;padding:9px 18px;" onclick="loadSrItems()">登録済み一覧を確認する</button>
+      <div id="sr-item-list" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- 班長リスト登録 -->
+  <div class="card">
+    <div class="card-title">班長リストを登録する</div>
+    <div class="card-desc">
+      現場画面で表示する担当者（班長）の一覧を登録します。<br>
+      登録後は <strong>URL に ?users=… を付けなくても</strong>現場画面に担当者リストが表示されます。<br>
+      形式: <code>名前:工程名</code> をカンマ区切り（例: <code>田中:組立,山田:検査,鈴木:梱包</code>）
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>企業ID</label>
+        <div class="company-selector">
+          <select id="fu-company_id" onchange="onFuCompanyChange()"></select>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field" style="flex:1;">
+        <label>班長リスト</label>
+        <div id="fu-user-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+        <button type="button" onclick="addUserRow()" style="background:none;border:1px dashed #d1d5db;border-radius:8px;padding:8px 16px;color:#6b7280;font-size:0.85rem;cursor:pointer;width:100%;">＋ 班長を追加</button>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="saveFieldUsers()">登録する</button>
+    <div id="r-fu" class="result"></div>
+  </div>
+
+  <!-- 企業設定確認 -->
+  <div class="card">
+    <div class="card-title">企業設定を確認する</div>
+    <div class="card-desc">登録済みの企業設定を表示します。</div>
+    <div class="form-row">
+      <div class="field">
+        <label>企業ID</label>
+        <div class="company-selector">
+          <select id="g-company_id" onchange="syncCompany('g-company_id')"></select>
+        </div>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="getSettings()">確認する</button>
+    <div id="r-get" class="result"></div>
+  </div>
+
+</div>
+
+<script>
+  async function api(path, method = "GET", body = null) {
+    const opts = { method, headers: { "Content-Type": "application/json" } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
+  }
+
+  function showResult(id, lines, isError = false) {
+    const el = document.getElementById(id);
+    el.style.display = "block";
+    el.className = "result " + (isError ? "ng" : "ok");
+    el.innerHTML = isError
+      ? "❌ " + (lines.detail || JSON.stringify(lines))
+      : lines.join("<br>");
+  }
+
+  // ── 班長リスト管理 ─────────────────────────
+  let fuRowIdx = 0;
+
+  function addUserRow(name = "", process = "") {
+    const idx = fuRowIdx++;
+    const row = document.createElement("div");
+    row.id = `fu-row-${idx}`;
+    row.style.cssText = "display:flex;gap:8px;align-items:center;";
+    row.innerHTML = `
+      <input id="fu-name-${idx}" type="text" value="${name}" placeholder="名前（例: 田中）"
+             style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;font-family:inherit;" />
+      <input id="fu-proc-${idx}" type="text" value="${process}" placeholder="工程（例: 組立）"
+             style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.88rem;font-family:inherit;" />
+      <button type="button" onclick="document.getElementById('fu-row-${idx}').remove()"
+              style="background:none;border:none;color:#9ca3af;font-size:1.1rem;cursor:pointer;padding:4px 6px;">✕</button>
+    `;
+    document.getElementById("fu-user-list").appendChild(row);
+  }
+
+  async function saveFieldUsers() {
+    const company_id = document.getElementById("fu-company_id").value;
+    if (!company_id) { showResult("r-fu", { detail: "企業IDを選択してください" }, true); return; }
+
+    // 入力行を "名前:工程" のカンマ区切りに変換
+    const rows = document.querySelectorAll("[id^='fu-row-']");
+    const parts = [];
+    rows.forEach(row => {
+      const rowId = row.id.replace("fu-row-", "");
+      const name  = (document.getElementById(`fu-name-${rowId}`)?.value || "").trim();
+      const proc  = (document.getElementById(`fu-proc-${rowId}`)?.value || "").trim();
+      if (name) parts.push(proc ? `${name}:${proc}` : name);
+    });
+    const field_users = parts.join(",");
+
+    try {
+      const data = await api("/settings/field-users", "POST", { company_id, field_users });
+      const userList = field_users ? field_users.split(",").map(u => {
+        const [n, p] = u.split(":");
+        return p ? `${n}（${p}）` : n;
+      }).join("、") : "（なし）";
+      showResult("r-fu", [
+        `✅ 登録完了`,
+        `班長リスト：${userList}`,
+        `現場URL：<a href="/現場?company=${company_id}" target="_blank">/現場?company=${company_id}</a>`,
+      ]);
+    } catch (e) { showResult("r-fu", e, true); }
+  }
+
+  async function loadFieldUsers(companyId) {
+    try {
+      const data = await api(`/settings/${encodeURIComponent(companyId)}`);
+      document.getElementById("fu-user-list").innerHTML = "";
+      fuRowIdx = 0;
+      if (data.field_users) {
+        data.field_users.split(",").forEach(u => {
+          const [name, proc] = u.split(":");
+          addUserRow(name || "", proc || "");
+        });
+      }
+    } catch (_) {}
+  }
+
+  // 班長フォームの企業ID変更時
+  function onFuCompanyChange() {
+    const v = document.getElementById("fu-company_id").value;
+    if (v) loadFieldUsers(v);
+  }
+
+  // ── 企業IDドロップダウン共通管理 ───────────────────
+  const COMPANY_SELECT_IDS = ["c-company_id", "item-company", "fu-company_id", "g-company_id"];
+
+  // 全ドロップダウンを同じ選択値に同期
+  function syncCompany(sourceId) {
+    const val = document.getElementById(sourceId).value;
+    COMPANY_SELECT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.tagName === "SELECT") el.value = val;
+    });
+  }
+
+  // 企業一覧をAPIから取得してドロップダウンを構築
+  async function buildCompanySelects() {
+    let companies = [];
+    try { companies = await api("/settings/companies"); } catch (_) {}
+
+    const urlCompany = new URLSearchParams(location.search).get("company") || "";
+
+    COMPANY_SELECT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || el.tagName !== "SELECT") return;
+      el.innerHTML = "";
+
+      if (companies.length === 0) {
+        el.innerHTML = '<option value="">（企業未登録）</option>';
+        return;
+      }
+
+      companies.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.company_id;
+        opt.textContent = c.company_id;
+        if (c.company_id === urlCompany) opt.selected = true;
+        el.appendChild(opt);
+      });
+    });
+
+    // 班長フォームは選択中の会社の既存リストを自動ロード
+    const fuEl = document.getElementById("fu-company_id");
+    if (fuEl && fuEl.value) loadFieldUsers(fuEl.value);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    buildCompanySelects();
+  });
+
+  // ── 時刻バリデーション ─────────────────────────
+  const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  function validateTime(input) {
+    const errId = "err-" + input.id.replace("s-", "");
+    const errEl = document.getElementById(errId);
+    if (!errEl) return true;
+    const ok = TIME_RE.test(input.value.trim());
+    errEl.style.display = ok ? "none" : "block";
+    input.style.borderColor = ok ? "" : "#ef4444";
+    return ok;
+  }
+
+  function validateTolerance() {
+    const input = document.getElementById("s-tolerance");
+    const errEl = document.getElementById("err-tolerance");
+    const v = Number(input.value);
+    const ok = Number.isInteger(v) && v >= 0;
+    errEl.style.display = ok ? "none" : "block";
+    input.style.borderColor = ok ? "" : "#ef4444";
+    return ok;
+  }
+
+  function validateAllSettings() {
+    const timeIds = ["s-day_boundary", "s-work_end", "s-judgement"];
+    const timeOk = timeIds.every(id => validateTime(document.getElementById(id)));
+    const tolOk = validateTolerance();
+    return timeOk && tolOk;
+  }
+
+  // 許容範囲ヒントをリアルタイム更新
+  function updateToleranceHint() {
+    const v = parseInt(document.getElementById("s-tolerance").value, 10);
+    const hint = document.getElementById("tolerance-hint");
+    if (!isNaN(v) && v >= 0) {
+      hint.textContent = `予告と実績の差が ±${v} を超えると異常（青）として記録されます`;
+    } else {
+      hint.textContent = "0以上の整数を入力してください";
+    }
+    validateTolerance();
+  }
+
+  async function registerSettings() {
+    if (!validateAllSettings()) {
+      showResult("r-settings", { detail: "入力内容を確認してください" }, true);
+      return;
+    }
+    try {
+      const data = await api("/settings", "POST", {
+        company_id:        document.getElementById("s-company_id").value.trim(),
+        day_boundary_time: document.getElementById("s-day_boundary").value.trim(),
+        work_end_time:     document.getElementById("s-work_end").value.trim(),
+        judgement_time:    document.getElementById("s-judgement").value.trim(),
+        tolerance_value:   parseInt(document.getElementById("s-tolerance").value, 10),
+        unit:              document.getElementById("s-unit").value.trim() || "個",
+      });
+      showResult("r-settings", [
+        `✅ 登録完了`,
+        `企業ID：${data.company_id}`,
+        `営業日切替：${data.day_boundary_time}　業務終了：${data.work_end_time}`,
+        `異常判定時刻：${data.judgement_time}　数値ズレ許容範囲：±${data.tolerance_value}`,
+        `数量単位：${data.unit}`,
+      ]);
+    } catch (e) { showResult("r-settings", e, true); }
+  }
+
+  // 登録予定日数のヒントをリアルタイム表示
+  function updateCalendarHint() {
+    const start = document.getElementById("c-start-date").value;
+    const end   = document.getElementById("c-end-date").value;
+    const hint  = document.getElementById("c-range-hint");
+    const btn   = document.getElementById("c-submit-btn");
+    if (!start) { hint.style.display = "none"; btn.disabled = false; return; }
+    if (!end || end === start) {
+      hint.style.display = "none"; btn.disabled = false; return;
+    }
+    if (end < start) {
+      hint.textContent  = "⚠️ 終了日は開始日以降にしてください";
+      hint.style.color  = "#ef4444";
+      hint.style.display = "block";
+      btn.disabled = true;
+      return;
+    }
+    const days = _dateRange(start, end).length;
+    hint.textContent  = `${start} 〜 ${end}（${days} 日分）をまとめて登録します`;
+    hint.style.color  = "#6366f1";
+    hint.style.display = "block";
+    btn.disabled = false;
+  }
+
+  // start 〜 end の日付文字列配列を返す（YYYY-MM-DD）
+  function _dateRange(start, end) {
+    const dates = [];
+    const cur = new Date(start + "T00:00:00");
+    const last = new Date(end   + "T00:00:00");
+    while (cur <= last) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+  }
+
+  async function registerCalendar() {
+    const company_id = document.getElementById("c-company_id").value;
+    const start      = document.getElementById("c-start-date").value;
+    const end        = document.getElementById("c-end-date").value || start;
+    const is_workday = document.getElementById("c-is_workday").value === "true";
+    const label      = is_workday ? "営業日" : "休日（非営業日）";
+
+    if (!start) {
+      showResult("r-calendar", { detail: "開始日を入力してください" }, true);
+      return;
+    }
+    if (end < start) {
+      showResult("r-calendar", { detail: "終了日は開始日以降にしてください" }, true);
+      return;
+    }
+
+    const dates = _dateRange(start, end);
+    const btn = document.getElementById("c-submit-btn");
+    btn.disabled = true;
+    btn.textContent = `登録中… (0/${dates.length})`;
+
+    let done = 0, errors = 0;
+    for (const d of dates) {
+      try {
+        await api("/calendar", "POST", { company_id, date: d, is_workday });
+        done++;
+      } catch (_) { errors++; }
+      btn.textContent = `登録中… (${done + errors}/${dates.length})`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = "カレンダーに登録する";
+
+    if (errors === 0) {
+      showResult("r-calendar", [
+        `✅ 登録完了`,
+        dates.length === 1
+          ? `日付：${start}　区分：${label}`
+          : `期間：${start} 〜 ${end}（${done} 日）　区分：${label}`,
+      ]);
+    } else {
+      showResult("r-calendar", [
+        `⚠️ ${done} 日登録、${errors} 日エラー`,
+        `期間：${start} 〜 ${end}`,
+      ]);
+    }
+  }
+
+  async function registerItem() {
+    const company_id = document.getElementById("item-company").value.trim();
+    const item_name  = document.getElementById("item-name").value.trim();
+    const item_code  = document.getElementById("item-code").value.trim();
+    const category   = document.getElementById("item-category").value;
+    if (!item_name) { showResult("r-item", { detail: "商品名を入力してください" }, true); return; }
+    try {
+      const data = await api("/対象/登録", "POST", {
+        company_id,
+        item_name,
+        item_code: item_code || null,
+        category,
+      });
+      const catLabel = {"generic":"汎用","manufacturing":"製造","inbound":"入荷","picking":"ピッキング","packing":"梱包","shipping":"出荷"}[data.category] || data.category;
+      showResult("r-item", [
+        `✅ 登録完了`,
+        `ID：${data.id}　商品名：${data.item_name}${data.item_code ? `　品番：${data.item_code}` : ""}　区分：${catLabel}`,
+      ]);
+      document.getElementById("item-name").value = "";
+      document.getElementById("item-code").value = "";
+    } catch (e) { showResult("r-item", e, true); }
+  }
+
+  async function loadSrItems() {
+    const company_id = document.getElementById("item-company").value.trim();
+    const data = await api(`/対象/一覧?company_id=${company_id}`);
+    const container = document.getElementById("sr-item-list");
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="color:#9ca3af;font-size:0.85rem;">登録済みの商品がありません</div>';
+      return;
+    }
+    const catLabel = {"generic":"汎用","manufacturing":"製造","inbound":"入荷","picking":"ピッキング","packing":"梱包","shipping":"出荷"};
+    container.innerHTML = data.map(i =>
+      `<div style="background:#f9fafb;border-radius:8px;padding:9px 14px;font-size:0.87rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span style="color:#6366f1;font-weight:700;font-size:0.78rem;">ID:${i.id}</span>
+        <span>${i.item_name}</span>
+        ${i.item_code ? `<span style="color:#9ca3af;font-size:0.76rem;">${i.item_code}</span>` : ""}
+        <span style="background:#e0e7ff;color:#3730a3;font-size:0.72rem;padding:2px 8px;border-radius:10px;font-weight:600;">${catLabel[i.category] || i.category}</span>
+      </div>`
+    ).join("");
+  }
+
+  async function getSettings() {
+    const id = document.getElementById("g-company_id").value;
+    try {
+      const data = await api(`/settings/${encodeURIComponent(id)}`);
+      showResult("r-get", [
+        `企業ID：${data.company_id}`,
+        `営業日切替：${data.day_boundary_time}　業務終了：${data.work_end_time}`,
+        `異常判定時刻：${data.judgement_time}　数値ズレ許容範囲：±${data.tolerance_value}`,
+        `数量単位：${data.unit || "個"}`,
+      ]);
+    } catch (e) { showResult("r-get", e, true); }
+  }
+</script>
+</body>
+</html>
