@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS — debug v2（v2 API・DB 参照のみ）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    background: #0f1419;
+    color: #e6edf3;
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 20px 16px 48px;
+  }
+  h1 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #79c0ff;
+    margin-bottom: 4px;
+  }
+  .sub {
+    font-size: 0.72rem;
+    color: #8b949e;
+    margin-bottom: 16px;
+    max-width: 720px;
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  label { font-size: 0.75rem; color: #8b949e; }
+  input[type="text"] {
+    padding: 8px 12px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    background: #0d1117;
+    color: #e6edf3;
+    width: min(220px, 100%);
+    font-family: inherit;
+  }
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint { font-size: 0.72rem; color: #8b949e; margin-top: 8px; }
+  .wrap-table { overflow-x: auto; border: 1px solid #30363d; border-radius: 10px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #21262d;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  th {
+    background: #161b22;
+    color: #8b949e;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+  tbody tr:hover { background: #161b22; }
+  tr.row-latest {
+    background: #1c2d1f;
+    outline: 1px solid #238636;
+    outline-offset: -1px;
+  }
+  tr.row-latest td:first-child::after {
+    content: " 最新";
+    font-size: 0.65rem;
+    color: #7ee787;
+    margin-left: 6px;
+  }
+  #raw-json-wrap {
+    display: none;
+    margin-top: 16px;
+  }
+  #raw-json-wrap.open { display: block; }
+  #raw-json {
+    font-size: 0.72rem;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 12px;
+    overflow: auto;
+    max-height: 50vh;
+    white-space: pre;
+    color: #c9d1d9;
+  }
+  .empty { color: #8b949e; padding: 24px; text-align: center; }
+  a { color: #58a6ff; }
+  .auto-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #c9d1d9;
+    cursor: pointer;
+    user-select: none;
+    align-self: flex-end;
+  }
+  .auto-label input { width: 1rem; height: 1rem; accent-color: #238636; }
+  .last-updated {
+    width: 100%;
+    font-size: 0.72rem;
+    color: #8b949e;
+    margin: -6px 0 14px;
+  }
+  .last-updated.err { color: #f85149; }
+  details.test-clock-panel {
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    max-width: 720px;
+    background: #161b22;
+  }
+  details.test-clock-panel summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #d29922;
+    font-size: 0.82rem;
+    list-style: none;
+  }
+  details.test-clock-panel summary::-webkit-details-marker { display: none; }
+  .test-clock-inner { margin-top: 12px; }
+  .test-clock-input {
+    width: min(100%, 400px);
+    margin: 6px 0 10px;
+    padding: 8px 12px;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+  .test-clock-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .test-clock-status { font-size: 0.78rem; color: #7ee787; margin: 6px 0; }
+  .test-clock-status.inactive { color: #8b949e; }
+  #test-clock-api-hint { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+  <h1>debug v2</h1>
+  <p class="sub">
+    <code>GET /v2/work/list?company_id=…</code> の応答をそのまま表にします（旧 /work/list は使いません）。
+    一覧の並びは API どおり（最新優先）。<strong>再計算・推定はしません</strong>（null は「—」のみ）。
+    営業日跨ぎ・judgement 跨ぎの検証は、下段の<strong>テスト専用・擬似現在時刻</strong>から操作します。サーバは <strong><code>python3 run.py</code></strong> で起動してください（テスト時計の有効化・8002 の掃除込み）。
+  </p>
+
+  <div class="bar">
+    <div>
+      <label for="company">company_id</label><br>
+      <input type="text" id="company" placeholder="例: x" autocomplete="off">
+    </div>
+    <div style="align-self:flex-end;">
+      <button type="button" class="btn-primary" id="btn-load">読み込み</button>
+    </div>
+    <div style="align-self:flex-end;">
+      <button type="button" class="btn-secondary" id="btn-json">JSON 表示</button>
+    </div>
+    <label class="auto-label" for="auto-refresh">
+      <input type="checkbox" id="auto-refresh" />
+      自動更新（3秒）
+    </label>
+  </div>
+  <p class="last-updated" id="last-updated" hidden>最終更新: —</p>
+  <p class="hint">
+    <a href="/sr/v2">班長マスタ（sr v2）</a>
+    · <a href="/genba/v2">現場 v2</a>
+    · <a href="/debug/v2">debug v2</a>
+  </p>
+
+  <details class="test-clock-panel" id="test-clock-details">
+    <summary>テスト専用・擬似現在時刻（サーバの参照 UTC）</summary>
+    <div class="test-clock-inner">
+      <p class="hint" id="test-clock-api-hint"></p>
+      <p class="hint" id="test-clock-diag" style="margin-top:6px;"></p>
+      <p class="test-clock-status inactive" id="test-clock-status">API 未確認</p>
+      <label for="test-clock-utc" style="font-size:0.75rem;color:#8b949e;">参照 UTC（ISO 8601）</label><br>
+      <input type="text" id="test-clock-utc" class="test-clock-input"
+             placeholder="例: 2026-04-05T06:00:00Z" autocomplete="off">
+      <div class="test-clock-btns">
+        <button type="button" class="btn-primary" id="btn-test-clock-set">時刻を適用</button>
+        <button type="button" class="btn-secondary" id="btn-test-clock-clear">クリア（実 UTC）</button>
+        <button type="button" class="btn-secondary" id="btn-test-recompute">再判定（一覧の company_id）</button>
+      </div>
+      <p class="hint" id="test-recompute-result"></p>
+    </div>
+  </details>
+
+  <div class="wrap-table">
+    <table>
+      <thead>
+        <tr>
+          <th>id</th>
+          <th>company_id</th>
+          <th>user_id</th>
+          <th>task_id</th>
+          <th>process_id</th>
+          <th>business_date</th>
+          <th>planned_value</th>
+          <th>planned_at</th>
+          <th>started_at</th>
+          <th>actual_value</th>
+          <th>actual_at</th>
+          <th>created_at</th>
+          <th>user_pattern</th>
+          <th>system_pattern</th>
+          <th>judgement_red_deadline_at</th>
+          <th>status</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="16" class="empty">company_id を入力して読み込み</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="raw-json-wrap">
+    <p class="hint" style="margin-bottom:6px;">直近の API 応答（配列のまま）</p>
+    <pre id="raw-json"></pre>
+  </div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  let lastRows = null;
+  let pollTimer = null;
+  const AUTO_MS = 3000;
+  const LS_AUTO = "debug_v2_auto_refresh";
+  const TABLE_COL_COUNT = 16;
+  /** テーブル日時列（toJST 表示） */
+  const TABLE_JST_KEYS = new Set([
+    "planned_at",
+    "started_at",
+    "actual_at",
+    "created_at",
+    "judgement_red_deadline_at",
+  ]);
+
+  function param(key, fb) {
+    const v = new URLSearchParams(location.search).get(key);
+    return v != null && String(v).trim() !== "" ? v.trim() : fb;
+  }
+
+  function disp(v) {
+    if (v === null || v === undefined) return "—";
+    return String(v);
+  }
+
+  function toJST(utc) {
+    if (utc === null || utc === undefined) return utc;
+    if (utc === "-") return utc;
+    let s = String(utc).trim();
+    if (s === "" || s === "—") return utc;
+    // API の naive UTC（末尾 Z / オフセットなし）を UTC として解釈してから JST 表示
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/.test(s)) {
+      s = s + "Z";
+    }
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return utc;
+    return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  }
+
+  function dispCell(key, v) {
+    if (!TABLE_JST_KEYS.has(key)) return disp(v);
+    if (v === null || v === undefined) return disp(v);
+    const vs = String(v).trim();
+    if (vs === "-" || vs === "—") return vs;
+    const t = toJST(v);
+    if (t === null || t === undefined) return disp(v);
+    return String(t);
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function loadCompany() {
+    $("company").value = param("company", localStorage.getItem("debug_v2_company") || "");
+  }
+
+  function formatNowJst() {
+    return new Date().toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  }
+
+  function setLastUpdated(ok) {
+    const el = $("last-updated");
+    el.hidden = false;
+    el.textContent = ok ? "最終更新: " + formatNowJst() : "最終取得: " + formatNowJst() + "（エラー）";
+    el.classList.toggle("err", !ok);
+  }
+
+  function stopPoll() {
+    if (pollTimer != null) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function startPollIfEnabled() {
+    stopPoll();
+    if (!$("auto-refresh").checked) return;
+    pollTimer = setInterval(() => load({ fromAuto: true }), AUTO_MS);
+  }
+
+  async function load(opts) {
+    opts = opts || {};
+    const fromAuto = !!opts.fromAuto;
+    const cid = $("company").value.trim();
+    if (!cid) {
+      if (!fromAuto) alert("company_id を入力してください");
+      return;
+    }
+    localStorage.setItem("debug_v2_company", cid);
+    if (!fromAuto) $("btn-load").disabled = true;
+    try {
+      const res = await fetch("/v2/work/list?company_id=" + encodeURIComponent(cid));
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        $("tbody").innerHTML =
+          '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">JSON でない応答</td></tr>';
+        lastRows = null;
+        $("raw-json").textContent = text.slice(0, 8000);
+        setLastUpdated(false);
+        return;
+      }
+      if (!res.ok) {
+        $("tbody").innerHTML =
+          '<tr><td colspan="' +
+          TABLE_COL_COUNT +
+          '" class="empty">エラー: ' +
+          esc(data.detail || res.status) +
+          "</td></tr>";
+        lastRows = null;
+        $("raw-json").textContent = JSON.stringify(data, null, 2);
+        setLastUpdated(false);
+        return;
+      }
+      if (!Array.isArray(data)) {
+        $("tbody").innerHTML =
+          '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">配列ではありません</td></tr>';
+        lastRows = null;
+        setLastUpdated(false);
+        return;
+      }
+      lastRows = data;
+      $("raw-json").textContent = JSON.stringify(data, null, 2);
+
+      if (!data.length) {
+        $("tbody").innerHTML =
+          '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">データなし</td></tr>';
+        setLastUpdated(true);
+        return;
+      }
+
+      const cols = [
+        "id",
+        "company_id",
+        "user_id",
+        "task_id",
+        "process_id",
+        "business_date",
+        "planned_value",
+        "planned_at",
+        "started_at",
+        "actual_value",
+        "actual_at",
+        "created_at",
+        "user_pattern",
+        "system_pattern",
+        "judgement_red_deadline_at",
+        "status",
+      ];
+
+      $("tbody").innerHTML = data
+        .map((r, idx) => {
+          const trOpen = idx === 0 ? '<tr class="row-latest">' : "<tr>";
+          return (
+            trOpen +
+            cols.map((k) => "<td>" + esc(dispCell(k, r[k])) + "</td>").join("") +
+            "</tr>"
+          );
+        })
+        .join("");
+      setLastUpdated(true);
+    } finally {
+      if (!fromAuto) $("btn-load").disabled = false;
+    }
+  }
+
+  function onAutoRefreshToggle() {
+    localStorage.setItem(LS_AUTO, $("auto-refresh").checked ? "1" : "0");
+    startPollIfEnabled();
+    if ($("auto-refresh").checked && $("company").value.trim()) {
+      load({ fromAuto: true });
+    }
+  }
+
+  $("btn-load").addEventListener("click", () => load({ fromAuto: false }));
+  $("btn-json").addEventListener("click", () => {
+    const w = $("raw-json-wrap");
+    w.classList.toggle("open");
+    if (lastRows) $("raw-json").textContent = JSON.stringify(lastRows, null, 2);
+  });
+
+  $("company").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") load({ fromAuto: false });
+  });
+
+  $("auto-refresh").addEventListener("change", onAutoRefreshToggle);
+
+  async function refreshTestClockStatus() {
+    const st = $("test-clock-status");
+    const hint = $("test-clock-api-hint");
+    const diag = $("test-clock-diag");
+    const setBtns = (on) => {
+      $("btn-test-clock-set").disabled = !on;
+      $("btn-test-clock-clear").disabled = !on;
+      $("btn-test-recompute").disabled = !on;
+    };
+    try {
+      const res = await fetch("/v2/test/clock");
+      if (!res.ok) {
+        hint.textContent = "GET /v2/test/clock エラー: " + res.status;
+        diag.textContent = "";
+        st.textContent = "—";
+        st.className = "test-clock-status inactive";
+        setBtns(false);
+        return;
+      }
+      const j = await res.json();
+      const apiOn = j.test_clock_api_enabled === true;
+      const serverDisp =
+        j.server_utc_iso === null || j.server_utc_iso === undefined
+          ? "—"
+          : (() => {
+              const t = toJST(j.server_utc_iso);
+              return t === null || t === undefined ? "—" : t;
+            })();
+      diag.textContent =
+        "テストAPI有効: " +
+        (apiOn ? "True" : "False") +
+        " · サーバ時刻（JST）: " +
+        serverDisp;
+
+      if (!apiOn) {
+        hint.innerHTML =
+          "テスト API が無効です。<strong><code>python3 run.py</code></strong> で起動してください（uvicorn 直起動は <code>MEASUREOS_ALLOW_TEST_CLOCK</code> が付かないため非推奨）。";
+        st.textContent = "擬似UTC: 利用不可";
+        st.className = "test-clock-status inactive";
+        setBtns(false);
+        return;
+      }
+
+      hint.innerHTML =
+        "API: <code>POST /v2/test/clock</code> · <code>POST /v2/test/recompute</code>。現場 v2 には表示されません。";
+      setBtns(true);
+      if (j.active && j.utc_iso) {
+        st.textContent = "参照 UTC（上書き）: " + j.utc_iso;
+        st.className = "test-clock-status";
+        $("test-clock-utc").value = j.utc_iso;
+      } else {
+        st.textContent = "実 UTC 参照（上書きなし）／営業日計算はサーバ実時刻または下で指定";
+        st.className = "test-clock-status inactive";
+      }
+    } catch (e) {
+      hint.textContent = "通信エラー: " + (e.message || e);
+      diag.textContent = "";
+      st.className = "test-clock-status inactive";
+      setBtns(false);
+    }
+  }
+
+  async function postTestClock(body) {
+    const res = await fetch("/v2/test/clock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (_) {}
+    if (!res.ok) {
+      const msg = (data && data.detail) || text || res.status;
+      throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    }
+    return data;
+  }
+
+  $("btn-test-clock-set").addEventListener("click", async () => {
+    const raw = $("test-clock-utc").value.trim();
+    if (!raw) {
+      alert("UTC を入力してください（例: 2026-04-05T06:00:00Z）");
+      return;
+    }
+    try {
+      await postTestClock({ clear: false, utc_iso: raw });
+      await refreshTestClockStatus();
+      $("test-recompute-result").textContent =
+        "時刻を適用しました。day_boundary / 営業日の効きは POST /work（自動日付）や再判定で確認できます。";
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  $("btn-test-clock-clear").addEventListener("click", async () => {
+    try {
+      await postTestClock({ clear: true });
+      await refreshTestClockStatus();
+      $("test-recompute-result").textContent = "参照時刻の上書きを解除しました。";
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  $("btn-test-recompute").addEventListener("click", async () => {
+    const cid = $("company").value.trim();
+    if (!cid) {
+      alert("一覧用の company_id を入力してください。");
+      return;
+    }
+    try {
+      const res = await fetch("/v2/test/recompute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: cid,
+          apply_judgement_red: true,
+        }),
+      });
+      const text = await res.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch (_) {}
+      if (!res.ok) {
+        const msg = (data && data.detail) || text || res.status;
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+      }
+      $("test-recompute-result").textContent =
+        "過去営業日の再計算: " +
+        data.recomputed_past_business_date_rows +
+        " 行 / red解除して再評価: " +
+        (data.red_cleared_for_rejudge ?? 0) +
+        " 件 / judgement 2回目超過の blue→red: " +
+        data.promoted_blue_to_red +
+        " 件";
+      load({ fromAuto: false });
+      await refreshTestClockStatus();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+
+  loadCompany();
+  $("auto-refresh").checked = localStorage.getItem(LS_AUTO) === "1";
+  const hasCo = $("company").value.trim();
+  if (hasCo && !$("auto-refresh").checked) load({ fromAuto: false });
+  if (hasCo && $("auto-refresh").checked) load({ fromAuto: true });
+  startPollIfEnabled();
+  refreshTestClockStatus();
+})();
+</script>
+</body>
+</html>

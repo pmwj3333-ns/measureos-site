@@ -16,6 +16,14 @@ router = APIRouter(prefix="/作業記録", tags=["作業記録"])
 # 内部ヘルパー
 # ─────────────────────────────────────────
 
+def _recompute_work_status(unit: models.WorkUnit, settings: models.CompanySettings, db: Session) -> None:
+    """work ルータと同じ班長判定・status（当面 v2 の入力後に本線へ揃える）。"""
+    from app.routers.work import _flush_then_recompute_past_missing, _recompute_unit_derived
+
+    _flush_then_recompute_past_missing(db, unit.company_id)
+    _recompute_unit_derived(unit, settings, db)
+
+
 def _get_settings(company_id: str, db: Session) -> models.CompanySettings:
     settings = db.query(models.CompanySettings).filter(
         models.CompanySettings.company_id == company_id
@@ -189,6 +197,7 @@ def get_or_create_unit(body: schemas.UnitIdentifiers, db: Session = Depends(get_
                   payload={"task_id": body.task_id, "process_id": body.process_id,
                            "forecast_ref_id": unit.forecast_ref_id})
     anomaly_svc.detect_and_update(unit, settings, db)
+    _recompute_work_status(unit, settings, db)
     db.commit()
     db.refresh(unit)
     return _with_lines(unit, db)
@@ -255,6 +264,7 @@ def start_next_business_day(body: schemas.NextDayStartCreate, db: Session = Depe
                   payload={"started_at": unit.started_at.isoformat()})
 
     anomaly_svc.detect_and_update(unit, settings, db)
+    _recompute_work_status(unit, settings, db)
     db.commit()
     db.refresh(unit)
     return _with_lines(unit, db)
@@ -278,6 +288,7 @@ def create_started(unit_id: int, body: schemas.StartedCreate, db: Session = Depe
                   payload={"started_at": unit.started_at.isoformat()})
 
     anomaly_svc.detect_and_update(unit, settings, db)
+    _recompute_work_status(unit, settings, db)
     db.commit()
     db.refresh(unit)
     return _with_lines(unit, db)
@@ -316,6 +327,7 @@ def create_actual_bulk(unit_id: int, body: schemas.ActualBulkCreate, db: Session
 
     db.flush()
     anomaly_svc.detect_and_update(unit, settings, db)
+    _recompute_work_status(unit, settings, db)
 
     log_event(db, EventType.RECORD_ACTUAL, unit.company_id,
               actor_role="field", actor_id=unit.user_id,
@@ -359,6 +371,7 @@ def create_planned_bulk(unit_id: int, body: schemas.PlannedBulkCreate, db: Sessi
 
     db.flush()
     anomaly_svc.detect_and_update(unit, settings, db)
+    _recompute_work_status(unit, settings, db)
 
     log_event(db, EventType.RECORD_FORECAST, unit.company_id,
               actor_role="field", actor_id=unit.user_id,
@@ -380,10 +393,13 @@ def approve(unit_id: int, body: schemas.ApprovalCreate, db: Session = Depends(ge
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    settings = _get_settings(unit.company_id, db)
     if unit.status == "normal":
         raise HTTPException(status_code=400, detail="異常がないため承認は不要です")
 
-    unit.status = "closed"
+    from app.routers.work import _apply_minimal_judgement
+
+    _apply_minimal_judgement(unit, settings, force_status="closed")
     if body.memo:
         unit.memo = body.memo
 

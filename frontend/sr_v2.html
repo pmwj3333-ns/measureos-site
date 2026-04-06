@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <title>MEASURE OS｜班長マスタ（v2）</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      padding: 18px 20px;
+      border-bottom: 1px solid #334155;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 700; }
+    .badge {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #38bdf8;
+      text-transform: uppercase;
+    }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card h2 { font-size: 0.95rem; margin-bottom: 12px; color: #f8fafc; }
+    label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px; }
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    input:focus { outline: none; border-color: #38bdf8; }
+    .row-line {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 520px) {
+      .row-line { grid-template-columns: 1fr; }
+    }
+    .btn-remove {
+      border: none;
+      background: #334155;
+      color: #94a3b8;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      justify-self: end;
+    }
+    .btn-row {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      border-radius: 10px;
+      border: 1px dashed #475569;
+      background: transparent;
+      color: #38bdf8;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .btn-primary {
+      flex: 1;
+      min-width: 140px;
+      padding: 14px 18px;
+      border: none;
+      border-radius: 12px;
+      background: #0ea5e9;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-secondary {
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid #475569;
+      background: #334155;
+      color: #e2e8f0;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .msg {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .msg.ok { display: block; background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #86efac; }
+    .msg.ng { display: block; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fecaca; }
+    .hint { font-size: 0.78rem; color: #64748b; margin-top: 12px; line-height: 1.55; }
+    .hint a { color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>班長マスタ登録</h1>
+    <span class="badge">フェーズ1 · v2 専用（旧 sr.html 不使用）</span>
+  </header>
+  <div class="wrap">
+    <div class="card">
+      <h2>会社（company_id）</h2>
+      <label for="company-id">company_id</label>
+      <input type="text" id="company-id" placeholder="例: x" autocomplete="off" />
+    </div>
+    <div class="card">
+      <h2>班長リスト（名前＋工程）</h2>
+      <div id="lines"></div>
+      <button type="button" class="btn-row" id="btn-add">＋ 行を追加</button>
+      <div class="actions">
+        <button type="button" class="btn-primary" id="btn-save">保存する</button>
+        <button type="button" class="btn-secondary" id="btn-load">再読込</button>
+      </div>
+      <div id="msg" class="msg"></div>
+      <p class="hint">
+        保存後、現場 v2 は
+        <a id="link-field" href="#">/genba/v2?company=…</a>
+        から開いてください。
+      </p>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const linesEl = $("lines");
+
+  function showMsg(ok, text) {
+    const m = $("msg");
+    m.className = "msg " + (ok ? "ok" : "ng");
+    m.textContent = text;
+  }
+
+  function hideMsg() {
+    const m = $("msg");
+    m.className = "msg";
+    m.textContent = "";
+  }
+
+  function splitPart(segment) {
+    const s = String(segment).trim();
+    if (!s) return { name: "", proc: "" };
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === ":" || ch === "：") {
+        return { name: s.slice(0, i).trim(), proc: s.slice(i + 1).trim() };
+      }
+    }
+    return { name: s, proc: "" };
+  }
+
+  function escapeAttr(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function addLine(name = "", proc = "") {
+    const wrap = document.createElement("div");
+    wrap.className = "row-line";
+    wrap.innerHTML =
+      `<div><label>班長名</label><input type="text" class="in-name" value="${escapeAttr(name)}" placeholder="例: 木村" autocomplete="off" /></div>` +
+      `<div><label>工程</label><input type="text" class="in-proc" value="${escapeAttr(proc)}" placeholder="例: 組立" autocomplete="off" /></div>` +
+      `<button type="button" class="btn-remove" title="削除">×</button>`;
+    wrap.querySelector(".btn-remove").addEventListener("click", () => wrap.remove());
+    linesEl.appendChild(wrap);
+  }
+
+  function collectLeaders() {
+    const out = [];
+    linesEl.querySelectorAll(".row-line").forEach((row) => {
+      const name = row.querySelector(".in-name").value.trim();
+      const process = row.querySelector(".in-proc").value.trim();
+      if (name) out.push({ name, process });
+    });
+    return out;
+  }
+
+  function renderFromFieldUsers(raw) {
+    linesEl.innerHTML = "";
+    const parts = String(raw || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (!parts.length) {
+      addLine();
+      return;
+    }
+    parts.forEach((p) => {
+      const { name, proc } = splitPart(p);
+      addLine(name, proc);
+    });
+  }
+
+  function updateFieldLink() {
+    const c = $("company-id").value.trim() || "x";
+    const a = $("link-field");
+    a.href = "/genba/v2?company=" + encodeURIComponent(c);
+    a.textContent = "/genba/v2?company=" + c;
+  }
+
+  async function api(method, path, body) {
+    const opt = { method, headers: {} };
+    if (body != null && method !== "GET") {
+      opt.headers["Content-Type"] = "application/json";
+      opt.body = JSON.stringify(body);
+    }
+    const res = await fetch(path, opt);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const d = data.detail;
+      const msg = typeof d === "string" ? d : (d && JSON.stringify(d)) || res.statusText || String(res.status);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  async function load() {
+    hideMsg();
+    const cid = $("company-id").value.trim();
+    if (!cid) {
+      showMsg(false, "company_id を入力してください");
+      return;
+    }
+    try {
+      const data = await api("GET", "/v2/company/" + encodeURIComponent(cid));
+      renderFromFieldUsers(data.field_users || "");
+      showMsg(true, "読み込みました");
+      updateFieldLink();
+    } catch (e) {
+      showMsg(false, String(e.message || e));
+    }
+  }
+
+  async function save() {
+    hideMsg();
+    const cid = $("company-id").value.trim();
+    if (!cid) {
+      showMsg(false, "company_id を入力してください");
+      return;
+    }
+    const leaders = collectLeaders();
+    try {
+      const data = await api("PUT", "/v2/company/" + encodeURIComponent(cid) + "/leaders", {
+        leaders,
+      });
+      const preview = leaders.length
+        ? leaders.map((L) => (L.process ? L.name + "（" + L.process + "）" : L.name)).join("、")
+        : "（なし）";
+      showMsg(
+        true,
+        "保存しました（" + data.saved_count + "名）: " + preview,
+      );
+      updateFieldLink();
+    } catch (e) {
+      showMsg(false, String(e.message || e));
+    }
+  }
+
+  $("btn-add").addEventListener("click", () => addLine());
+  $("btn-save").addEventListener("click", save);
+  $("btn-load").addEventListener("click", load);
+  $("company-id").addEventListener("change", updateFieldLink);
+  $("company-id").addEventListener("input", updateFieldLink);
+
+  const qs = new URLSearchParams(location.search);
+  const q = (qs.get("company") || qs.get("company_id") || "").trim();
+  if (q) {
+    $("company-id").value = q;
+    load();
+  } else if (!linesEl.children.length) {
+    addLine();
+  }
+  updateFieldLink();
+})();
+</script>
+</body>
+</html>

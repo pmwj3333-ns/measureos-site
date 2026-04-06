@@ -70,6 +70,8 @@ class ActualIn(BaseModel):
     lines: Optional[List[WorkLineIn]] = None
     pattern_a: Optional[bool] = None
     pattern_b: Optional[bool] = None
+    # 現場チェック B のみ（"B" / null）。system_pattern とは独立
+    user_pattern: Optional[str] = None
 
 
 class PlannedIn(BaseModel):
@@ -116,7 +118,10 @@ class WorkUnitOut(BaseModel):
     actual_at:           Optional[str]
     pattern_a:           Optional[bool] = None
     pattern_b:           Optional[bool] = None
+    user_pattern:        Optional[str] = None  # 現場申告 B のみ（未申告は null）。system_pattern とは独立
+    system_pattern:      str = ""  # 第5条フェーズ1・サーバ確定 A*/B*（user_pattern とは独立）
     status:              str = "normal"
+    judgement_red_deadline_at: Optional[str] = None  # blue 時のみ: 2回目の judgement 境界（ISO、JST含む）
     diff_value:          Optional[float]
     is_missing:          bool
     is_invalid_flow:     bool

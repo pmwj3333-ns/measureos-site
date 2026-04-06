@@ -360,6 +360,19 @@
   // ── 班長リスト管理 ─────────────────────────
   let fuRowIdx = 0;
 
+  /** field_users の1要素を「名前:工程 / 名前：工程」に対応して分割（現場画面と同じ） */
+  function splitFieldUserPart(part) {
+    const s = String(part).trim();
+    if (!s) return { name: "", proc: "" };
+    for (let k = 0; k < s.length; k++) {
+      const ch = s[k];
+      if (ch === ":" || ch === "：") {
+        return { name: s.slice(0, k).trim(), proc: s.slice(k + 1).trim() };
+      }
+    }
+    return { name: s, proc: "" };
+  }
+
   function addUserRow(name = "", process = "") {
     const idx = fuRowIdx++;
     const row = document.createElement("div");
@@ -394,13 +407,14 @@
     try {
       const data = await api("/settings/field-users", "POST", { company_id, field_users });
       const userList = field_users ? field_users.split(",").map(u => {
-        const [n, p] = u.split(":");
+        const { name: n, proc: p } = splitFieldUserPart(u);
         return p ? `${n}（${p}）` : n;
       }).join("、") : "（なし）";
       showResult("r-fu", [
         `✅ 登録完了`,
         `班長リスト：${userList}`,
-        `現場URL：<a href="/現場?company=${company_id}" target="_blank">/現場?company=${company_id}</a>`,
+        `現場 v2（班長選択）：<a href="/現場/v2?company=${encodeURIComponent(company_id)}" target="_blank" rel="noopener">/現場/v2?company=${encodeURIComponent(company_id)}</a>`,
+        `現場（従来）：<a href="/現場?company=${encodeURIComponent(company_id)}" target="_blank" rel="noopener">/現場?company=${encodeURIComponent(company_id)}</a>`,
       ]);
     } catch (e) { showResult("r-fu", e, true); }
   }
@@ -412,8 +426,8 @@
       fuRowIdx = 0;
       if (data.field_users) {
         data.field_users.split(",").forEach(u => {
-          const [name, proc] = u.split(":");
-          addUserRow(name || "", proc || "");
+          const { name, proc } = splitFieldUserPart(u);
+          if (name) addUserRow(name, proc || "");
         });
       }
     } catch (_) {}

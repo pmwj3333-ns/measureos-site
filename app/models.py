@@ -55,8 +55,10 @@ class WorkUnit(Base):
 
     pattern_a       = Column(Boolean, nullable=True)
     pattern_b       = Column(Boolean, nullable=True)
+    user_pattern    = Column(String, nullable=True)
 
     status          = Column(String, nullable=True, default="normal")
+    system_pattern = Column(String, nullable=True)
 
     is_missing      = Column(Boolean, default=False)
     is_invalid_flow = Column(Boolean, default=False)

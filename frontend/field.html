@@ -118,35 +118,66 @@
   .overlay { position: fixed; inset: 0; background: #1c1c1e; z-index: 100;
              display: flex; align-items: center; justify-content: center; }
   .overlay.hidden { display: none; }
-  .overlay-box { width: 100%; max-width: 360px; padding: 32px 24px; }
-  .overlay-title { color: #fff; font-size: 1.2rem; font-weight: 700;
-                   margin-bottom: 6px; text-align: center; }
-  .overlay-sub   { color: #8e8e93; font-size: 0.82rem; text-align: center; margin-bottom: 28px; }
-  .overlay-input { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.1);
-                   border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px;
-                   color: #fff; font-size: 1rem; font-family: inherit; outline: none;
-                   margin-bottom: 12px; }
-  .overlay-btn   { width: 100%; padding: 15px; background: #007aff; color: #fff;
-                   border: none; border-radius: 14px; font-size: 1rem; font-weight: 700;
-                   font-family: inherit; cursor: pointer; }
-
-  .user-field-wrap { position: relative; width: 100%; }
-  .user-suggest {
-    position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px;
-    max-height: 200px; overflow-y: auto; background: #2c2c2e;
-    border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); z-index: 10;
-    display: none;
+  .overlay-box { width: 100%; max-width: 360px; padding: 32px 24px;
+                 position: relative; overflow: visible; }
+  /* 入力＋サジェスト：独立スタックで確定ボタンより手前に重ねる */
+  .field-user-stack {
+    position: relative;
+    z-index: 50;
+    isolation: isolate;
+    width: 100%;
+    margin-bottom: 20px;
   }
-  .user-suggest.active { display: block; }
-  .user-suggest div {
-    padding: 12px 14px; color: #fff; font-size: 0.92rem; cursor: pointer;
+  .field-user-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.1);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+  }
+  #user-suggest.field-user-suggest {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    max-height: min(42vh, 280px);
+    overflow-y: auto;
+    background: #2c2c2e;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+    z-index: 1000;
+    display: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #user-suggest.field-user-suggest.is-open { display: block; }
+  .field-user-suggest-item {
+    padding: 12px 14px;
+    color: #fff;
+    font-size: 0.92rem;
+    cursor: pointer;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .user-suggest div:last-child { border-bottom: none; }
-  .user-suggest div:hover { background: rgba(255,255,255,0.08); }
-  .user-unreg-hint {
-    color: rgba(255,255,255,0.55); font-size: 0.78rem; margin-top: 10px;
-    line-height: 1.55; display: none;
+  .field-user-suggest-item:last-child { border-bottom: none; }
+  .field-user-suggest-item:hover { background: rgba(255,255,255,0.08); }
+  .overlay-btn {
+    position: relative;
+    z-index: 0;
+    width: 100%;
+    padding: 15px;
+    background: #007aff;
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
   }
 
   /* トースト */
@@ -168,17 +199,14 @@
 <!-- 担当者選択オーバーレイ -->
 <div class="overlay" id="overlay">
   <div class="overlay-box">
-    <div class="overlay-title">MEASURE OS</div>
-    <div class="overlay-sub">班長リストから選ぶか、名前を入力して開始できます</div>
-    <div class="user-field-wrap">
-      <input class="overlay-input" id="user-input" placeholder="例: 田中" autocomplete="off"
-             style="margin-bottom:0;width:100%;box-sizing:border-box;"
-             oninput="onUserInput()" onfocus="onUserFocus()" onblur="onUserBlurDelayed()"
-             onkeydown="onUserKeydown(event)" />
-      <div id="user-suggest" class="user-suggest" role="listbox"></div>
+    <div class="field-user-stack">
+      <input type="text" class="field-user-input" id="user-input" placeholder="担当者名を入力（例: 田中）"
+             autocomplete="off"
+             onfocus="fieldUserOnFocus()" oninput="fieldUserOnInput()" onblur="fieldUserOnBlur()"
+             onkeydown="fieldUserOnKeydown(event)" />
+      <div id="user-suggest" class="field-user-suggest" role="listbox" aria-label="班長マスタ候補"></div>
     </div>
-    <p id="user-unreg-hint" class="user-unreg-hint">未登録の担当者名です。このまま続行できます</p>
-    <button class="overlay-btn" onclick="confirmUser()">この名前で使用する</button>
+    <button type="button" class="overlay-btn" onclick="confirmUser()">この名前で使用する</button>
   </div>
 </div>
 
@@ -186,10 +214,10 @@
 <div class="header">
   <div class="header-left">
     <div class="header-title">MEASURE OS</div>
-    <div class="header-hint" id="header-hint">担当者名（右上）をタップで変更・班長候補を表示</div>
+    <div class="header-hint" id="header-hint">担当者名（右上）をタップで変更</div>
   </div>
   <button type="button" class="header-user" id="header-user" onclick="changeUser()"
-          aria-label="担当者を変更し班長リストから選ぶ">---</button>
+          aria-label="担当者名を変更">---</button>
 </div>
 
 <!-- ================================================
@@ -295,13 +323,13 @@ let bizDate   = null;   // "YYYY-MM-DD"
 let unitVal   = "個";
 let inputMode = "manufacturing";   // manufacturing | logistics
 let submitting = false;
-let _candidateRows = [];      // 候補表示用（工程で絞り込み後、なければ全件）
-let _candidateRowsAll = [];   // 未登録ヒント用＝会社マスタ全件（サーバ判定と整合）
-let _blurTimer = null;
 /** 最後にサーバと整合した予告明細（着手許可の比較用） */
 let _plannedSavedFingerprint = "[]";
 /** 空明細で「予告を記録」成功直後のみ、着手可 */
 let _plannedAllowEmptyAfterSave = false;
+/** 担当者サジェスト：field_users 展開後 { name, proc, label } */
+let fieldUserSuggestRows = [];
+let fieldUserSuggestBlurTimer = null;
 
 const MSG_PLANNED_UNSAVED =
   "予告内容が未保存です。先に「予告を記録」してください。";
@@ -702,138 +730,193 @@ function getConfig() {
 }
 
 // =================================================================
-// 班長マスタ（候補）
+// 担当者入力＋サジェスト（field_users のみ・班長ボタン一覧なし）
 // =================================================================
-function parseFieldUsersRaw(raw) {
+
+const FIELD_USER_SUGGEST_LIMIT = 12;
+
+function fieldUserParseSegment(segment) {
+  const s = String(segment).trim();
+  if (!s) return { name: "", proc: "" };
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === ":" || ch === "：") {
+      return { name: s.slice(0, i).trim(), proc: s.slice(i + 1).trim() };
+    }
+  }
+  return { name: s, proc: "" };
+}
+
+function fieldUserBuildLabel(name, proc) {
+  const n = String(name || "").trim();
+  const p = String(proc || "").trim();
+  if (!n) return "";
+  return p ? `${n}（${p}）` : n;
+}
+
+/** 入力文字列からサーバ送信用 name と mo_leader_proc 用 proc を決定（マスタ一致時のみ proc あり） */
+function fieldUserResolveForCommit(rawInput) {
+  const v = String(rawInput || "").trim();
+  if (!v) return { name: "", proc: "" };
+  for (const r of fieldUserSuggestRows) {
+    if (v === r.label) return { name: r.name, proc: (r.proc || "").trim() };
+  }
+  const sameName = fieldUserSuggestRows.filter((r) => v === r.name);
+  if (sameName.length === 1) {
+    return { name: sameName[0].name, proc: (sameName[0].proc || "").trim() };
+  }
+  if (sameName.length > 1) {
+    const saved = (localStorage.getItem("mo_leader_proc") || "").trim();
+    const hit = sameName.find((r) => (r.proc || "").trim() === saved);
+    if (hit) return { name: hit.name, proc: (hit.proc || "").trim() };
+    return {
+      name: sameName[0].name,
+      proc: (sameName[0].proc || "").trim(),
+    };
+  }
+  return { name: v, proc: "" };
+}
+
+/** オーバーレイ：前回確定の name / mo_leader_proc から見た目用の文字列 */
+function fieldUserOverlayPrefill() {
+  const name = localStorage.getItem("mo_user") || "";
+  const proc = (localStorage.getItem("mo_leader_proc") || "").trim();
+  if (!name) return "";
+  return proc ? fieldUserBuildLabel(name, proc) : name;
+}
+
+function fieldUserParseFieldUsersRaw(raw) {
   const rows = [];
   if (!raw || !String(raw).trim()) return rows;
-  for (const part of raw.split(",")) {
-    const p = part.trim();
-    if (!p) continue;
-    const i = p.indexOf(":");
-    const name = (i >= 0 ? p.slice(0, i) : p).trim();
-    const proc = i >= 0 ? p.slice(i + 1).trim() : "";
-    if (name) rows.push({ name, proc, label: proc ? `${name}（${proc}）` : name });
+  for (const part of String(raw).split(",")) {
+    const { name, proc } = fieldUserParseSegment(part);
+    if (name) rows.push({ name, proc, label: fieldUserBuildLabel(name, proc) });
   }
   return rows;
 }
 
-/** 現在の process_id に工程が一致する班長がいればその候補だけ、いなければ全候補 */
-function filterCandidatesByProcess(allRows) {
-  const pid = (getConfig().process || "").trim();
-  if (!pid) return allRows;
-  const matched = allRows.filter(r => r.proc && r.proc === pid);
-  return matched.length ? matched : allRows;
-}
-
-async function loadFieldMasterList() {
-  const company = getConfig().company;
+/** 画面表示時：GET /settings/{company_id} で field_users を取得 */
+async function fieldUserFetchMaster() {
+  const companyId = getConfig().company;
   try {
-    const res = await fetch(`/settings/${encodeURIComponent(company)}`);
-    const data = await res.json();
-    const all = parseFieldUsersRaw(data.field_users || "");
-    _candidateRowsAll = all;
-    _candidateRows = filterCandidatesByProcess(all);
+    const res = await fetch(`/settings/${encodeURIComponent(companyId)}`);
+    if (!res.ok) fieldUserSuggestRows = [];
+    else {
+      const data = await res.json();
+      fieldUserSuggestRows = fieldUserParseFieldUsersRaw(data.field_users || "");
+    }
   } catch (_) {
-    _candidateRows = [];
-    _candidateRowsAll = [];
+    fieldUserSuggestRows = [];
   }
-}
-
-function hideSuggest() {
-  const box = document.getElementById("user-suggest");
-  box.classList.remove("active");
-  box.innerHTML = "";
-}
-
-function renderSuggest() {
   const input = document.getElementById("user-input");
-  const q = input.value.trim().toLowerCase();
+  if (input && document.activeElement === input) fieldUserSuggestRefresh();
+}
+
+function fieldUserSuggestClose() {
+  const el = document.getElementById("user-suggest");
+  if (!el) return;
+  el.classList.remove("is-open");
+  el.innerHTML = "";
+}
+
+function fieldUserSuggestRefresh() {
+  const input = document.getElementById("user-input");
   const box = document.getElementById("user-suggest");
-  if (!_candidateRows.length) {
-    box.classList.remove("active");
-    box.innerHTML = "";
+  if (!input || !box) return;
+
+  const q = input.value.trim();
+  let list;
+  if (!q) {
+    list = fieldUserSuggestRows.slice(0, FIELD_USER_SUGGEST_LIMIT);
+  } else {
+    const ql = q.toLowerCase();
+    list = fieldUserSuggestRows
+      .filter(
+        (r) =>
+          r.name.toLowerCase().includes(ql) ||
+          r.label.toLowerCase().includes(ql)
+      )
+      .slice(0, FIELD_USER_SUGGEST_LIMIT);
+  }
+
+  if (!list.length) {
+    fieldUserSuggestClose();
     return;
   }
-  const filtered = !q
-    ? _candidateRows.slice(0, 8)
-    : _candidateRows.filter(c =>
-        c.name.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
-      ).slice(0, 12);
-  if (!filtered.length) {
-    box.classList.remove("active");
-    box.innerHTML = "";
-    return;
-  }
+
   box.innerHTML = "";
-  filtered.forEach(c => {
-    const d = document.createElement("div");
-    d.textContent = c.label;
-    d.addEventListener("mousedown", (e) => { e.preventDefault(); pickCandidate(c.name); });
-    box.appendChild(d);
-  });
-  box.classList.add("active");
+  for (const r of list) {
+    const item = document.createElement("div");
+    item.className = "field-user-suggest-item";
+    item.setAttribute("role", "option");
+    item.textContent = r.label;
+    item.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      fieldUserOnPick(r);
+    });
+    box.appendChild(item);
+  }
+  box.classList.add("is-open");
 }
 
-function pickCandidate(name) {
-  document.getElementById("user-input").value = name;
-  hideSuggest();
-  updateUnregisteredHint();
+function fieldUserOnPick(r) {
+  const input = document.getElementById("user-input");
+  if (input) input.value = r.label;
+  fieldUserSuggestClose();
+  if (input) input.focus();
 }
 
-function updateUnregisteredHint() {
-  const el = document.getElementById("user-unreg-hint");
-  const v = document.getElementById("user-input").value.trim();
-  if (!v) {
-    el.style.display = "none";
+function fieldUserOnFocus() {
+  clearTimeout(fieldUserSuggestBlurTimer);
+  fieldUserSuggestRefresh();
+}
+
+function fieldUserOnInput() {
+  fieldUserSuggestRefresh();
+}
+
+function fieldUserOnBlur() {
+  clearTimeout(fieldUserSuggestBlurTimer);
+  fieldUserSuggestBlurTimer = setTimeout(fieldUserSuggestClose, 220);
+}
+
+function fieldUserOnKeydown(ev) {
+  if (ev.key === "Backspace" || ev.key === "Delete") {
+    const input = document.getElementById("user-input");
+    if (!input || ev.target !== input) return;
+    const v = input.value;
+    if (v.includes("（") && v.includes("）")) {
+      ev.preventDefault();
+      input.value = "";
+      fieldUserSuggestRefresh();
+      return;
+    }
+  }
+  if (ev.key === "Escape") {
+    fieldUserSuggestClose();
     return;
   }
-  const inMaster = _candidateRowsAll.some(c => c.name === v);
-  const hasMaster = _candidateRowsAll.length > 0;
-  el.style.display = (!hasMaster || !inMaster) ? "block" : "none";
+  if (ev.key === "Enter") confirmUser();
 }
 
-function onUserInput() {
-  updateUnregisteredHint();
-  renderSuggest();
-}
-
-function onUserFocus() {
-  renderSuggest();
-}
-
-function onUserBlurDelayed() {
-  clearTimeout(_blurTimer);
-  _blurTimer = setTimeout(() => hideSuggest(), 200);
-}
-
-function onUserKeydown(ev) {
-  if (ev.key === "Enter") {
-    hideSuggest();
-    confirmUser();
-  }
-  if (ev.key === "Escape") hideSuggest();
-}
-
-// =================================================================
-// 担当者
-// =================================================================
 function confirmUser() {
-  const name = document.getElementById("user-input").value.trim();
+  fieldUserSuggestClose();
+  const raw = document.getElementById("user-input").value.trim();
+  if (!raw) { toast("名前を入力してください"); return; }
+  const { name, proc } = fieldUserResolveForCommit(raw);
   if (!name) { toast("名前を入力してください"); return; }
-  hideSuggest();
   localStorage.setItem("mo_user", name);
+  if (proc) localStorage.setItem("mo_leader_proc", proc);
+  else localStorage.removeItem("mo_leader_proc");
   document.getElementById("overlay").classList.add("hidden");
   document.getElementById("header-user").textContent = name;
   init();
 }
 
-async function changeUser() {
-  document.getElementById("user-input").value = getConfig().user;
+function changeUser() {
+  document.getElementById("user-input").value = fieldUserOverlayPrefill();
   document.getElementById("overlay").classList.remove("hidden");
-  await loadFieldMasterList();
-  updateUnregisteredHint();
-  renderSuggest();
+  fieldUserFetchMaster().then(() => fieldUserSuggestRefresh());
   setTimeout(() => document.getElementById("user-input").focus(), 100);
 }
 
@@ -1052,15 +1135,21 @@ async function submitActual() {
   const btn = document.getElementById("actual-btn");
   btn.disabled    = true;
   btn.textContent = "記録中...";
+  const cfgCompany = getConfig().company;
+  const uidStr = unitId != null ? String(unitId) : "（不明）";
 
   const scanned = scanHostLines(actualRowsHost());
   if (scanned.error) {
-    toast(scanned.error);
+    toast(
+      "保存失敗: status=送信前, detail=" + scanned.error,
+      10000,
+    );
     btn.disabled    = false;
     btn.textContent = "実績を記録する";
     submitting = false;
     return;
   }
+  const bChecked = document.getElementById("pattern-b-cb").checked;
   const payload = {
     lines: scanned.lines,
     actual_work_type: null,
@@ -1068,19 +1157,68 @@ async function submitActual() {
     actual_item_name: null,
     actual_value: null,
     pattern_a: document.getElementById("pattern-a-cb").checked,
-    pattern_b: document.getElementById("pattern-b-cb").checked,
+    pattern_b: bChecked,
+    user_pattern: bChecked ? "B" : null,
   };
-  const data = await api("POST", `/work/${unitId}/actual`, payload);
+  if (unitId == null || unitId === "" || !Number.isFinite(Number(unitId))) {
+    toast(
+      "保存失敗: status=送信前, detail=作業記録の番号（unitId）がありません。ページを再読み込みしてください",
+      10000,
+    );
+    btn.disabled = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+    return;
+  }
+
+  const url = `/work/${unitId}/actual`;
+
+  let data = null;
+  let httpStatus = "—";
+  let failureDetail = "不明なエラー";
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    httpStatus = String(res.status);
+    const text = await res.text();
+    let parsed = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch (_) {
+      parsed = null;
+    }
+    if (!res.ok) {
+      failureDetail =
+        detailFromApiError(parsed, text ? text.slice(0, 180) : "サーバーがエラーを返しました");
+      data = { __error: true };
+    } else {
+      data = parsed;
+    }
+  } catch (e) {
+    httpStatus = "—";
+    failureDetail =
+      e && e.message ? String(e.message) : "通信エラー（サーバーに届いていない可能性があります）";
+    data = null;
+  }
 
   if (!data || data.__error) {
     btn.disabled    = false;
     btn.textContent = "実績を記録する";
     submitting = false;
-    toast(data && data.message ? data.message : "送信に失敗しました");
+    toast(
+      "保存失敗: status=" + httpStatus + ", detail=" + failureDetail,
+      10000,
+    );
     return;
   }
 
-  toast("実績を記録しました");
+  toast(
+    "保存成功: company_id=" + cfgCompany + ", unitId=" + uidStr,
+    10000,
+  );
   const nextD = data.next_business_date
     || (await fetchNextBusinessDate(data.business_date))?.business_date;
   if (!nextD) {
@@ -1336,26 +1474,35 @@ function toJST(isoStr) {
   }).format(d);
 }
 
-function toast(msg) {
+function toast(msg, durationMs) {
   const el = document.getElementById("toast");
   el.textContent = msg;
   el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 2400);
+  const ms = typeof durationMs === "number" && durationMs > 0 ? durationMs : 2400;
+  setTimeout(() => el.classList.remove("show"), ms);
+}
+
+/** API のエラー JSON から人が読める一文を取り出す */
+function detailFromApiError(parsed, fallback) {
+  if (!parsed || typeof parsed !== "object") return fallback;
+  const d = parsed.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d) && d.length && d[0] && d[0].msg) return String(d[0].msg);
+  try {
+    return JSON.stringify(parsed).slice(0, 200);
+  } catch (_) {
+    return fallback;
+  }
 }
 
 // =================================================================
-// 起動
+// 起動（リロードのたびに担当者選択から。予告・着手へは「この名前で使用する」確定後のみ）
 // =================================================================
-const user = getConfig().user;
-if (!user) {
-  document.getElementById("overlay").classList.remove("hidden");
-  loadFieldMasterList().then(() => {
-    setTimeout(() => document.getElementById("user-input").focus(), 200);
-  });
-} else {
-  document.getElementById("overlay").classList.add("hidden");
-  init();
-}
+document.getElementById("overlay").classList.remove("hidden");
+document.getElementById("user-input").value = fieldUserOverlayPrefill();
+fieldUserFetchMaster().finally(() => {
+  setTimeout(() => document.getElementById("user-input").focus(), 200);
+});
 </script>
 </body>
 </html>

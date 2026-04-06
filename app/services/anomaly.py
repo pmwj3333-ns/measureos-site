@@ -8,7 +8,7 @@
 WorkUnit のサマリフラグのうち is_invalid_flow / is_diff_anomaly を更新しつつ、
 WorkAnomaly テーブルに個別の異常種別を記録する。
 is_missing は app.services.missing_boundary でのみ更新（入力時は変更しない）。
-フェーズ1：検知のみ、ブロックなし、ステータスは後退しない。
+フェーズ1：検知のみ、ブロックなし。work_unit.status は変更しない。
 """
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -36,7 +36,7 @@ def detect_and_update(
     フェーズ1の異常検知。
     1. WorkUnit のサマリフラグを更新する
     2. WorkAnomaly に個別記録を残す（重複は UNIQUE 制約でスキップ）
-    3. ステータスを必要に応じて blue に昇格する（後退しない）
+    status / system_pattern は work ルータの _apply_minimal_judgement のみが担当。
     """
     now = datetime.utcnow()
     detected_types: list[str] = []
@@ -85,12 +85,6 @@ def detect_and_update(
     # ── 5. WorkAnomaly に個別記録（重複は UNIQUE 制約で無視）────────
     for atype in detected_types:
         _upsert_anomaly(db, unit.id, atype, now)
-
-    # ── 6. ステータス昇格（後退しない）──────────────────────────
-    has_anomaly = unit.is_missing or unit.is_diff_anomaly or unit.is_invalid_flow
-    if has_anomaly and unit.status == "normal":
-        unit.status = "blue"
-        unit.anomaly_started_at = now   # 初回のみ記録（設計書準拠）
 
 
 def _upsert_anomaly(

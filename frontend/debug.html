@@ -301,7 +301,7 @@ function openDetail(r) {
   document.getElementById("detail-patterns").textContent =
     `user_pattern（現場の申告）: ${up}\n` +
     `system_pattern（自動判定）: ${syDisp}\n` +
-    `※ * は自動判定。A=プロセス不備系（missing/inv_flow） B=結果不備系（diff_ano）`;
+    `※ DB の system_pattern をそのまま表示（A*=プロセス不備、B*=予告なし実績または予告実績の許容超過）。user_pattern とは独立。`;
 
   document.getElementById("detail-planned").textContent = formatDetailLines(pLines, u);
   document.getElementById("detail-actual").textContent = formatDetailLines(aLines, u);
@@ -336,24 +336,16 @@ function userPatternCell(r) {
   return { text: t, cls: t === "—" ? "st-dash" : "pat-cell" };
 }
 
-/**
- * システム自動判定の A/B 相当（API のフラグから合成）
- * A: プロセス不備系（未入力・着手なし実績など）→ is_missing / is_invalid_flow
- * B: 結果不備系（合計差・明細不一致など）→ is_diff_anomaly
- */
+/** DB（API）の system_pattern をそのまま表示。クライアント側では推定しない */
 function systemPattern(r) {
-  const parts = [];
-  if (r.is_missing || r.is_invalid_flow) parts.push("A");
-  if (r.is_diff_anomaly) parts.push("B");
-  if (!parts.length) return "—";
-  return parts.join(",");
+  if (r.system_pattern == null) return "—";
+  const t = String(r.system_pattern).trim();
+  return t === "" ? "—" : t;
 }
 
-/** 一覧・詳細用: 自動判定であることを示すため A→A* , A,B→A*,B*（なしは —） */
+/** 一覧・詳細用: API（DB）の文字列をそのまま表示（クライアントで * を補わない） */
 function systemPatternDisplay(r) {
-  const raw = systemPattern(r);
-  if (raw === "—") return "—";
-  return raw.split(",").map((s) => `${s.trim()}*`).join(",");
+  return systemPattern(r);
 }
 
 function systemPatternCell(r) {

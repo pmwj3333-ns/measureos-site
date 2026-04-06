@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+         background: #f2f2f7; color: #1c1c1e; min-height: 100vh; }
+
+  .header { background: #1c1c1e; padding: 14px 20px; display: flex;
+            align-items: center; justify-content: space-between; }
+  .header-left   { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .header-title { color: #fff; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.05em; }
+  .header-hint  { color: rgba(255,255,255,0.45); font-size: 0.65rem; line-height: 1.3; }
+  .header-user  {
+    color: rgba(255,255,255,0.75); font-size: 0.8rem; cursor: pointer;
+    flex-shrink: 0; text-align: right; max-width: 46%; word-break: break-all;
+    background: transparent; border: none; font-family: inherit; margin: 0;
+    padding: 10px 4px 10px 14px; -webkit-tap-highlight-color: transparent;
+    border-radius: 8px; line-height: 1.35;
+    text-decoration: underline dotted rgba(255,255,255,0.3);
+    text-underline-offset: 3px;
+  }
+  .header-user:active { opacity: 0.72; }
+
+  .main { max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  .settings-adv {
+    max-width: 480px; margin: 0 auto; padding: 8px 16px 0;
+    font-size: 0.78rem; color: #636366;
+  }
+  .settings-adv summary {
+    cursor: pointer; padding: 8px 0; list-style: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .settings-adv summary::-webkit-details-marker { display: none; }
+  .settings-adv[open] summary { margin-bottom: 8px; }
+  .settings-grid { display: grid; gap: 10px; padding-bottom: 8px; }
+  .settings-grid label { font-size: 0.72rem; color: #8e8e93; display: block; margin-bottom: 4px; }
+  .settings-grid input {
+    width: 100%; padding: 10px 12px; border: 1px solid #e5e5ea; border-radius: 10px;
+    font-size: 0.9rem; font-family: inherit; background: #fff;
+  }
+
+  .card { background: #fff; border-radius: 16px; padding: 24px 20px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px; }
+  .card-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+                color: #8e8e93; text-transform: uppercase; margin-bottom: 16px; }
+
+  .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .input-num  { flex: 1; font-size: 1.5rem; font-weight: 700; border: none;
+                border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
+                background: transparent; font-family: inherit; color: #1c1c1e; }
+  .input-num:focus { border-bottom-color: #007aff; }
+  .input-text { width: 100%; font-size: 1rem; font-weight: 600; border: none;
+                border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
+                background: transparent; font-family: inherit; color: #1c1c1e; }
+  .input-text:focus { border-bottom-color: #007aff; }
+  .input-unit { font-size: 0.9rem; color: #8e8e93; flex-shrink: 0; }
+  .field-label { font-size: 0.72rem; font-weight: 600; color: #8e8e93;
+                 margin-bottom: 4px; letter-spacing: 0.04em; }
+  .readonly-block { background: #f2f2f7; border-radius: 12px; padding: 14px 16px;
+                     margin-bottom: 16px; font-size: 0.88rem; line-height: 1.55; }
+  .readonly-block .ro-line { display: flex; justify-content: space-between;
+                             gap: 12px; padding: 4px 0; border-bottom: 1px solid #e5e5ea; }
+  .readonly-block .ro-line:last-child { border-bottom: none; }
+  .readonly-block .ro-k { color: #8e8e93; flex-shrink: 0; }
+  .readonly-block .ro-v { font-weight: 600; text-align: right; word-break: break-word; }
+  .readonly-block .ro-v.prelines { white-space: pre-line; text-align: right; }
+  .subhead { font-size: 0.7rem; font-weight: 700; color: #636366;
+             letter-spacing: 0.06em; margin: 16px 0 10px; }
+  .pattern-row { display: flex; flex-direction: column; gap: 10px; margin-top: 14px;
+                  padding-top: 14px; border-top: 1px solid #e5e5ea; }
+  .pattern-check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem;
+                    line-height: 1.45; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .pattern-check input { width: 1.15rem; height: 1.15rem; margin-top: 2px; flex-shrink: 0;
+                         accent-color: #007aff; }
+
+  .btn-primary { width: 100%; padding: 16px; background: #007aff; color: #fff;
+                 border: none; border-radius: 14px; font-size: 1rem; font-weight: 700;
+                 font-family: inherit; cursor: pointer; margin-top: 8px; }
+  .btn-primary:disabled { opacity: 0.4; cursor: default; }
+  .btn-secondary { width: 100%; padding: 13px; background: #f2f2f7; color: #636366;
+                   border: none; border-radius: 14px; font-size: 0.9rem;
+                   font-family: inherit; cursor: pointer; margin-top: 8px; }
+
+  .multi-rows { margin-bottom: 4px; }
+  .multi-row-line {
+    display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px;
+    padding-bottom: 12px; border-bottom: 1px solid #e5e5ea;
+  }
+  .multi-row-line:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .multi-row-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .btn-line-remove {
+    flex-shrink: 0; width: 44px; min-height: 44px; align-self: flex-start;
+    border: none; background: #f2f2f7; color: #8e8e93; font-size: 1.35rem; line-height: 1;
+    border-radius: 10px; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-add-row {
+    width: 100%; padding: 12px; margin-top: 10px; background: #fff;
+    border: 1.5px dashed #c7c7cc; border-radius: 12px; color: #007aff;
+    font-weight: 600; font-size: 0.9rem; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sub-text  { font-size: 0.78rem; color: #8e8e93; margin-top: 8px; line-height: 1.6; }
+  .started-info { font-size: 0.74rem; color: #34c759; padding-bottom: 12px; }
+
+  /* 縦中央だと班長一覧が画面外（上）に逃げて「入力欄だけ見える」ことがある → 上から表示 */
+  .overlay { position: fixed; inset: 0; background: #1c1c1e; z-index: 100;
+             display: flex; align-items: flex-start; justify-content: flex-start;
+             padding: 24px 16px 32px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .overlay.hidden { display: none; }
+  .overlay-box { width: 100%; max-width: 400px; padding: 20px 20px 28px; position: relative;
+                 margin: 0 auto; }
+  .overlay-lead { color: rgba(255,255,255,0.92); font-size: 1.02rem; font-weight: 700;
+                  margin-bottom: 6px; text-align: center; line-height: 1.35; }
+  .overlay-sub { color: rgba(255,255,255,0.4); font-size: 0.72rem; text-align: center;
+                  margin-bottom: 14px; line-height: 1.45; }
+  /* 班長：1 欄コンボボックス + ドロップダウン */
+  .field-user-combobox { position: relative; width: 100%; margin-bottom: 14px; }
+  .field-user-input {
+    width: 100%; padding: 14px 40px 14px 16px; background: rgba(255,255,255,0.1);
+    border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px; color: #fff;
+    font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;
+  }
+  .field-user-input::placeholder { color: rgba(255,255,255,0.38); }
+  .field-user-input:focus {
+    border-color: rgba(0,122,255,0.7);
+    background: rgba(255,255,255,0.12);
+  }
+  .field-user-dd-caret {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 6px solid rgba(255,255,255,0.45);
+    pointer-events: none;
+  }
+  .field-user-dropdown {
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+    max-height: min(40vh, 280px); overflow-y: auto;
+    background: #2c2c2e;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    z-index: 5;
+    -webkit-overflow-scrolling: touch;
+  }
+  .field-user-dropdown[hidden] { display: none !important; }
+  .field-user-dd-item {
+    padding: 14px 16px; font-size: 0.95rem; font-weight: 600;
+    color: rgba(255,255,255,0.92);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .field-user-dd-item:last-child { border-bottom: none; }
+  .field-user-dd-item:active { background: rgba(0,122,255,0.35); }
+  .field-user-dd-empty {
+    padding: 14px 16px; font-size: 0.85rem; color: rgba(255,255,255,0.45);
+    line-height: 1.5;
+  }
+  .overlay-btn {
+    width: 100%; padding: 15px; background: #007aff; color: #fff; border: none;
+    border-radius: 14px; font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer;
+  }
+
+  .toast { position: fixed; bottom: 32px; left: 50%;
+           transform: translateX(-50%) translateY(20px);
+           background: rgba(28,28,30,0.88); color: #fff;
+           padding: 11px 22px; border-radius: 30px; font-size: 0.88rem;
+           opacity: 0; transition: opacity 0.2s, transform 0.2s;
+           pointer-events: none; max-width: 92vw; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <p class="overlay-lead">担当者を選んでください</p>
+    <p class="overlay-sub">欄をタップして登録班長から選ぶか、同じ欄に直接入力して確定できます。</p>
+    <div class="field-user-combobox">
+      <input type="text" class="field-user-input" id="user-input"
+             placeholder="班長を選択"
+             autocomplete="off" role="combobox" aria-expanded="false" aria-controls="user-suggest" aria-autocomplete="list"
+             data-lpignore="true" data-1p-ignore="true"
+             onfocus="fieldUserOnFocus()"
+             onblur="fieldUserOnBlur()"
+             oninput="fieldUserOnInputSuggest()"
+             onkeydown="fieldUserOnKeydown(event)" />
+      <span class="field-user-dd-caret" aria-hidden="true"></span>
+      <div id="user-suggest" class="field-user-dropdown" role="listbox" hidden></div>
+    </div>
+    <button type="button" class="overlay-btn" onclick="confirmUser()">この内容で使う</button>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">MEASURE OS</div>
+    <div class="header-hint" id="header-hint">担当者名（右上）をタップで変更</div>
+  </div>
+  <button type="button" class="header-user" id="header-user" onclick="changeUser()"
+          aria-label="担当者名を変更">—</button>
+</div>
+
+<details class="settings-adv" id="settings-adv">
+  <summary>初期設定（会社・作業・工程）</summary>
+  <div class="settings-grid">
+    <div>
+      <label for="cfg-company">会社</label>
+      <input type="text" id="cfg-company" autocomplete="organization" />
+    </div>
+    <div>
+      <label for="cfg-task">作業</label>
+      <input type="text" id="cfg-task" autocomplete="off" />
+    </div>
+    <div>
+      <label for="cfg-process">工程</label>
+      <input type="text" id="cfg-process" autocomplete="off" />
+    </div>
+  </div>
+</details>
+
+<div id="screen-planned" class="screen">
+  <div class="main">
+    <div class="card">
+      <div class="card-label">明日の予告（任意）</div>
+      <div id="planned-block-mfg">
+        <div class="field-label">商品名・対象名と数量（予定・複数行可）</div>
+        <div id="planned-rows-mfg" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
+      </div>
+      <div id="planned-block-log" style="display:none;">
+        <div class="field-label">作業内容と数量（予定・複数行可）</div>
+        <div id="planned-rows-log" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
+      </div>
+      <p class="field-label" style="margin-top:10px;">単位</p>
+      <p class="sub-text" style="margin-top:0;"><span id="planned-unit">個</span>（会社設定）</p>
+      <p class="sub-text">候補がなくても入力できます。すべて空欄でもかまいません。</p>
+      <button type="button" class="btn-primary" id="planned-btn" onclick="submitPlanned()">予告を登録</button>
+      <button type="button" class="btn-primary" id="planned-start-btn" onclick="submitStartFromPlanned()">着手して実績報告へ</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-actual" class="screen">
+  <div class="main">
+    <div class="started-info" id="started-info" style="display:none;"></div>
+    <div class="card">
+      <div class="card-label">今日の実績</div>
+      <div class="subhead">予告（参照）</div>
+      <div class="readonly-block" id="actual-planned-summary"></div>
+      <div class="subhead">実績（入力）</div>
+      <div id="actual-inputs-mfg">
+        <div class="field-label">商品名・対象名と数量（複数行可）</div>
+        <div id="actual-rows-mfg" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
+      </div>
+      <div id="actual-inputs-log" style="display:none;">
+        <div class="field-label">作業内容と数量（複数行可）</div>
+        <div id="actual-rows-log" class="multi-rows"></div>
+        <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
+      </div>
+      <p class="sub-text">予告と違う内容でも、そのまま記録できます。</p>
+      <div class="subhead" style="margin-top:16px;">異常の分類（任意）</div>
+      <div class="pattern-row">
+        <label class="pattern-check">
+          <input type="checkbox" id="pattern-a-cb" />
+          <span><strong>A</strong> プロセス不備（手順ミス）</span>
+        </label>
+        <label class="pattern-check">
+          <input type="checkbox" id="pattern-b-cb" />
+          <span><strong>B</strong> 結果不備（数値ズレ）</span>
+        </label>
+      </div>
+      <button class="btn-primary" id="actual-btn" onclick="submitActual()">実績を記録する</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<datalist id="dl-item-name"></datalist>
+<datalist id="dl-work-label"></datalist>
+
+<script>
+let unitId = null;
+let lastWorkData = null;
+let unitVal = "個";
+let inputMode = "manufacturing";
+let submitting = false;
+let _plannedSavedFingerprint = "[]";
+let _plannedAllowEmptyAfterSave = false;
+let fieldUserSuggestRows = [];
+let fieldUserSuggestBlurTimer = null;
+/** 担当者オーバーレイから入った直後は必ず予告画面へ（完了画面に直行しない） */
+let _bootstrapFromLeaderChoice = false;
+/** 実績保存後の連続入力で、次の実績画面ではDBに残る前回行を表示しない */
+let _forceBlankActualOnce = false;
+const MSG_PLANNED_UNSAVED = "予告内容が未保存です。先に「予告を登録」してください。";
+
+function param(key, fb) {
+  const v = new URLSearchParams(location.search).get(key);
+  if (v === null || v === "") return fb;
+  return v.trim();
+}
+
+function getConfig() {
+  const companyInput = document.getElementById("cfg-company").value.trim();
+  const company =
+    companyInput ||
+    param("company_id", null) ||
+    param("company", null) ||
+    (localStorage.getItem("mo_v2_company") || "").trim() ||
+    "x";
+  return {
+    company,
+    task: document.getElementById("cfg-task").value.trim()
+      || param("task_id", null) || param("task", "task_01"),
+    process: document.getElementById("cfg-process").value.trim()
+      || param("process_id", null) || param("process", "proc_01"),
+    user: localStorage.getItem("mo_v2_user") || "",
+  };
+}
+
+function saveCfgToLocal() {
+  localStorage.setItem("mo_v2_company", document.getElementById("cfg-company").value.trim());
+  localStorage.setItem("mo_v2_task", document.getElementById("cfg-task").value.trim());
+  localStorage.setItem("mo_v2_process", document.getElementById("cfg-process").value.trim());
+}
+
+function loadCfgFromLocal() {
+  document.getElementById("cfg-company").value =
+    param("company", localStorage.getItem("mo_v2_company") || "x");
+  document.getElementById("cfg-task").value =
+    param("task", localStorage.getItem("mo_v2_task") || "task_01");
+  document.getElementById("cfg-process").value =
+    param("process", localStorage.getItem("mo_v2_process") || "proc_01");
+}
+
+document.getElementById("cfg-company").addEventListener("change", () => {
+  saveCfgToLocal();
+  const ov = document.getElementById("overlay");
+  if (ov && !ov.classList.contains("hidden")) {
+    fieldUserSuggestClose();
+    fieldUserSuggestRows = [];
+    fieldUserFetchMaster();
+  }
+});
+["cfg-task", "cfg-process"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", saveCfgToLocal);
+});
+
+function toast(msg, ms) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), ms || 3200);
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function dispStr(v) {
+  if (v == null || String(v).trim() === "") return "—";
+  return String(v);
+}
+
+function isLogistics() {
+  return inputMode === "logistics";
+}
+
+function syncInputModeFromPayload(data) {
+  if (data && data.input_mode === "logistics") inputMode = "logistics";
+  else inputMode = "manufacturing";
+  applyInputModePanels();
+}
+
+function applyInputModePanels() {
+  const log = isLogistics();
+  document.getElementById("planned-block-mfg").style.display = log ? "none" : "block";
+  document.getElementById("planned-block-log").style.display = log ? "block" : "none";
+  document.getElementById("actual-inputs-mfg").style.display = log ? "none" : "block";
+  document.getElementById("actual-inputs-log").style.display = log ? "block" : "none";
+}
+
+function applyUnit(u) {
+  unitVal = u || "個";
+  document.getElementById("planned-unit").textContent = unitVal;
+  document.querySelectorAll(".line-unit-suffix").forEach((el) => { el.textContent = unitVal; });
+}
+
+function logisticsPlannedLabel(d) {
+  const a = d.planned_work_label && String(d.planned_work_label).trim();
+  if (a) return d.planned_work_label;
+  const b = d.planned_work_type && String(d.planned_work_type).trim();
+  return b ? d.planned_work_type : null;
+}
+
+function logisticsActualLabel(d) {
+  const a = d.actual_work_label && String(d.actual_work_label).trim();
+  if (a) return d.actual_work_label;
+  const b = d.actual_work_type && String(d.actual_work_type).trim();
+  return b ? d.actual_work_type : null;
+}
+
+function plannedRowsHost() {
+  return document.getElementById(isLogistics() ? "planned-rows-log" : "planned-rows-mfg");
+}
+
+function actualRowsHost() {
+  return document.getElementById(isLogistics() ? "actual-rows-log" : "actual-rows-mfg");
+}
+
+function makeInputLineRow(placeholder, listId) {
+  const wrap = document.createElement("div");
+  wrap.className = "multi-row-line";
+  wrap.innerHTML =
+    `<div class="multi-row-fields">
+       <input class="input-text" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />
+       <div class="input-row">
+         <input class="input-num" type="number" data-line-qty="" inputmode="decimal" placeholder="数量" min="0" step="any" />
+         <span class="input-unit line-unit-suffix"></span>
+       </div>
+     </div>
+     <button type="button" class="btn-line-remove" aria-label="この行を削除">×</button>`;
+  const labIn = wrap.querySelector("[data-line-label]");
+  labIn.placeholder = placeholder;
+  labIn.setAttribute("list", listId);
+  wrap.querySelector(".line-unit-suffix").textContent = unitVal;
+  wrap.querySelector(".btn-line-remove").addEventListener("click", () => removeInputLineRow(wrap));
+  return wrap;
+}
+
+function removeInputLineRow(lineEl) {
+  const host = lineEl.parentElement;
+  if (!host) return;
+  const rows = host.querySelectorAll(".multi-row-line");
+  if (rows.length <= 1) {
+    const a = lineEl.querySelector("[data-line-label]");
+    const b = lineEl.querySelector("[data-line-qty]");
+    if (a) a.value = "";
+    if (b) b.value = "";
+    return;
+  }
+  lineEl.remove();
+}
+
+function addPlannedRow() {
+  plannedRowsHost().appendChild(
+    makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name"));
+}
+
+function addActualRow() {
+  actualRowsHost().appendChild(
+    makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name"));
+}
+
+function parseQtyInput(raw) {
+  const t = String(raw ?? "").trim();
+  if (t === "") return null;
+  const n = Number(t.replace(",", "."));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function scanHostLines(host) {
+  if (!host) return { lines: [] };
+  const out = [];
+  for (const row of host.querySelectorAll(".multi-row-line")) {
+    const labEl = row.querySelector("[data-line-label]");
+    const qtyEl = row.querySelector("[data-line-qty]");
+    const lb = (labEl && labEl.value || "").trim();
+    const rawQ = qtyEl ? qtyEl.value : "";
+    const q = parseQtyInput(rawQ);
+    if (!lb && String(rawQ).trim() === "") continue;
+    if (lb && (String(rawQ).trim() === "" || q === null)) {
+      return { error: "名前だけ入力された行があります。数量も入力してください" };
+    }
+    if (!lb && q !== null && !Number.isNaN(q)) {
+      return { error: "数量だけ入力された行があります。名前と数量をセットで入力してください" };
+    }
+    if (Number.isNaN(q)) {
+      return { error: "数量の形式が不正な行があります" };
+    }
+    out.push({ label: lb, value: q });
+  }
+  return { lines: out };
+}
+
+function fingerprintPlannedLinesNormalized(lines) {
+  const arr = (lines || []).map((L) => {
+    const label = String(L.label != null ? L.label : "").trim();
+    const value = Number(L.value);
+    return { label, value };
+  }).filter((x) => x.label && Number.isFinite(x.value));
+  return JSON.stringify(arr);
+}
+
+function plannedFingerprintFromServerPayload(data) {
+  if (!data) return "[]";
+  if (Array.isArray(data.planned_lines) && data.planned_lines.length) {
+    return fingerprintPlannedLinesNormalized(data.planned_lines);
+  }
+  return "[]";
+}
+
+function fillRowsHost(host, lines, ph, listId) {
+  host.innerHTML = "";
+  const L = lines && lines.length ? lines : [{}];
+  for (const row of L) {
+    const el = makeInputLineRow(ph, listId);
+    const lab = el.querySelector("[data-line-label]");
+    const qty = el.querySelector("[data-line-qty]");
+    if (row.label != null && String(row.label).trim()) lab.value = row.label;
+    if (row.value != null && Number.isFinite(Number(row.value))) qty.value = String(row.value);
+    host.appendChild(el);
+  }
+}
+
+function setPlannedRowsFromData(data) {
+  const host = plannedRowsHost();
+  const listId = isLogistics() ? "dl-work-label" : "dl-item-name";
+  let lines = [];
+  if (data && Array.isArray(data.planned_lines) && data.planned_lines.length) {
+    lines = data.planned_lines;
+  }
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId);
+  _plannedSavedFingerprint = plannedFingerprintFromServerPayload(data);
+}
+
+function setActualRowsFromData(data) {
+  const host = actualRowsHost();
+  const listId = isLogistics() ? "dl-work-label" : "dl-item-name";
+  let lines = [];
+  if (data && Array.isArray(data.actual_lines) && data.actual_lines.length) {
+    lines = data.actual_lines;
+  }
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId);
+}
+
+function renderLinesSummaryReadonly(lines) {
+  if (!lines || !lines.length) return "";
+  return lines.map((l) =>
+    `<div class="ro-line"><span class="ro-k">${escHtml(l.label)}</span>` +
+    `<span class="ro-v">${escHtml(String(l.value))} ${escHtml(unitVal)}</span></div>`
+  ).join("");
+}
+
+function renderPlannedSummaryForActual(data) {
+  const sum = document.getElementById("actual-planned-summary");
+  const pl = data.planned_lines;
+  if (pl && pl.length) {
+    sum.innerHTML = renderLinesSummaryReadonly(pl);
+    return;
+  }
+  const qv = (q) => (q != null ? `${q} ${unitVal}` : "—");
+  if (isLogistics()) {
+    const plab = logisticsPlannedLabel(data);
+    sum.innerHTML =
+      `<div class="ro-line"><span class="ro-k">作業内容</span><span class="ro-v">${escHtml(dispStr(plab))}</span></div>` +
+      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+  } else {
+    sum.innerHTML =
+      `<div class="ro-line"><span class="ro-k">商品名・対象</span><span class="ro-v">${escHtml(dispStr(data.planned_item_name))}</span></div>` +
+      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+  }
+}
+
+function fieldUserParseSegment(segment) {
+  const s = String(segment).trim();
+  if (!s) return { name: "", proc: "" };
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === ":" || ch === "：") {
+      return { name: s.slice(0, i).trim(), proc: s.slice(i + 1).trim() };
+    }
+  }
+  return { name: s, proc: "" };
+}
+
+function fieldUserBuildLabel(name, proc) {
+  const n = String(name || "").trim();
+  const p = String(proc || "").trim();
+  if (!n) return "";
+  return p ? `${n}（${p}）` : n;
+}
+
+function fieldUserParseFieldUsersRaw(raw) {
+  const rows = [];
+  if (!raw || !String(raw).trim()) return rows;
+  for (const part of String(raw).split(",")) {
+    const { name, proc } = fieldUserParseSegment(part);
+    if (name) rows.push({ name, proc, label: fieldUserBuildLabel(name, proc) });
+  }
+  return rows;
+}
+
+function fieldUserResolveForCommit(rawInput) {
+  const v = String(rawInput || "").trim();
+  if (!v) return { name: "", proc: "" };
+  for (const r of fieldUserSuggestRows) {
+    if (v === r.label) return { name: r.name, proc: (r.proc || "").trim() };
+  }
+  const sameName = fieldUserSuggestRows.filter((r) => v === r.name);
+  if (sameName.length === 1) return { name: sameName[0].name, proc: (sameName[0].proc || "").trim() };
+  if (sameName.length > 1) {
+    const saved = (localStorage.getItem("mo_v2_leader_proc") || "").trim();
+    const hit = sameName.find((r) => (r.proc || "").trim() === saved);
+    if (hit) return { name: hit.name, proc: (hit.proc || "").trim() };
+    return { name: sameName[0].name, proc: (sameName[0].proc || "").trim() };
+  }
+  return { name: v, proc: "" };
+}
+
+async function fieldUserFetchMaster() {
+  const companyId = getConfig().company;
+  const hadLocal = fieldUserSuggestRows.length > 0;
+  try {
+    const res = await fetch(`/v2/company/${encodeURIComponent(companyId)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      if (!hadLocal) toast("班長一覧を取得できませんでした");
+    } else {
+      const data = await res.json();
+      const next = fieldUserParseFieldUsersRaw(data.field_users || "");
+      if (next.length) fieldUserSuggestRows = next;
+    }
+  } catch (_) {
+    if (!hadLocal) toast("班長一覧を取得できませんでした");
+  }
+  const input = document.getElementById("user-input");
+  if (input && document.activeElement === input) fieldUserSuggestRefresh();
+}
+
+function fieldUserSuggestClose() {
+  const box = document.getElementById("user-suggest");
+  const input = document.getElementById("user-input");
+  if (box) {
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+  if (input) input.setAttribute("aria-expanded", "false");
+}
+
+function fieldUserSuggestRefresh() {
+  const input = document.getElementById("user-input");
+  const box = document.getElementById("user-suggest");
+  if (!input || !box) return;
+  const q = input.value.trim().toLowerCase();
+  let list = fieldUserSuggestRows;
+  if (q) {
+    list = fieldUserSuggestRows.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.label.toLowerCase().includes(q)
+    );
+  }
+  box.innerHTML = "";
+  if (!fieldUserSuggestRows.length) {
+    const el = document.createElement("div");
+    el.className = "field-user-dd-empty";
+    el.textContent =
+      "登録された班長がいません。この欄に直接入力して「この内容で使う」で確定できます。";
+    box.appendChild(el);
+  } else if (!list.length) {
+    const el = document.createElement("div");
+    el.className = "field-user-dd-empty";
+    el.textContent =
+      "一致する候補がありません。未登録名をそのまま入力して確定できます。";
+    box.appendChild(el);
+  } else {
+    for (const r of list) {
+      const item = document.createElement("div");
+      item.className = "field-user-dd-item";
+      item.setAttribute("role", "option");
+      item.textContent = r.label;
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        fieldUserOnPick(r);
+      });
+      box.appendChild(item);
+    }
+  }
+  box.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+}
+
+function fieldUserOnFocus() {
+  clearTimeout(fieldUserSuggestBlurTimer);
+  fieldUserFetchMaster().then(() => fieldUserSuggestRefresh());
+}
+
+function fieldUserOnBlur() {
+  clearTimeout(fieldUserSuggestBlurTimer);
+  fieldUserSuggestBlurTimer = setTimeout(fieldUserSuggestClose, 220);
+}
+
+function fieldUserOnInputSuggest() {
+  clearTimeout(fieldUserSuggestBlurTimer);
+  fieldUserSuggestRefresh();
+}
+
+function fieldUserOnPick(r) {
+  fieldUserSuggestClose();
+  pickRegisteredLeader(r);
+}
+
+function pickRegisteredLeader(r) {
+  if (!r || !String(r.name || "").trim()) return;
+  const name = String(r.name).trim();
+  const proc = String(r.proc || "").trim();
+  localStorage.setItem("mo_v2_user", name);
+  if (proc) localStorage.setItem("mo_v2_leader_proc", proc);
+  else localStorage.removeItem("mo_v2_leader_proc");
+  document.getElementById("overlay").classList.add("hidden");
+  document.getElementById("header-user").textContent = name;
+  saveCfgToLocal();
+  _bootstrapFromLeaderChoice = true;
+  bootstrapWork();
+}
+
+function fieldUserOnKeydown(ev) {
+  if (ev.key === "Escape") {
+    const box = document.getElementById("user-suggest");
+    if (box && !box.hidden) {
+      fieldUserSuggestClose();
+      ev.preventDefault();
+      return;
+    }
+    const input = document.getElementById("user-input");
+    if (input && input.value) input.value = "";
+    return;
+  }
+  if (ev.key === "Enter") {
+    fieldUserSuggestClose();
+    confirmUser();
+  }
+}
+
+function confirmUser() {
+  fieldUserSuggestClose();
+  const raw = document.getElementById("user-input").value.trim();
+  if (!raw) { toast("班長を選ぶか入力してください"); return; }
+  const { name, proc } = fieldUserResolveForCommit(raw);
+  if (!name) { toast("班長を選ぶか入力してください"); return; }
+  localStorage.setItem("mo_v2_user", name);
+  if (proc) localStorage.setItem("mo_v2_leader_proc", proc);
+  else localStorage.removeItem("mo_v2_leader_proc");
+  document.getElementById("overlay").classList.add("hidden");
+  document.getElementById("header-user").textContent = name;
+  saveCfgToLocal();
+  _bootstrapFromLeaderChoice = true;
+  bootstrapWork();
+}
+
+function changeUser() {
+  fieldUserSuggestClose();
+  document.getElementById("user-input").value = "";
+  const ov = document.getElementById("overlay");
+  ov.classList.remove("hidden");
+  ov.scrollTop = 0;
+  fieldUserFetchMaster();
+}
+
+function show(name) {
+  ["planned", "actual"].forEach((n) => {
+    document.getElementById("screen-" + n).classList.toggle("active", n === name);
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function loadCompanyInputMode() {
+  const cfg = getConfig();
+  try {
+    const res = await fetch(`/v2/company/${encodeURIComponent(cfg.company)}`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const s = await res.json();
+      inputMode = s.input_mode === "logistics" ? "logistics" : "manufacturing";
+    }
+  } catch (_) { inputMode = "manufacturing"; }
+  applyInputModePanels();
+}
+
+async function fillDatalistsFromWorkList() {
+  const cfg = getConfig();
+  try {
+    const res = await fetch(`/v2/work/list?company_id=${encodeURIComponent(cfg.company)}`);
+    if (!res.ok) return;
+    const rows = await res.json();
+    const nm = new Set();
+    const wl = new Set();
+    for (const r of rows) {
+      if (r.planned_item_name) nm.add(String(r.planned_item_name).trim());
+      if (r.actual_item_name) nm.add(String(r.actual_item_name).trim());
+      if (r.planned_work_label) wl.add(String(r.planned_work_label).trim());
+      if (r.actual_work_label) wl.add(String(r.actual_work_label).trim());
+      for (const x of r.planned_lines || []) {
+        if (x && x.label) { nm.add(String(x.label).trim()); wl.add(String(x.label).trim()); }
+      }
+      for (const x of r.actual_lines || []) {
+        if (x && x.label) { nm.add(String(x.label).trim()); wl.add(String(x.label).trim()); }
+      }
+    }
+    const fillDl = (id, set) => {
+      const el = document.getElementById(id);
+      el.innerHTML = "";
+      [...set].filter(Boolean).sort().slice(0, 80).forEach((v) => {
+        const o = document.createElement("option");
+        o.value = v;
+        el.appendChild(o);
+      });
+    };
+    fillDl("dl-item-name", nm);
+    fillDl("dl-work-label", wl);
+  } catch (_) { /* ok */ }
+}
+
+async function api(method, url, body) {
+  const opt = { method, headers: {} };
+  if (body !== undefined) {
+    opt.headers["Content-Type"] = "application/json";
+    opt.body = JSON.stringify(body);
+  }
+  const res = await fetch(url, opt);
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+  if (!res.ok) {
+    const msg = (data && data.detail) || text || String(res.status);
+    const err = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    err._data = data;
+    throw err;
+  }
+  return data;
+}
+
+async function bootstrapWork() {
+  const cfg = getConfig();
+  document.getElementById("header-user").textContent = cfg.user;
+  await loadCompanyInputMode();
+  await fillDatalistsFromWorkList();
+
+  let data;
+  try {
+    data = await api("POST", "/v2/work", {
+      company_id: cfg.company,
+      task_id: cfg.task,
+      process_id: cfg.process,
+      user_id: cfg.user,
+    });
+  } catch (e) {
+    toast(e.message || "読み込みに失敗しました");
+    return;
+  }
+
+  lastWorkData = data;
+  unitId = data.id;
+  syncInputModeFromPayload(data);
+  applyUnit(data.unit);
+
+  const fromLeader = _bootstrapFromLeaderChoice;
+  _bootstrapFromLeaderChoice = false;
+  if (fromLeader) {
+    await showPlannedScreen(data);
+    return;
+  }
+
+  if (data.actual_at) {
+    await showPlannedScreenForNextEntry(data);
+    return;
+  }
+  if (data.started_at) {
+    await showActualScreen(data);
+    return;
+  }
+  showPlannedScreen(data);
+}
+
+async function showPlannedScreen(prefill) {
+  await loadCompanyInputMode();
+  if (prefill) syncInputModeFromPayload(prefill);
+  await fillDatalistsFromWorkList();
+  setPlannedRowsFromData(prefill || lastWorkData);
+  document.getElementById("planned-btn").disabled = false;
+  document.getElementById("planned-btn").textContent = "予告を登録";
+  document.getElementById("planned-start-btn").disabled = false;
+  document.getElementById("planned-start-btn").textContent = "着手して実績報告へ";
+  _plannedAllowEmptyAfterSave = false;
+  show("planned");
+}
+
+async function showPlannedScreenForNextEntry(serverPayload) {
+  await loadCompanyInputMode();
+  if (serverPayload) syncInputModeFromPayload(serverPayload);
+  await fillDatalistsFromWorkList();
+  if (serverPayload) applyUnit(serverPayload.unit);
+  setPlannedRowsFromData({ planned_lines: [] });
+  _plannedAllowEmptyAfterSave = false;
+  _forceBlankActualOnce = true;
+  document.getElementById("planned-btn").disabled = false;
+  document.getElementById("planned-btn").textContent = "予告を登録";
+  document.getElementById("planned-start-btn").disabled = false;
+  document.getElementById("planned-start-btn").textContent = "着手して実績報告へ";
+  show("planned");
+}
+
+async function showActualScreen(data, opts) {
+  opts = opts || {};
+  syncInputModeFromPayload(data);
+  await fillDatalistsFromWorkList();
+  renderPlannedSummaryForActual(data);
+  const stInfo = document.getElementById("started-info");
+  if (data.started_at) {
+    stInfo.textContent = `着手済み ✓  ${fmtTime(data.started_at)}`;
+    stInfo.style.display = "block";
+  } else {
+    stInfo.style.display = "none";
+  }
+  if (opts.blankActualInputs) {
+    setActualRowsFromData({ actual_lines: [] });
+    document.getElementById("pattern-a-cb").checked = false;
+    document.getElementById("pattern-b-cb").checked = false;
+  } else {
+    setActualRowsFromData(data);
+    document.getElementById("pattern-a-cb").checked = data.pattern_a === true;
+    document.getElementById("pattern-b-cb").checked = data.pattern_b === true;
+  }
+  document.getElementById("actual-btn").textContent = "実績を記録する";
+  document.getElementById("actual-btn").disabled = false;
+  submitting = false;
+  show("actual");
+}
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  } catch (_) { return iso; }
+}
+
+async function submitPlanned() {
+  const btn = document.getElementById("planned-btn");
+  btn.disabled = true;
+  btn.textContent = "記録中...";
+  const id = unitId;
+  if (!id) {
+    btn.disabled = false;
+    btn.textContent = "予告を登録";
+    toast("作業行がありません");
+    return;
+  }
+  const scanned = scanHostLines(plannedRowsHost());
+  if (scanned.error) {
+    toast(scanned.error);
+    btn.disabled = false;
+    btn.textContent = "予告を登録";
+    return;
+  }
+  try {
+    const data = await api("POST", `/v2/work/${id}/planned`, { lines: scanned.lines });
+    lastWorkData = data;
+    unitId = data.id;
+    _plannedSavedFingerprint = fingerprintPlannedLinesNormalized(scanned.lines);
+    _plannedAllowEmptyAfterSave = scanned.lines.length === 0;
+    toast("予告を保存しました");
+  } catch (e) {
+    toast(e.message || "送信に失敗しました");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "予告を登録";
+  }
+}
+
+async function submitStartFromPlanned() {
+  const sbtn = document.getElementById("planned-start-btn");
+  const scanned = scanHostLines(plannedRowsHost());
+  if (scanned.error) {
+    toast(scanned.error);
+    return;
+  }
+  const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
+  if (currentFp === "[]" && !_plannedAllowEmptyAfterSave) {
+    toast("予告が確定していません。先に「予告を登録」してください。空でも保存できます。");
+    return;
+  }
+  if (currentFp !== _plannedSavedFingerprint) {
+    toast(MSG_PLANNED_UNSAVED);
+    return;
+  }
+
+  sbtn.disabled = true;
+  sbtn.textContent = "着手中...";
+  const id = unitId;
+  try {
+    const st = await api("POST", `/v2/work/${id}/start`, {});
+    lastWorkData = st;
+    const blankActual = _forceBlankActualOnce;
+    _forceBlankActualOnce = false;
+    await showActualScreen(st, { blankActualInputs: blankActual });
+  } catch (e) {
+    toast(e.message || "着手に失敗しました");
+  } finally {
+    sbtn.disabled = false;
+    sbtn.textContent = "着手して実績報告へ";
+  }
+}
+
+async function submitActual() {
+  if (submitting) return;
+  submitting = true;
+  const btn = document.getElementById("actual-btn");
+  btn.disabled = true;
+  btn.textContent = "記録中...";
+
+  const scanned = scanHostLines(actualRowsHost());
+  if (scanned.error) {
+    toast(scanned.error);
+    btn.disabled = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+    return;
+  }
+  if (!unitId) {
+    toast("作業行がありません。ページを再読み込みしてください。");
+    btn.disabled = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+    return;
+  }
+
+  const bChecked = document.getElementById("pattern-b-cb").checked;
+  const payload = {
+    lines: scanned.lines,
+    pattern_a: document.getElementById("pattern-a-cb").checked,
+    pattern_b: bChecked,
+    user_pattern: bChecked ? "B" : null,
+  };
+
+  try {
+    const data = await api("POST", `/v2/work/${unitId}/actual`, payload);
+    lastWorkData = data;
+    unitId = data.id;
+    toast("実績を保存しました");
+    await showPlannedScreenForNextEntry(data);
+  } catch (e) {
+    toast(e.message || "実績の送信に失敗しました");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+  }
+}
+
+function syncCompanyFromServerBootstrap() {
+  const sc = window.__MO_BOOTSTRAP_COMPANY__;
+  if (typeof sc !== "string" || !sc.trim()) return;
+  document.getElementById("cfg-company").value = sc.trim();
+  localStorage.setItem("mo_v2_company", sc.trim());
+}
+
+function applyEmbeddedFieldUsers() {
+  const raw = window.__MO_FIELD_USERS_RAW__;
+  if (typeof raw === "string" && String(raw).trim()) {
+    fieldUserSuggestRows = fieldUserParseFieldUsersRaw(raw);
+  }
+}
+
+(function init() {
+  syncCompanyFromServerBootstrap();
+  loadCfgFromLocal();
+  applyEmbeddedFieldUsers();
+  if (!localStorage.getItem("mo_v2_user")) {
+    const ov = document.getElementById("overlay");
+    ov.classList.remove("hidden");
+    ov.scrollTop = 0;
+    document.getElementById("user-input").value = "";
+    fieldUserFetchMaster();
+  } else {
+    document.getElementById("overlay").classList.add("hidden");
+    bootstrapWork();
+  }
+})();
+</script>
+
+</body>
+</html>
