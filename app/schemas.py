@@ -94,6 +94,16 @@ class WorkLineOut(BaseModel):
     value: float
 
 
+class WorkUnitStatusHistoryItem(BaseModel):
+    """work_unit_status_history 1行（読み取り専用）。"""
+
+    id: int
+    from_status: Optional[str] = None
+    to_status: str
+    changed_at: Optional[str] = None
+    trigger_type: Optional[str] = None
+
+
 class WorkUnitOut(BaseModel):
     id:                  int
     company_id:          str
@@ -126,6 +136,7 @@ class WorkUnitOut(BaseModel):
     is_missing:          bool
     is_invalid_flow:     bool
     is_diff_anomaly:     bool
+    anomaly_started_at:  Optional[str] = None
     is_unregistered_user: bool = False
     user_source:         str = "master"
     prev_planned_value:      Optional[float] = None

@@ -17,6 +17,11 @@ from app.services.business_date import (
 from app.services.field_users import classify_leader
 from app.services.missing_boundary import recompute_is_missing_for_past_business_dates
 from app.services.test_clock import reference_utc_now
+from app.services.work_unit_guard import is_closed, raise_if_closed
+from app.services.status_history import (
+    append_work_unit_status_history_if_changed,
+    norm_work_unit_status,
+)
 from app.services.judgement_promote import (
     compute_red_deadline_jst,
     incomplete_implies_status_blue,
@@ -264,134 +269,147 @@ def _apply_minimal_judgement(
 
     保存直後に _recompute から呼ぶ。GET /work/list でも時刻依存の青を反映するため再計算する。
     force_status が closed/red のときは終了のみ（pattern は変更しない）。
+
+    status が実際に変わったときだけ work_unit_status_history に追記（db があるとき）。
+    force_status=closed は trigger_type=office、それ以外の自動判定は system。
     """
-    if force_status in ("closed", "red"):
-        unit.status = force_status
-        return
+    status_before = norm_work_unit_status(unit.status)
+    trigger = "office" if force_status == "closed" else "system"
+    try:
+        if force_status in ("closed", "red"):
+            unit.status = force_status
+            return
 
-    hp = _has_planned_nonzero(unit, settings)
-    hs = unit.started_at is not None
-    ha = _has_actual_signal(unit, settings)
-    ha_meaningful = _has_meaningful_actual(unit, settings)
+        # 完了済みは再判定で status / pattern を上書きしない（closed 後は戻せない）
+        if is_closed(unit):
+            return
 
-    unreg = bool(getattr(unit, "is_unregistered_user", False))
-    if unreg:
-        unit.system_pattern = ""
-        unit.status = "blue"
+        hp = _has_planned_nonzero(unit, settings)
+        hs = unit.started_at is not None
+        ha = _has_actual_signal(unit, settings)
+        ha_meaningful = _has_meaningful_actual(unit, settings)
+
+        unreg = bool(getattr(unit, "is_unregistered_user", False))
+        if unreg:
+            unit.system_pattern = ""
+            unit.status = "blue"
+            print(
+                "[measureos.pattern_debug] SET system_pattern:",
+                repr(unit.system_pattern),
+                "unit_id=",
+                getattr(unit, "id", None),
+                "reason=unreg",
+                flush=True,
+            )
+            logger.warning(
+                "[measureos.pattern_debug] SET system_pattern=%r unit_id=%s reason=unreg status=%r",
+                unit.system_pattern,
+                getattr(unit, "id", None),
+                unit.status,
+            )
+            logger.info(
+                "[measureos.judge] unit_id=%s company_id=%r unreg=True -> pattern='' status=blue",
+                getattr(unit, "id", None),
+                getattr(unit, "company_id", None),
+            )
+            return
+
+        sys_a = ((not hp) and (hs or ha)) or ((not hs) and ha)
+        b_no_planned_actual = (not hp) and ha
+        b_tolerance = False
+        if hp and ha:
+            tol = int(settings.tolerance_value or 0)
+            try:
+                dv = unit.diff_value
+                if dv is None:
+                    dv = float(unit.actual_value) - float(unit.planned_value)
+                b_tolerance = abs(dv) > tol
+            except (TypeError, ValueError):
+                b_tolerance = False
+        sys_b = b_no_planned_actual or b_tolerance
+
+        parts: List[str] = []
+        if sys_a:
+            parts.append("A*")
+        if sys_b:
+            parts.append("B*")
+        computed_pattern = ",".join(parts)
+        unit.system_pattern = computed_pattern
         print(
             "[measureos.pattern_debug] SET system_pattern:",
-            repr(unit.system_pattern),
+            repr(computed_pattern),
             "unit_id=",
             getattr(unit, "id", None),
-            "reason=unreg",
+            "sys_a=",
+            sys_a,
+            "sys_b=",
+            sys_b,
             flush=True,
         )
         logger.warning(
-            "[measureos.pattern_debug] SET system_pattern=%r unit_id=%s reason=unreg status=%r",
-            unit.system_pattern,
+            "[measureos.pattern_debug] SET system_pattern=%r unit_id=%s sys_a=%s sys_b=%s (registered)",
+            computed_pattern,
             getattr(unit, "id", None),
-            unit.status,
+            sys_a,
+            sys_b,
+        )
+
+        order_or_tolerance_blue = sys_a or sys_b
+        incomplete_blue = incomplete_implies_status_blue(
+            has_planned_nonzero=hp,
+            has_meaningful_actual=ha_meaningful,
+            business_date=unit.business_date,
+            company_id=unit.company_id,
+            settings=settings,
+            db=db,
+        )
+        if order_or_tolerance_blue or incomplete_blue:
+            unit.status = "blue"
+        else:
+            unit.status = "normal"
+
+        wet = settings.work_end_time or time(17, 0)
+        now_jst = reference_now_jst() if db is not None else None
+        boundary_jst = (
+            next_work_end_boundary_jst(unit.business_date, wet, unit.company_id, db)
+            if db is not None
+            else None
         )
         logger.info(
-            "[measureos.judge] unit_id=%s company_id=%r unreg=True -> pattern='' status=blue",
+            "[measureos.judge.detail] unit_id=%s company_id=%r hp=%s hs=%s ha=%s ha_meaningful=%s "
+            "now_jst=%s next_work_end_boundary_jst=%s "
+            "order_or_tolerance_blue=%s incomplete_blue=%s status=%r",
             getattr(unit, "id", None),
             getattr(unit, "company_id", None),
+            hp,
+            hs,
+            ha,
+            ha_meaningful,
+            now_jst.isoformat() if now_jst else None,
+            boundary_jst.isoformat() if boundary_jst else None,
+            order_or_tolerance_blue,
+            incomplete_blue,
+            unit.status,
         )
-        return
 
-    sys_a = ((not hp) and (hs or ha)) or ((not hs) and ha)
-    b_no_planned_actual = (not hp) and ha
-    b_tolerance = False
-    if hp and ha:
-        tol = int(settings.tolerance_value or 0)
-        try:
-            dv = unit.diff_value
-            if dv is None:
-                dv = float(unit.actual_value) - float(unit.planned_value)
-            b_tolerance = abs(dv) > tol
-        except (TypeError, ValueError):
-            b_tolerance = False
-    sys_b = b_no_planned_actual or b_tolerance
-
-    parts: List[str] = []
-    if sys_a:
-        parts.append("A*")
-    if sys_b:
-        parts.append("B*")
-    computed_pattern = ",".join(parts)
-    unit.system_pattern = computed_pattern
-    print(
-        "[measureos.pattern_debug] SET system_pattern:",
-        repr(computed_pattern),
-        "unit_id=",
-        getattr(unit, "id", None),
-        "sys_a=",
-        sys_a,
-        "sys_b=",
-        sys_b,
-        flush=True,
-    )
-    logger.warning(
-        "[measureos.pattern_debug] SET system_pattern=%r unit_id=%s sys_a=%s sys_b=%s (registered)",
-        computed_pattern,
-        getattr(unit, "id", None),
-        sys_a,
-        sys_b,
-    )
-
-    order_or_tolerance_blue = sys_a or sys_b
-    incomplete_blue = incomplete_implies_status_blue(
-        has_planned_nonzero=hp,
-        has_meaningful_actual=ha_meaningful,
-        business_date=unit.business_date,
-        company_id=unit.company_id,
-        settings=settings,
-        db=db,
-    )
-    if order_or_tolerance_blue or incomplete_blue:
-        unit.status = "blue"
-    else:
-        unit.status = "normal"
-
-    wet = settings.work_end_time or time(17, 0)
-    now_jst = reference_now_jst() if db is not None else None
-    boundary_jst = (
-        next_work_end_boundary_jst(unit.business_date, wet, unit.company_id, db)
-        if db is not None
-        else None
-    )
-    logger.info(
-        "[measureos.judge.detail] unit_id=%s company_id=%r hp=%s hs=%s ha=%s ha_meaningful=%s "
-        "now_jst=%s next_work_end_boundary_jst=%s "
-        "order_or_tolerance_blue=%s incomplete_blue=%s status=%r",
-        getattr(unit, "id", None),
-        getattr(unit, "company_id", None),
-        hp,
-        hs,
-        ha,
-        ha_meaningful,
-        now_jst.isoformat() if now_jst else None,
-        boundary_jst.isoformat() if boundary_jst else None,
-        order_or_tolerance_blue,
-        incomplete_blue,
-        unit.status,
-    )
-
-    logger.info(
-        "[measureos.judge] unit_id=%s company_id=%r hp=%s hs=%s ha=%s sys_a=%s sys_b=%r "
-        "is_missing=%s incomplete_blue=%s pattern=%r status=%r",
-        getattr(unit, "id", None),
-        getattr(unit, "company_id", None),
-        hp,
-        hs,
-        ha,
-        sys_a,
-        sys_b,
-        bool(getattr(unit, "is_missing", False)),
-        incomplete_blue,
-        unit.system_pattern,
-        unit.status,
-    )
+        logger.info(
+            "[measureos.judge] unit_id=%s company_id=%r hp=%s hs=%s ha=%s sys_a=%s sys_b=%r "
+            "is_missing=%s incomplete_blue=%s pattern=%r status=%r",
+            getattr(unit, "id", None),
+            getattr(unit, "company_id", None),
+            hp,
+            hs,
+            ha,
+            sys_a,
+            sys_b,
+            bool(getattr(unit, "is_missing", False)),
+            incomplete_blue,
+            unit.system_pattern,
+            unit.status,
+        )
+    finally:
+        if db is not None:
+            append_work_unit_status_history_if_changed(db, unit, status_before, trigger)
 
 
 def _audit_x_save(unit: models.WorkUnit, settings: models.CompanySettings, route: str, phase: str) -> None:
@@ -425,6 +443,24 @@ def _update_flags(unit: models.WorkUnit, settings: models.CompanySettings) -> No
     unit.is_diff_anomaly = bool("B*" in segs)
 
 
+def _maybe_set_anomaly_started_at(unit: models.WorkUnit) -> None:
+    """
+    異常が初めて立った時刻（1回のみ）。既存値は上書きしない。
+    ・status が blue、または is_missing / is_invalid_flow / is_diff_anomaly のいずれかが真のときに初回セット。
+    red 化・closed では値を消さない（再計算で terminal の行はここに来ない）。
+    """
+    if getattr(unit, "anomaly_started_at", None) is not None:
+        return
+    st = (unit.status or "").strip().lower()
+    if (
+        st == "blue"
+        or bool(unit.is_missing)
+        or bool(unit.is_invalid_flow)
+        or bool(unit.is_diff_anomaly)
+    ):
+        unit.anomaly_started_at = datetime.utcnow()
+
+
 def _recompute_unit_derived(
     unit: models.WorkUnit, settings: models.CompanySettings, db: Session
 ) -> None:
@@ -445,6 +481,7 @@ def _recompute_unit_derived(
     _apply_user_classification(unit, settings)
     _apply_minimal_judgement(unit, settings, db=db)
     _update_flags(unit, settings)
+    _maybe_set_anomaly_started_at(unit)
 
 
 def _status_from_db(unit: models.WorkUnit) -> str:
@@ -480,7 +517,9 @@ def _unit_to_out(
         "process_id":         unit.process_id,
         "user_id":            unit.user_id,
         "business_date":      str(unit.business_date),
+        "planned_at":         unit.planned_at.isoformat() if getattr(unit, "planned_at", None) else None,
         "created_at":         unit.created_at.isoformat() if getattr(unit, "created_at", None) else None,
+        "input_source":       getattr(unit, "input_source", None) or None,
         "business_date_source": getattr(unit, "business_date_source", None),
         "business_date_debug": _parse_unit_business_date_debug(unit),
         "input_mode":         im,
@@ -506,6 +545,9 @@ def _unit_to_out(
         "is_missing":         m,
         "is_invalid_flow":    bool(getattr(unit, "is_invalid_flow", False)),
         "is_diff_anomaly":    bool(getattr(unit, "is_diff_anomaly", False)),
+        "anomaly_started_at": unit.anomaly_started_at.isoformat()
+        if getattr(unit, "anomaly_started_at", None)
+        else None,
         "is_unregistered_user": bool(unit.is_unregistered_user),
         "user_source":        unit.user_source or "master",
         "prev_planned_value": prev_unit.planned_value if prev_unit else None,
@@ -597,6 +639,8 @@ def get_or_create_work(body: schemas.WorkUnitQuery, db: Session = Depends(get_db
         unit.created_at = datetime.utcnow()
         db.add(unit)
         db.flush()
+    else:
+        raise_if_closed(unit)
 
     _flush_then_recompute_past_missing(db, body.company_id)
     _recompute_unit_derived(unit, settings, db)
@@ -643,6 +687,8 @@ def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
         unit.created_at = datetime.utcnow()
         db.add(unit)
         db.flush()
+    else:
+        raise_if_closed(unit)
 
     _flush_then_recompute_past_missing(db, body.company_id)
     _recompute_unit_derived(unit, settings, db)
@@ -655,13 +701,48 @@ def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
     return _unit_to_out(unit, settings, db, prev_unit)
 
 
+@router.get(
+    "/work/{unit_id}/status-history",
+    response_model=List[schemas.WorkUnitStatusHistoryItem],
+    summary="status 変化履歴（新しい順・読み取り専用）",
+)
+def get_work_unit_status_history(unit_id: int, db: Session = Depends(get_db)):
+    unit = db.get(models.WorkUnit, unit_id)
+    if not unit:
+        raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    rows = (
+        db.query(models.WorkUnitStatusHistory)
+        .filter(models.WorkUnitStatusHistory.work_unit_id == unit_id)
+        .order_by(models.WorkUnitStatusHistory.changed_at.desc())
+        .all()
+    )
+    out: List[schemas.WorkUnitStatusHistoryItem] = []
+    for r in rows:
+        out.append(
+            schemas.WorkUnitStatusHistoryItem(
+                id=r.id,
+                from_status=r.from_status,
+                to_status=r.to_status,
+                changed_at=r.changed_at.isoformat() if r.changed_at else None,
+                trigger_type=r.trigger_type,
+            )
+        )
+    return out
+
+
 @router.post("/work/{unit_id}/close", summary="【事務】作業記録を承認・完了（status=closed）")
 def approve_close_work(unit_id: int, db: Session = Depends(get_db)):
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
     settings = _get_or_create_settings(unit.company_id, db)
-    _apply_minimal_judgement(unit, settings, force_status="closed")
+    if is_closed(unit):
+        prev_unit = _find_prev_unit(
+            unit.company_id, unit.task_id, unit.process_id,
+            unit.user_id, unit.business_date, db,
+        )
+        return _unit_to_out(unit, settings, db, prev_unit)
+    _apply_minimal_judgement(unit, settings, db=db, force_status="closed")
     _flush_then_recompute_past_missing(db, unit.company_id)
     _touch_updated(unit)
     db.commit()
@@ -676,6 +757,7 @@ def mark_started(unit_id: int, db: Session = Depends(get_db)):
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     settings = _get_or_create_settings(unit.company_id, db)
     if unit.started_at is None:
         unit.started_at = datetime.utcnow()
@@ -705,6 +787,7 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
             unit_id,
         )
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     settings = _get_or_create_settings(unit.company_id, db)
     im = _norm_input_mode(settings)
     patch = body.model_dump(exclude_unset=True)
@@ -784,6 +867,7 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     settings = _get_or_create_settings(unit.company_id, db)
     im = _norm_input_mode(settings)
     patch = body.model_dump(exclude_unset=True)
@@ -897,6 +981,7 @@ def debug_set_business_date(
     unit = db.get(models.WorkUnit, body.id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     try:
         new_d = date_type.fromisoformat(body.business_date.strip())
     except ValueError:

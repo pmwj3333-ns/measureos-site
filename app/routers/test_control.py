@@ -18,6 +18,10 @@ from app import models
 from app.database import get_db
 from app.services.business_date import calc_business_date
 from app.services.judgement_promote import compute_red_deadline_jst
+from app.services.status_history import (
+    append_work_unit_status_history_if_changed,
+    norm_work_unit_status,
+)
 from app.services.missing_boundary import recompute_is_missing_for_past_business_dates
 from app.services.test_clock import (
     get_clock_state,
@@ -136,7 +140,9 @@ def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
         if st == "closed":
             continue
         if st == "red":
+            before_clear = norm_work_unit_status(unit.status)
             unit.status = "normal"
+            append_work_unit_status_history_if_changed(db, unit, before_clear, "system")
             n_red_cleared += 1
         _recompute_unit_derived(unit, settings, db)
 
@@ -154,8 +160,10 @@ def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
                 unit.business_date, jt, cid, db
             )
             if ref_jst >= deadline_jst:
+                before_red = norm_work_unit_status(unit.status)
                 unit.status = "red"
                 unit.updated_at = datetime.utcnow()
+                append_work_unit_status_history_if_changed(db, unit, before_red, "system")
                 n_red += 1
 
     db.commit()

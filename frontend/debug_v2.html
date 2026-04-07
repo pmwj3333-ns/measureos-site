@@ -163,14 +163,95 @@
   .test-clock-status { font-size: 0.78rem; color: #7ee787; margin: 6px 0; }
   .test-clock-status.inactive { color: #8b949e; }
   #test-clock-api-hint { margin-bottom: 8px; }
+  /* status 列: 事務で closed にした行もこの一覧に残る（全 status を表示） */
+  .cell-status-closed { color: #7ee787; font-weight: 600; }
+  .cell-status-blue { color: #79c0ff; font-weight: 600; }
+  .cell-status-red { color: #f85149; font-weight: 600; }
+  /* 予告・実績の行明細（一覧は短く、details で全件） */
+  td.cell-lines {
+    white-space: normal;
+    max-width: 22em;
+    vertical-align: top;
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+  .lines-short { color: #c9d1d9; word-break: break-word; }
+  .lines-detail { margin-top: 6px; }
+  .lines-detail summary {
+    cursor: pointer;
+    color: #58a6ff;
+    font-size: 0.72rem;
+    user-select: none;
+    list-style: none;
+  }
+  .lines-detail summary::-webkit-details-marker { display: none; }
+  .lines-full {
+    margin: 6px 0 0 0;
+    padding-left: 1.1em;
+    color: #e6edf3;
+  }
+  .lines-full li { margin: 3px 0; }
+  /* 一覧 + status 履歴パネル */
+  .debug-main {
+    display: grid;
+    grid-template-columns: 1fr min(380px, 42vw);
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .debug-main { grid-template-columns: 1fr; }
+  }
+  .detail-h {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #79c0ff;
+    margin-bottom: 8px;
+  }
+  .status-history-aside {
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 12px 14px 16px;
+    background: #161b22;
+    position: sticky;
+    top: 8px;
+    max-height: min(70vh, 520px);
+    overflow: auto;
+  }
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+    margin-top: 8px;
+  }
+  .history-table th,
+  .history-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #21262d;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .history-table th {
+    background: #0d1117;
+    color: #8b949e;
+    position: sticky;
+    top: 0;
+  }
+  #status-history-body .err { color: #f85149; }
+  tbody tr[data-unit-id] { cursor: pointer; }
+  tbody tr.row-selected {
+    outline: 2px solid #58a6ff;
+    outline-offset: -2px;
+    background: #1c2d3a;
+  }
 </style>
 </head>
 <body>
   <h1>debug v2</h1>
   <p class="sub">
-    <code>GET /v2/work/list?company_id=…</code> の応答をそのまま表にします（旧 /work/list は使いません）。
-    一覧の並びは API どおり（最新優先）。<strong>再計算・推定はしません</strong>（null は「—」のみ）。
-    営業日跨ぎ・judgement 跨ぎの検証は、下段の<strong>テスト専用・擬似現在時刻</strong>から操作します。サーバは <strong><code>python3 run.py</code></strong> で起動してください（テスト時計の有効化・8002 の掃除込み）。
+    <code>GET /v2/work/list?company_id=…</code> の JSON を表にします（最大200件・更新順）。
+    サーバ側で一覧取得時に班長判定を再計算し DB に反映したうえで返します。ここでは返却された <strong>status</strong> をそのまま表示します（<strong>closed も含む全状態</strong>。事務画面で完了にした行はここで <span class="cell-status-closed">closed</span> を確認できます）。
+    <strong>一覧の行をクリック</strong>すると、右のパネルに <code>work_unit_status_history</code> を <code>GET /v2/work/{id}/status-history</code> で取得して表示します（新しい順・<code>changed_at</code> は JST）。
+    null は「—」。営業日・judgement の検証は下段の<strong>テスト専用・擬似現在時刻</strong>から。サーバは <strong><code>python3 run.py</code></strong> で起動（テスト時計・8002 掃除込み）。
   </p>
 
   <div class="bar">
@@ -193,6 +274,7 @@
   <p class="hint">
     <a href="/sr/v2">班長マスタ（sr v2）</a>
     · <a href="/genba/v2">現場 v2</a>
+    · <a href="/office/v2">事務 v2（異常・完了）</a>
     · <a href="/debug/v2">debug v2</a>
   </p>
 
@@ -214,6 +296,7 @@
     </div>
   </details>
 
+  <div class="debug-main">
   <div class="wrap-table">
     <table>
       <thead>
@@ -225,21 +308,31 @@
           <th>process_id</th>
           <th>business_date</th>
           <th>planned_value</th>
+          <th title="planned_lines（要約・最大2件＋他N件）">予告内容</th>
           <th>planned_at</th>
           <th>started_at</th>
           <th>actual_value</th>
+          <th title="actual_lines（要約・最大2件＋他N件）">実績内容</th>
           <th>actual_at</th>
           <th>created_at</th>
           <th>user_pattern</th>
           <th>system_pattern</th>
           <th>judgement_red_deadline_at</th>
+          <th>anomaly_started_at</th>
           <th>status</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="16" class="empty">company_id を入力して読み込み</td></tr>
+        <tr><td colspan="19" class="empty">company_id を入力して読み込み</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <aside class="status-history-aside" id="status-history-aside" aria-label="status 履歴">
+    <h2 class="detail-h">status 履歴</h2>
+    <p id="status-history-hint" class="hint">一覧の行をクリックすると表示されます。</p>
+    <div id="status-history-body"></div>
+  </aside>
   </div>
 
   <div id="raw-json-wrap">
@@ -247,21 +340,25 @@
     <pre id="raw-json"></pre>
   </div>
 
+<script src="/static/format-jst-datetime.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
   let lastRows = null;
+  /** 一覧で選択中の unit_id（自動更新後も再取得する） */
+  let selectedUnitId = null;
   let pollTimer = null;
   const AUTO_MS = 3000;
   const LS_AUTO = "debug_v2_auto_refresh";
-  const TABLE_COL_COUNT = 16;
-  /** テーブル日時列（toJST 表示） */
+  const TABLE_COL_COUNT = 19;
+  /** テーブル日時列（formatJST / JST） */
   const TABLE_JST_KEYS = new Set([
     "planned_at",
     "started_at",
     "actual_at",
     "created_at",
     "judgement_red_deadline_at",
+    "anomaly_started_at",
   ]);
 
   function param(key, fb) {
@@ -274,28 +371,24 @@
     return String(v);
   }
 
-  function toJST(utc) {
-    if (utc === null || utc === undefined) return utc;
-    if (utc === "-") return utc;
-    let s = String(utc).trim();
-    if (s === "" || s === "—") return utc;
-    // API の naive UTC（末尾 Z / オフセットなし）を UTC として解釈してから JST 表示
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/.test(s)) {
-      s = s + "Z";
-    }
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return utc;
-    return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  }
-
   function dispCell(key, v) {
     if (!TABLE_JST_KEYS.has(key)) return disp(v);
     if (v === null || v === undefined) return disp(v);
     const vs = String(v).trim();
     if (vs === "-" || vs === "—") return vs;
-    const t = toJST(v);
-    if (t === null || t === undefined) return disp(v);
-    return String(t);
+    return formatJST(v);
+  }
+
+  /** status 列のみ色分け（closed は事務完了後の確認用） */
+  function statusCellHtml(r) {
+    const v = dispCell("status", r.status);
+    const s = (r.status || "").toString().trim().toLowerCase();
+    let cls = "";
+    if (s === "closed") cls = "cell-status-closed";
+    else if (s === "blue") cls = "cell-status-blue";
+    else if (s === "red") cls = "cell-status-red";
+    if (cls) return '<td class="' + cls + '">' + esc(v) + "</td>";
+    return "<td>" + esc(v) + "</td>";
   }
 
   function esc(s) {
@@ -306,27 +399,220 @@
       .replace(/"/g, "&quot;");
   }
 
+  const LINES_PREVIEW_MAX = 2;
+
+  function lineDisplayName(line) {
+    if (!line || typeof line !== "object") return "";
+    const a = line.label != null && String(line.label).trim();
+    const b = line.item_name != null && String(line.item_name).trim();
+    return (a || b || "").trim();
+  }
+
+  function parseLinesJsonMaybe(raw) {
+    if (typeof raw !== "string" || !raw.trim()) return null;
+    try {
+      const data = JSON.parse(raw);
+      return Array.isArray(data) ? data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
+   * API の planned_lines / actual_lines（または *_lines_json）から正規化した行配列。
+   * 空のときは planned_item_name 等のレガシー1行にフォールバック。
+   */
+  function normalizedLines(row, kind) {
+    const key = kind === "planned" ? "planned_lines" : "actual_lines";
+    let arr = row[key];
+    if (!Array.isArray(arr) || !arr.length) {
+      const rawKey = kind === "planned" ? "planned_lines_json" : "actual_lines_json";
+      const parsed = row[rawKey] != null ? parseLinesJsonMaybe(String(row[rawKey])) : null;
+      if (parsed) arr = parsed;
+    }
+    const out = [];
+    if (Array.isArray(arr)) {
+      for (const L of arr) {
+        if (!L || typeof L !== "object") continue;
+        const name = lineDisplayName(L);
+        const v = L.value;
+        if (v == null || !Number.isFinite(Number(v))) continue;
+        out.push({ name: name || "（無名）", value: Number(v) });
+      }
+    }
+    if (out.length) return out;
+    if (kind === "planned") {
+      const pv = row.planned_value;
+      const name =
+        lineDisplayName({ label: row.planned_item_name }) ||
+        lineDisplayName({ label: row.planned_work_label }) ||
+        lineDisplayName({ label: row.planned_work_type });
+      if (name && pv != null && Number.isFinite(Number(pv)))
+        return [{ name, value: Number(pv) }];
+    } else {
+      const av = row.actual_value;
+      const name =
+        lineDisplayName({ label: row.actual_item_name }) ||
+        lineDisplayName({ label: row.actual_work_label }) ||
+        lineDisplayName({ label: row.actual_work_type });
+      if (name && av != null && Number.isFinite(Number(av)))
+        return [{ name, value: Number(av) }];
+    }
+    return [];
+  }
+
+  function qtyWithUnit(n, unit) {
+    const u = unit && String(unit).trim() ? unit : "個";
+    if (n == null || !Number.isFinite(Number(n))) return "—";
+    return String(Number(n)) + u;
+  }
+
+  /** 一覧用: 先頭 LINES_PREVIEW_MAX 件まで「名 数量単位」、超過は「他N件」 */
+  function summarizeLinesShort(lines, unit) {
+    if (!lines.length) return "—";
+    const parts = [];
+    for (let i = 0; i < Math.min(LINES_PREVIEW_MAX, lines.length); i++) {
+      const L = lines[i];
+      parts.push((L.name || "（無名）") + " " + qtyWithUnit(L.value, unit));
+    }
+    const rest = lines.length - LINES_PREVIEW_MAX;
+    if (rest > 0) parts.push("他" + rest + "件");
+    return parts.join(" / ");
+  }
+
+  function plannedLinesCellHtml(r) {
+    const lines = normalizedLines(r, "planned");
+    const unit = r.unit || "個";
+    const short = summarizeLinesShort(lines, unit);
+    if (!lines.length) {
+      return '<td class="cell-lines"><span class="lines-short">' + esc(short) + "</span></td>";
+    }
+    const full = lines
+      .map(
+        (L) =>
+          "<li>" +
+          esc((L.name || "（無名）") + " " + qtyWithUnit(L.value, unit)) +
+          "</li>"
+      )
+      .join("");
+    return (
+      '<td class="cell-lines">' +
+      '<div class="lines-short">' +
+      esc(short) +
+      "</div>" +
+      '<details class="lines-detail"><summary>明細（全' +
+      lines.length +
+      "件）</summary>" +
+      '<ul class="lines-full">' +
+      full +
+      "</ul></details></td>"
+    );
+  }
+
+  function actualLinesCellHtml(r) {
+    const lines = normalizedLines(r, "actual");
+    const unit = r.unit || "個";
+    const short = summarizeLinesShort(lines, unit);
+    if (!lines.length) {
+      return '<td class="cell-lines"><span class="lines-short">' + esc(short) + "</span></td>";
+    }
+    const full = lines
+      .map(
+        (L) =>
+          "<li>" +
+          esc((L.name || "（無名）") + " " + qtyWithUnit(L.value, unit)) +
+          "</li>"
+      )
+      .join("");
+    return (
+      '<td class="cell-lines">' +
+      '<div class="lines-short">' +
+      esc(short) +
+      "</div>" +
+      '<details class="lines-detail"><summary>明細（全' +
+      lines.length +
+      "件）</summary>" +
+      '<ul class="lines-full">' +
+      full +
+      "</ul></details></td>"
+    );
+  }
+
   function loadCompany() {
     $("company").value = param("company", localStorage.getItem("debug_v2_company") || "");
   }
 
-  function formatNowJst() {
-    return new Date().toLocaleString("ja-JP", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
+  async function fetchStatusHistory(unitId) {
+    const body = $("status-history-body");
+    const hint = $("status-history-hint");
+    hint.textContent =
+      "unit_id=" +
+      unitId +
+      " · GET /v2/work/" +
+      unitId +
+      "/status-history";
+    body.innerHTML = '<p class="hint">読み込み中…</p>';
+    try {
+      const res = await fetch("/v2/work/" + encodeURIComponent(unitId) + "/status-history");
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : [];
+      } catch (_) {
+        data = null;
+      }
+      if (!res.ok) {
+        const msg =
+          data && data.detail
+            ? typeof data.detail === "string"
+              ? data.detail
+              : JSON.stringify(data.detail)
+            : text || String(res.status);
+        body.innerHTML = '<p class="hint err">' + esc(msg) + "</p>";
+        return;
+      }
+      if (!Array.isArray(data) || !data.length) {
+        body.innerHTML = '<p class="hint">履歴なし</p>';
+        return;
+      }
+      const rows = data
+        .map(
+          (h) =>
+            "<tr>" +
+            "<td>" +
+            esc(h.from_status != null && String(h.from_status).trim() !== "" ? h.from_status : "—") +
+            "</td>" +
+            "<td>" +
+            esc(h.to_status != null && String(h.to_status).trim() !== "" ? h.to_status : "—") +
+            "</td>" +
+            "<td>" +
+            esc(h.changed_at ? formatJST(h.changed_at) : "—") +
+            "</td>" +
+            "<td>" +
+            esc(
+              h.trigger_type != null && String(h.trigger_type).trim() !== ""
+                ? h.trigger_type
+                : "—"
+            ) +
+            "</td>" +
+            "</tr>"
+        )
+        .join("");
+      body.innerHTML =
+        '<table class="history-table"><thead><tr>' +
+        "<th>from_status</th><th>to_status</th><th>changed_at（JST）</th><th>trigger_type</th>" +
+        "</tr></thead><tbody>" +
+        rows +
+        "</tbody></table>";
+    } catch (e) {
+      body.innerHTML = '<p class="hint err">' + esc(String(e.message || e)) + "</p>";
+    }
   }
 
   function setLastUpdated(ok) {
     const el = $("last-updated");
     el.hidden = false;
-    el.textContent = ok ? "最終更新: " + formatNowJst() : "最終取得: " + formatNowJst() + "（エラー）";
+    el.textContent = ok ? "最終更新: " + formatNowJST() : "最終取得: " + formatNowJST() + "（エラー）";
     el.classList.toggle("err", !ok);
   }
 
@@ -363,6 +649,8 @@
         $("tbody").innerHTML =
           '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">JSON でない応答</td></tr>';
         lastRows = null;
+        selectedUnitId = null;
+        $("status-history-body").innerHTML = '<p class="hint">一覧を取得できませんでした。</p>';
         $("raw-json").textContent = text.slice(0, 8000);
         setLastUpdated(false);
         return;
@@ -375,6 +663,8 @@
           esc(data.detail || res.status) +
           "</td></tr>";
         lastRows = null;
+        selectedUnitId = null;
+        $("status-history-body").innerHTML = '<p class="hint">一覧を取得できませんでした。</p>';
         $("raw-json").textContent = JSON.stringify(data, null, 2);
         setLastUpdated(false);
         return;
@@ -383,6 +673,8 @@
         $("tbody").innerHTML =
           '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">配列ではありません</td></tr>';
         lastRows = null;
+        selectedUnitId = null;
+        $("status-history-body").innerHTML = '<p class="hint">一覧を取得できませんでした。</p>';
         setLastUpdated(false);
         return;
       }
@@ -392,6 +684,8 @@
       if (!data.length) {
         $("tbody").innerHTML =
           '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">データなし</td></tr>';
+        selectedUnitId = null;
+        $("status-history-body").innerHTML = '<p class="hint">履歴なし（一覧に行がありません）</p>';
         setLastUpdated(true);
         return;
       }
@@ -404,28 +698,52 @@
         "process_id",
         "business_date",
         "planned_value",
+        "planned_content",
         "planned_at",
         "started_at",
         "actual_value",
+        "actual_content",
         "actual_at",
         "created_at",
         "user_pattern",
         "system_pattern",
         "judgement_red_deadline_at",
+        "anomaly_started_at",
         "status",
       ];
 
       $("tbody").innerHTML = data
         .map((r, idx) => {
-          const trOpen = idx === 0 ? '<tr class="row-latest">' : "<tr>";
-          return (
-            trOpen +
-            cols.map((k) => "<td>" + esc(dispCell(k, r[k])) + "</td>").join("") +
-            "</tr>"
-          );
+          const trOpen =
+            idx === 0
+              ? '<tr class="row-latest row-selectable" data-unit-id="' + r.id + '">'
+              : '<tr class="row-selectable" data-unit-id="' + r.id + '">';
+          const tds = cols
+            .map((k) => {
+              if (k === "status") return statusCellHtml(r);
+              if (k === "planned_content") return plannedLinesCellHtml(r);
+              if (k === "actual_content") return actualLinesCellHtml(r);
+              return "<td>" + esc(dispCell(k, r[k])) + "</td>";
+            })
+            .join("");
+          return trOpen + tds + "</tr>";
         })
         .join("");
       setLastUpdated(true);
+      if (selectedUnitId != null) {
+        const tr = $("tbody").querySelector('tr[data-unit-id="' + selectedUnitId + '"]');
+        if (tr) {
+          $("tbody")
+            .querySelectorAll("tr[data-unit-id]")
+            .forEach((el) => el.classList.remove("row-selected"));
+          tr.classList.add("row-selected");
+          fetchStatusHistory(selectedUnitId);
+        } else {
+          selectedUnitId = null;
+          $("status-history-body").innerHTML =
+            '<p class="hint">選択していた行が一覧に無いため解除しました。</p>';
+        }
+      }
     } finally {
       if (!fromAuto) $("btn-load").disabled = false;
     }
@@ -438,6 +756,19 @@
       load({ fromAuto: true });
     }
   }
+
+  $("tbody").addEventListener("click", function (ev) {
+    const tr = ev.target.closest("tr[data-unit-id]");
+    if (!tr) return;
+    const id = Number(tr.getAttribute("data-unit-id"));
+    if (Number.isNaN(id)) return;
+    selectedUnitId = id;
+    $("tbody")
+      .querySelectorAll("tr[data-unit-id]")
+      .forEach((el) => el.classList.remove("row-selected"));
+    tr.classList.add("row-selected");
+    fetchStatusHistory(id);
+  });
 
   $("btn-load").addEventListener("click", () => load({ fromAuto: false }));
   $("btn-json").addEventListener("click", () => {
@@ -476,10 +807,7 @@
       const serverDisp =
         j.server_utc_iso === null || j.server_utc_iso === undefined
           ? "—"
-          : (() => {
-              const t = toJST(j.server_utc_iso);
-              return t === null || t === undefined ? "—" : t;
-            })();
+          : formatJST(j.server_utc_iso);
       diag.textContent =
         "テストAPI有効: " +
         (apiOn ? "True" : "False") +

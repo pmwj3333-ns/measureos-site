@@ -75,9 +75,49 @@ def _sqlite_migrate():
                 ("status", "VARCHAR DEFAULT 'normal'"),
                 ("system_pattern", "VARCHAR"),
                 ("user_pattern", "VARCHAR"),
+                ("planned_at", "DATETIME"),
+                ("input_source", "VARCHAR"),
+                ("anomaly_started_at", "DATETIME"),
             ):
                 if col not in wu:
                     conn.execute(text(f"ALTER TABLE work_unit ADD COLUMN {col} {typ}"))
+        except Exception:
+            pass
+        # work_unit_status_history: models.WorkUnitStatusHistory と同一 DDL（create_all 後の冪等救済）
+        try:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS work_unit_status_history (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        work_unit_id INTEGER NOT NULL,
+                        from_status VARCHAR,
+                        to_status VARCHAR NOT NULL,
+                        changed_at DATETIME NOT NULL,
+                        trigger_type VARCHAR,
+                        FOREIGN KEY(work_unit_id) REFERENCES work_unit (id)
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_work_unit_status_history_work_unit_id "
+                    "ON work_unit_status_history (work_unit_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_work_unit_status_history_changed_at "
+                    "ON work_unit_status_history (changed_at)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_work_unit_status_history_unit_changed "
+                    "ON work_unit_status_history (work_unit_id, changed_at)"
+                )
+            )
         except Exception:
             pass
 
@@ -205,6 +245,11 @@ def debug_screen():
 @app.get("/debug/v2", summary="debug v2（DB 参照のみ・ field_v2 用）")
 def debug_v2_screen():
     return _file_response_or_404("debug_v2.html")
+
+
+@app.get("/office/v2", summary="事務 v2（blue/red 確認・完了）")
+def office_v2_screen():
+    return _file_response_or_404("office_v2.html")
 
 
 @app.get("/dev")

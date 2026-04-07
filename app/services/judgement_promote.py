@@ -22,6 +22,10 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.services.business_date import calc_business_date, next_business_day
+from app.services.status_history import (
+    append_work_unit_status_history_if_changed,
+    norm_work_unit_status,
+)
 from app.services.test_clock import reference_utc_now
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -143,7 +147,9 @@ def promote_blue_to_red_after_judgement(
             continue
         deadline_jst = compute_red_deadline_jst(unit.business_date, jt, company_id, db)
         if ref_jst >= deadline_jst:
+            before = norm_work_unit_status(unit.status)
             unit.status = "red"
             unit.updated_at = datetime.utcnow()
+            append_work_unit_status_history_if_changed(db, unit, before, "system")
             n += 1
     return n

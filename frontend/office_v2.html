@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS — 事務 v2（異常確認・完了）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #f4f6f9;
+    color: #1a1a1a;
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+  header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 14px 20px;
+  }
+  header h1 { font-size: 1.05rem; font-weight: 700; }
+  header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; }
+  .main {
+    display: grid;
+    grid-template-columns: 1fr min(380px, 38vw);
+    gap: 0;
+    min-height: calc(100vh - 72px);
+  }
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+  }
+  .panel {
+    padding: 16px 20px 32px;
+    border-right: 1px solid #dde2e8;
+    background: #fff;
+  }
+  @media (max-width: 900px) {
+    .panel { border-right: none; border-bottom: 1px solid #dde2e8; }
+  }
+  .detail-panel {
+    background: #fafbfc;
+    padding: 16px 20px 32px;
+    border-left: 1px solid #e8ecf0;
+  }
+  @media (max-width: 900px) {
+    .detail-panel { border-left: none; }
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  label { font-size: 0.75rem; color: #5c6570; display: block; margin-bottom: 4px; }
+  input[type="text"] {
+    padding: 8px 12px;
+    border: 1px solid #c5ccd4;
+    border-radius: 6px;
+    background: #fff;
+    width: min(240px, 100%);
+    font-family: inherit;
+  }
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .btn-load { background: #1e3a5f; color: #fff; }
+  .btn-load:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-close {
+    background: #2d6a4f;
+    color: #fff;
+    margin-top: 12px;
+    width: 100%;
+  }
+  .btn-close:disabled { opacity: 0.45; cursor: not-allowed; }
+  .hint { font-size: 0.72rem; color: #6b7280; margin-top: 8px; }
+  .err { color: #b42318; font-size: 0.85rem; margin-top: 8px; }
+  .ok { color: #1d6f42; font-size: 0.85rem; margin-top: 8px; }
+  .wrap-table { overflow-x: auto; border: 1px solid #dde2e8; border-radius: 8px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  th, td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eef1f4;
+    vertical-align: top;
+  }
+  th {
+    background: #f0f3f7;
+    color: #4a5568;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #f7f9fc; }
+  tbody tr.selected {
+    background: #e8f0fe;
+    outline: 2px solid #4c8bf5;
+    outline-offset: -2px;
+  }
+  .status-blue { color: #1565c0; font-weight: 600; }
+  .status-red { color: #c62828; font-weight: 600; }
+  .mono { font-family: ui-monospace, monospace; font-size: 0.76rem; }
+  .detail-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 10px;
+  }
+  .detail-empty {
+    font-size: 0.85rem;
+    color: #6b7280;
+    padding: 12px 0;
+  }
+  .dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 14px;
+    font-size: 0.8rem;
+  }
+  .dl dt { color: #6b7280; white-space: nowrap; }
+  .dl dd { color: #1a1a1a; word-break: break-word; }
+</style>
+</head>
+<body>
+<header>
+  <h1>事務 — 異常確認（v2）</h1>
+  <p>
+    機能は <strong>一覧表示</strong>・<strong>詳細表示</strong>・<strong>closed にする</strong> のみです（修正・メモはありません）。
+    <strong>blue / red</strong> だけを表示します。完了（closed）にした行は<strong>この一覧から消えます</strong>。
+    <code>status=closed</code> の確認は <a href="/debug/v2" style="color:#a8d4ff;">debug v2</a> の一覧で行ってください。
+    完了後は API 上も <strong>status を元に戻せません</strong>（現場・事務の更新は 409 になります）。
+  </p>
+</header>
+
+<div class="main">
+  <div class="panel">
+    <div class="bar">
+      <div>
+        <label for="company">company_id</label>
+        <input type="text" id="company" placeholder="例: test1" autocomplete="off" />
+      </div>
+      <div style="align-self: flex-end;">
+        <button type="button" class="btn-load" id="btn-load">読み込み</button>
+      </div>
+    </div>
+    <p class="hint">GET <span class="mono">/v2/work/list?company_id=…</span> — 応答のうち <strong>blue / red</strong> の行だけを表示します（closed・normal は出しません）。</p>
+    <p id="msg" class="err" hidden></p>
+    <p id="ok" class="ok" hidden></p>
+
+    <div class="wrap-table">
+      <table>
+        <thead>
+          <tr>
+            <th>business_date</th>
+            <th>task_id</th>
+            <th>process_id</th>
+            <th>planned</th>
+            <th>actual</th>
+            <th>system_pattern</th>
+            <th>status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7" class="detail-empty">company_id を入力して読み込み</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <aside class="detail-panel">
+    <div class="detail-title">詳細</div>
+    <div id="detail-empty" class="detail-empty">一覧から行を選択してください。</div>
+    <div id="detail-body" hidden>
+      <dl class="dl" id="detail-dl"></dl>
+      <button type="button" class="btn-close" id="btn-close" disabled>closed にする</button>
+      <p id="close-msg" class="err" hidden></p>
+    </div>
+  </aside>
+</div>
+
+<script src="/static/format-jst-datetime.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const tbody = $("tbody");
+  const companyEl = $("company");
+  const btnLoad = $("btn-load");
+  const btnClose = $("btn-close");
+  const detailEmpty = $("detail-empty");
+  const detailBody = $("detail-body");
+  const detailDl = $("detail-dl");
+  const msg = $("msg");
+  const ok = $("ok");
+  const closeMsg = $("close-msg");
+
+  let rows = [];
+  let filtered = [];
+  let selected = null;
+
+  function param(name) {
+    const q = new URLSearchParams(window.location.search);
+    return (q.get(name) || "").trim();
+  }
+
+  function esc(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function fmt(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    return esc(v);
+  }
+
+  /** API 日時列（UTC 想定）→ JST 表示（format-jst-datetime.js の formatJST） */
+  const DATETIME_KEYS = new Set([
+    "planned_at",
+    "started_at",
+    "actual_at",
+    "created_at",
+  ]);
+
+  function fmtDetail(k, v) {
+    if (DATETIME_KEYS.has(k)) return esc(formatJST(v));
+    return fmt(v);
+  }
+
+  function loadCompany() {
+    const c = param("company") || param("company_id");
+    if (c) companyEl.value = c;
+  }
+
+  function isAnomalyStatus(st) {
+    const s = (st || "").toString().trim().toLowerCase();
+    return s === "blue" || s === "red";
+  }
+
+  function showErr(t) {
+    msg.hidden = !t;
+    msg.textContent = t || "";
+    ok.hidden = true;
+  }
+  function showOk(t) {
+    ok.hidden = !t;
+    ok.textContent = t || "";
+    if (t) msg.hidden = true;
+  }
+
+  function renderTable() {
+    filtered = rows.filter((r) => isAnomalyStatus(r.status));
+    if (!rows.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="7" class="detail-empty">データなし</td></tr>';
+      return;
+    }
+    if (!filtered.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="7" class="detail-empty">blue/red の行がありません（この company の全件は normal 等）</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered
+      .map((r) => {
+        const sel = selected && selected.id === r.id;
+        const st = (r.status || "").toLowerCase();
+        const stClass = st === "blue" ? "status-blue" : st === "red" ? "status-red" : "";
+        return (
+          '<tr class="' +
+          (sel ? "selected " : "") +
+          '" data-id="' +
+          r.id +
+          '">' +
+          "<td class=\"mono\">" +
+          fmt(r.business_date) +
+          "</td>" +
+          "<td class=\"mono\">" +
+          fmt(r.task_id) +
+          "</td>" +
+          "<td class=\"mono\">" +
+          fmt(r.process_id) +
+          "</td>" +
+          "<td>" +
+          fmt(r.planned_value) +
+          "</td>" +
+          "<td>" +
+          fmt(r.actual_value) +
+          "</td>" +
+          "<td>" +
+          fmt(r.system_pattern) +
+          "</td>" +
+          '<td class="' +
+          stClass +
+          '">' +
+          fmt(r.status) +
+          "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+
+    tbody.querySelectorAll("tr[data-id]").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const id = Number(tr.getAttribute("data-id"));
+        selectById(id);
+      });
+    });
+  }
+
+  function selectById(id) {
+    selected = filtered.find((r) => r.id === id) || null;
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      tr.classList.toggle(
+        "selected",
+        selected && Number(tr.getAttribute("data-id")) === selected.id
+      );
+    });
+    renderDetail();
+  }
+
+  function renderDetail() {
+    closeMsg.hidden = true;
+    closeMsg.textContent = "";
+    if (!selected) {
+      detailEmpty.hidden = false;
+      detailBody.hidden = true;
+      btnClose.disabled = true;
+      return;
+    }
+    detailEmpty.hidden = true;
+    detailBody.hidden = false;
+    const r = selected;
+    const lines = [
+      ["id", r.id],
+      ["planned_at", r.planned_at],
+      ["started_at", r.started_at],
+      ["actual_at", r.actual_at],
+      ["created_at", r.created_at],
+      ["user_pattern", r.user_pattern],
+      ["system_pattern", r.system_pattern],
+      ["input_source", r.input_source],
+    ];
+    detailDl.innerHTML = lines
+      .map(
+        ([k, v]) =>
+          "<dt>" +
+          esc(k) +
+          "</dt><dd class=\"mono\">" +
+          fmtDetail(k, v) +
+          "</dd>"
+      )
+      .join("");
+    const st = (r.status || "").toLowerCase();
+    const canClose = st === "blue" || st === "red";
+    btnClose.disabled = !canClose;
+    btnClose.dataset.unitId = String(r.id);
+  }
+
+  async function load() {
+    const cid = companyEl.value.trim();
+    showErr("");
+    showOk("");
+    if (!cid) {
+      showErr("company_id を入力してください");
+      return;
+    }
+    history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
+    btnLoad.disabled = true;
+    try {
+      const res = await fetch(
+        "/v2/work/list?company_id=" + encodeURIComponent(cid)
+      );
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        showErr("JSON でない応答");
+        rows = [];
+        filtered = [];
+        selected = null;
+        renderTable();
+        renderDetail();
+        return;
+      }
+      if (!res.ok) {
+        showErr(data.detail || "エラー " + res.status);
+        rows = [];
+        filtered = [];
+        selected = null;
+        renderTable();
+        renderDetail();
+        return;
+      }
+      if (!Array.isArray(data)) {
+        showErr("配列ではありません");
+        rows = [];
+        renderTable();
+        renderDetail();
+        return;
+      }
+      rows = data;
+      selected = null;
+      renderTable();
+      renderDetail();
+      showOk(
+        "全 " +
+          data.length +
+          " 件中、blue/red " +
+          data.filter((r) => isAnomalyStatus(r.status)).length +
+          " 件を表示"
+      );
+    } finally {
+      btnLoad.disabled = false;
+    }
+  }
+
+  async function closeUnit() {
+    const id = btnClose.dataset.unitId;
+    if (!id) return;
+    closeMsg.hidden = true;
+    btnClose.disabled = true;
+    try {
+      const res = await fetch("/v2/work/" + encodeURIComponent(id) + "/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        closeMsg.hidden = false;
+        closeMsg.textContent = "応答が JSON ではありません";
+        btnClose.disabled = false;
+        return;
+      }
+      if (!res.ok) {
+        closeMsg.hidden = false;
+        closeMsg.textContent = data.detail || "エラー " + res.status;
+        btnClose.disabled = false;
+        return;
+      }
+      showOk("unit_id=" + id + " を closed にしました。一覧を再読込しました。");
+      selected = null;
+      await load();
+    } catch (e) {
+      closeMsg.hidden = false;
+      closeMsg.textContent = String(e);
+      btnClose.disabled = false;
+    }
+  }
+
+  $("btn-load").addEventListener("click", load);
+  btnClose.addEventListener("click", closeUnit);
+  companyEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") load();
+  });
+
+  loadCompany();
+  if (companyEl.value.trim()) load();
+})();
+</script>
+</body>
+</html>

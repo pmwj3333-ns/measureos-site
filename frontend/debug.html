@@ -162,10 +162,11 @@
         <th>missing</th>
         <th>inv_flow</th>
         <th>diff_ano</th>
+        <th title="異常の初回発生（サーバ記録）">anomaly_started</th>
       </tr>
     </thead>
     <tbody id="log-body">
-      <tr><td colspan="20" class="empty">company_id を入力して「取得」してください</td></tr>
+      <tr><td colspan="21" class="empty">company_id を入力して「取得」してください</td></tr>
     </tbody>
   </table>
 </div>
@@ -418,7 +419,7 @@ async function loadLogs() {
 
   const tbody = document.getElementById("log-body");
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="20" class="empty">データがありません</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="21" class="empty">データがありません</td></tr>';
     return;
   }
 
@@ -449,6 +450,7 @@ async function loadLogs() {
       <td class="${r.is_missing      ? 'flag-true' : 'flag-false'}">${r.is_missing      ? "✗" : "—"}</td>
       <td class="${r.is_invalid_flow ? 'flag-true' : 'flag-false'}">${r.is_invalid_flow ? "✗" : "—"}</td>
       <td class="${r.is_diff_anomaly ? 'flag-true' : 'flag-false'}">${r.is_diff_anomaly ? "✗" : "—"}</td>
+      <td>${fmtTimeJST(r.anomaly_started_at)}</td>
     </tr>
 `;
   }).join("");

@@ -293,6 +293,7 @@
 <datalist id="dl-item-name"></datalist>
 <datalist id="dl-work-label"></datalist>
 
+<script src="/static/format-jst-datetime.js"></script>
 <script>
 let unitId = null;
 let lastWorkData = null;
@@ -927,7 +928,7 @@ async function showActualScreen(data, opts) {
   renderPlannedSummaryForActual(data);
   const stInfo = document.getElementById("started-info");
   if (data.started_at) {
-    stInfo.textContent = `着手済み ✓  ${fmtTime(data.started_at)}`;
+    stInfo.textContent = `着手済み ✓  ${formatJST(data.started_at)}`;
     stInfo.style.display = "block";
   } else {
     stInfo.style.display = "none";
@@ -945,15 +946,6 @@ async function showActualScreen(data, opts) {
   document.getElementById("actual-btn").disabled = false;
   submitting = false;
   show("actual");
-}
-
-function fmtTime(iso) {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  } catch (_) { return iso; }
 }
 
 async function submitPlanned() {

@@ -8,6 +8,7 @@ from app.database import get_db
 from app.services import anomaly as anomaly_svc
 from app.services.business_date import calc_business_date_with_db, next_business_day
 from app.services.event_log import log_event, EventType
+from app.services.work_unit_guard import is_closed, raise_if_closed
 
 router = APIRouter(prefix="/作業記録", tags=["作業記録"])
 
@@ -190,6 +191,8 @@ def get_or_create_unit(body: schemas.UnitIdentifiers, db: Session = Depends(get_
     unit, is_new = _get_or_create_unit(
         body.company_id, body.task_id, body.process_id, body.user_id, db, settings
     )
+    if not is_new:
+        raise_if_closed(unit)
     if is_new:
         log_event(db, EventType.CREATE_UNIT, body.company_id,
                   actor_role="field", actor_id=body.user_id,
@@ -254,6 +257,8 @@ def start_next_business_day(body: schemas.NextDayStartCreate, db: Session = Depe
                   payload={"task_id": body.task_id, "process_id": body.process_id,
                            "forecast_ref_id": unit.forecast_ref_id,
                            "next_business_date": str(next_biz_date)})
+    else:
+        raise_if_closed(unit)
 
     # 着手記録（重複しない）
     if unit.started_at is None:
@@ -278,6 +283,7 @@ def create_started(unit_id: int, body: schemas.StartedCreate, db: Session = Depe
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     settings = _get_settings(unit.company_id, db)
 
     if unit.started_at is None:
@@ -303,6 +309,7 @@ def create_actual_bulk(unit_id: int, body: schemas.ActualBulkCreate, db: Session
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     settings = _get_settings(unit.company_id, db)
 
     # 再送信検出（フェーズ1：ブロックしないが記録する）
@@ -350,6 +357,7 @@ def create_planned_bulk(unit_id: int, body: schemas.PlannedBulkCreate, db: Sessi
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
     settings = _get_settings(unit.company_id, db)
 
     # 再送信検出
@@ -394,12 +402,15 @@ def approve(unit_id: int, body: schemas.ApprovalCreate, db: Session = Depends(ge
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
     settings = _get_settings(unit.company_id, db)
+    if is_closed(unit):
+        db.refresh(unit)
+        return _with_lines(unit, db)
     if unit.status == "normal":
         raise HTTPException(status_code=400, detail="異常がないため承認は不要です")
 
     from app.routers.work import _apply_minimal_judgement
 
-    _apply_minimal_judgement(unit, settings, force_status="closed")
+    _apply_minimal_judgement(unit, settings, db=db, force_status="closed")
     if body.memo:
         unit.memo = body.memo
 

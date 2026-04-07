@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, Time
+from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, Time, ForeignKey, Index
 from app.database import Base
 
 
@@ -34,6 +34,7 @@ class WorkUnit(Base):
     process_id      = Column(String, nullable=False)
     user_id         = Column(String, nullable=False)
     business_date   = Column(Date, nullable=False)
+    input_source    = Column(String, nullable=True)
     created_at      = Column(DateTime, nullable=True)
     updated_at      = Column(DateTime, nullable=True)
     business_date_source = Column(String, nullable=True)
@@ -44,6 +45,7 @@ class WorkUnit(Base):
     planned_item_name = Column(String, nullable=True)
     planned_lines_json = Column(String, nullable=True)
     planned_value   = Column(Float, nullable=True)
+    planned_at      = Column(DateTime, nullable=True)
     started_at      = Column(DateTime, nullable=True)
     actual_work_type = Column(String, nullable=True)
     actual_work_label = Column(String, nullable=True)
@@ -63,6 +65,25 @@ class WorkUnit(Base):
     is_missing      = Column(Boolean, default=False)
     is_invalid_flow = Column(Boolean, default=False)
     is_diff_anomaly = Column(Boolean, default=False)
+    anomaly_started_at = Column(DateTime, nullable=True)
 
     is_unregistered_user = Column(Boolean, default=False)
     user_source          = Column(String, nullable=True, default="master")
+
+
+class WorkUnitStatusHistory(Base):
+    """work_unit.status の変化履歴（挿入ロジックは別途）。"""
+
+    __tablename__ = "work_unit_status_history"
+    __table_args__ = (
+        Index("ix_work_unit_status_history_work_unit_id", "work_unit_id"),
+        Index("ix_work_unit_status_history_changed_at", "changed_at"),
+        Index("ix_work_unit_status_history_unit_changed", "work_unit_id", "changed_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    work_unit_id = Column(Integer, ForeignKey("work_unit.id"), nullable=False)
+    from_status = Column(String, nullable=True)
+    to_status = Column(String, nullable=False)
+    changed_at = Column(DateTime, nullable=False)
+    trigger_type = Column(String, nullable=True)
