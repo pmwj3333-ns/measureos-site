@@ -18,6 +18,7 @@ from app import models
 from app.database import get_db
 from app.services.business_date import calc_business_date
 from app.services.judgement_promote import compute_red_deadline_jst
+from app.services.phase2 import is_phase2_enabled
 from app.services.status_history import (
     append_work_unit_status_history_if_changed,
     norm_work_unit_status,
@@ -147,7 +148,8 @@ def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
         _recompute_unit_derived(unit, settings, db)
 
     n_red = 0
-    if body.apply_judgement_red:
+    phase2_on = is_phase2_enabled(settings)
+    if body.apply_judgement_red and phase2_on:
         for unit in units:
             st = (unit.status or "").strip().lower()
             if st == "closed":
@@ -172,5 +174,7 @@ def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
         "recomputed_past_business_date_rows": n_miss,
         "red_cleared_for_rejudge": n_red_cleared,
         "promoted_blue_to_red": n_red,
+        "phase2_enabled": phase2_on,
+        "judgement_red_skipped": bool(body.apply_judgement_red and not phase2_on),
         "clock": get_clock_state(),
     }

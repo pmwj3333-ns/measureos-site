@@ -29,6 +29,16 @@ def _sqlite_migrate():
                         "ALTER TABLE company_settings ADD COLUMN input_mode VARCHAR DEFAULT 'manufacturing'"
                     )
                 )
+            if "company_name" not in cs:
+                conn.execute(
+                    text("ALTER TABLE company_settings ADD COLUMN company_name VARCHAR DEFAULT ''")
+                )
+            if "phase2_enabled" not in cs:
+                conn.execute(
+                    text(
+                        "ALTER TABLE company_settings ADD COLUMN phase2_enabled BOOLEAN DEFAULT 0"
+                    )
+                )
         except Exception:
             pass
         try:

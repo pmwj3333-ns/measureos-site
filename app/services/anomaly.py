@@ -7,7 +7,7 @@
 
 WorkUnit のサマリフラグのうち is_invalid_flow / is_diff_anomaly を更新しつつ、
 WorkAnomaly テーブルに個別の異常種別を記録する。
-is_missing は app.services.missing_boundary でのみ更新（入力時は変更しない）。
+is_missing は missing_boundary の過去日バッチと work._recompute_unit_derived で更新する。
 フェーズ1：検知のみ、ブロックなし。work_unit.status は変更しない。
 """
 from datetime import datetime
@@ -41,7 +41,7 @@ def detect_and_update(
     now = datetime.utcnow()
     detected_types: list[str] = []
 
-    # ── 1. is_missing は missing_boundary のみ。ここでは WorkAnomaly 用に種別だけ積む
+    # ── 1. is_missing は recompute / missing_boundary で更新。ここでは WorkAnomaly 用に種別だけ積む
     if unit.planned_value is None and unit.actual_value is not None:
         detected_types.append(AnomalyType.FORECAST_MISSING)
     if unit.started_at is None and unit.actual_value is not None:
@@ -75,7 +75,8 @@ def detect_and_update(
     #   現時点では対称（±同値）のみ使用。
     if unit.planned_value is not None and unit.actual_value is not None:
         unit.diff_value = unit.actual_value - unit.planned_value
-        unit.is_diff_anomaly = abs(unit.diff_value) > settings.tolerance_value
+        tol = int(settings.tolerance_value or 0)
+        unit.is_diff_anomaly = abs(unit.diff_value) > tol
     else:
         unit.diff_value = None
         unit.is_diff_anomaly = False

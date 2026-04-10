@@ -317,13 +317,13 @@
           <th>created_at</th>
           <th>user_pattern</th>
           <th>system_pattern</th>
-          <th>judgement_red_deadline_at</th>
+          <th id="th-judgement-red">judgement_red_deadline_at</th>
           <th>anomaly_started_at</th>
           <th>status</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="19" class="empty">company_id を入力して読み込み</td></tr>
+        <tr><td colspan="18" class="empty">company_id を入力して読み込み</td></tr>
       </tbody>
     </table>
   </div>
@@ -350,7 +350,36 @@
   let pollTimer = null;
   const AUTO_MS = 3000;
   const LS_AUTO = "debug_v2_auto_refresh";
-  const TABLE_COL_COUNT = 19;
+  /** フェーズ2 ON で列19（judgement 期限あり）。OFF で18。 */
+  let phase2Enabled = false;
+  let debugTableColCount = 18;
+
+  function getDebugCols() {
+    const all = [
+      "id",
+      "company_id",
+      "user_id",
+      "task_id",
+      "process_id",
+      "business_date",
+      "planned_value",
+      "planned_content",
+      "planned_at",
+      "started_at",
+      "actual_value",
+      "actual_content",
+      "actual_at",
+      "created_at",
+      "user_pattern",
+      "system_pattern",
+      "judgement_red_deadline_at",
+      "anomaly_started_at",
+      "status",
+    ];
+    if (phase2Enabled) return all;
+    return all.filter((k) => k !== "judgement_red_deadline_at");
+  }
+
   /** テーブル日時列（formatJST / JST） */
   const TABLE_JST_KEYS = new Set([
     "planned_at",
@@ -640,6 +669,20 @@
     localStorage.setItem("debug_v2_company", cid);
     if (!fromAuto) $("btn-load").disabled = true;
     try {
+      phase2Enabled = false;
+      try {
+        const cr = await fetch("/v2/company/" + encodeURIComponent(cid));
+        if (cr.ok) {
+          const cj = await cr.json();
+          phase2Enabled = cj.phase2_enabled === true;
+        }
+      } catch (_) {
+        /* フェーズ1扱い */
+      }
+      debugTableColCount = getDebugCols().length;
+      const thJr = document.getElementById("th-judgement-red");
+      if (thJr) thJr.style.display = phase2Enabled ? "" : "none";
+
       const res = await fetch("/v2/work/list?company_id=" + encodeURIComponent(cid));
       const text = await res.text();
       let data;
@@ -647,7 +690,7 @@
         data = JSON.parse(text);
       } catch (_) {
         $("tbody").innerHTML =
-          '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">JSON でない応答</td></tr>';
+          '<tr><td colspan="' + debugTableColCount + '" class="empty">JSON でない応答</td></tr>';
         lastRows = null;
         selectedUnitId = null;
         $("status-history-body").innerHTML = '<p class="hint">一覧を取得できませんでした。</p>';
@@ -658,7 +701,7 @@
       if (!res.ok) {
         $("tbody").innerHTML =
           '<tr><td colspan="' +
-          TABLE_COL_COUNT +
+          debugTableColCount +
           '" class="empty">エラー: ' +
           esc(data.detail || res.status) +
           "</td></tr>";
@@ -671,7 +714,7 @@
       }
       if (!Array.isArray(data)) {
         $("tbody").innerHTML =
-          '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">配列ではありません</td></tr>';
+          '<tr><td colspan="' + debugTableColCount + '" class="empty">配列ではありません</td></tr>';
         lastRows = null;
         selectedUnitId = null;
         $("status-history-body").innerHTML = '<p class="hint">一覧を取得できませんでした。</p>';
@@ -683,34 +726,14 @@
 
       if (!data.length) {
         $("tbody").innerHTML =
-          '<tr><td colspan="' + TABLE_COL_COUNT + '" class="empty">データなし</td></tr>';
+          '<tr><td colspan="' + debugTableColCount + '" class="empty">データなし</td></tr>';
         selectedUnitId = null;
         $("status-history-body").innerHTML = '<p class="hint">履歴なし（一覧に行がありません）</p>';
         setLastUpdated(true);
         return;
       }
 
-      const cols = [
-        "id",
-        "company_id",
-        "user_id",
-        "task_id",
-        "process_id",
-        "business_date",
-        "planned_value",
-        "planned_content",
-        "planned_at",
-        "started_at",
-        "actual_value",
-        "actual_content",
-        "actual_at",
-        "created_at",
-        "user_pattern",
-        "system_pattern",
-        "judgement_red_deadline_at",
-        "anomaly_started_at",
-        "status",
-      ];
+      const cols = getDebugCols();
 
       $("tbody").innerHTML = data
         .map((r, idx) => {
@@ -910,14 +933,19 @@
         const msg = (data && data.detail) || text || res.status;
         throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
-      $("test-recompute-result").textContent =
+      let reText =
         "過去営業日の再計算: " +
         data.recomputed_past_business_date_rows +
         " 行 / red解除して再評価: " +
         (data.red_cleared_for_rejudge ?? 0) +
         " 件 / judgement 2回目超過の blue→red: " +
-        data.promoted_blue_to_red +
+        (data.promoted_blue_to_red ?? 0) +
         " 件";
+      if (data.judgement_red_skipped) {
+        reText +=
+          " （フェーズ2無効のため blue→red はスキップ。phase2_enabled を ON にすると有効）";
+      }
+      $("test-recompute-result").textContent = reText;
       load({ fromAuto: false });
       await refreshTestClockStatus();
     } catch (e) {

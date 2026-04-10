@@ -36,7 +36,7 @@ def _get_settings(company_id: str, db: Session) -> models.CompanySettings:
             day_boundary_time=time(0, 0),
             work_end_time=time(17, 0),
             judgement_time=time(13, 0),
-            tolerance_value=0.0,
+            tolerance_value=0,
         )
         db.add(settings)
         db.commit()

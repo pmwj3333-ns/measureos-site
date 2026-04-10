@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.services.business_date import calc_business_date, next_business_day
+from app.services.phase2 import is_phase2_enabled
 from app.services.status_history import (
     append_work_unit_status_history_if_changed,
     norm_work_unit_status,
@@ -128,6 +129,8 @@ def promote_blue_to_red_after_judgement(
         .first()
     )
     if not settings:
+        return 0
+    if not is_phase2_enabled(settings):
         return 0
 
     jt: time = settings.judgement_time or time(13, 0)

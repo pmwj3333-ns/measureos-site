@@ -6,14 +6,18 @@ class CompanySettings(Base):
     __tablename__ = "company_settings"
 
     company_id         = Column(String, primary_key=True)
-    company_name       = Column(String, default="")
+    # 表示用（company_id とは別。sr_v2 / 旧 settings 共通）
+    company_name       = Column(String, nullable=True, default="")
     unit               = Column(String, default="個")
-    tolerance_value    = Column(Integer, default=0)
+    # 予告と実績の差の許容（±）。None は未設定扱い（判定側は 0 相当に読み替え可）
+    tolerance_value    = Column(Integer, nullable=True)
     day_boundary_time  = Column(Time, nullable=True)
     work_end_time      = Column(Time, nullable=True)
     judgement_time     = Column(Time, nullable=True)
     field_users        = Column(String, nullable=True, default="")
     input_mode         = Column(String, nullable=True, default="manufacturing")
+    # True: blue→red 昇格・judgement_red_deadline_at を有効（フェーズ2）
+    phase2_enabled     = Column(Boolean, nullable=True, default=False)
 
 
 class CompanyCalendar(Base):

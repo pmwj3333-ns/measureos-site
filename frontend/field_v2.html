@@ -124,7 +124,7 @@
   /* 班長：1 欄コンボボックス + ドロップダウン */
   .field-user-combobox { position: relative; width: 100%; margin-bottom: 14px; }
   .field-user-input {
-    width: 100%; padding: 14px 40px 14px 16px; background: rgba(255,255,255,0.1);
+    width: 100%; padding: 14px 72px 14px 16px; background: rgba(255,255,255,0.1);
     border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px; color: #fff;
     font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;
   }
@@ -133,6 +133,20 @@
     border-color: rgba(0,122,255,0.7);
     background: rgba(255,255,255,0.12);
   }
+  .field-user-clear {
+    position: absolute; right: 34px; top: 50%; transform: translateY(-50%);
+    width: 40px; min-height: 40px; padding: 0; margin: 0;
+    border: none; border-radius: 10px;
+    background: transparent;
+    color: rgba(255,255,255,0.55);
+    font-size: 1.35rem; line-height: 1; font-weight: 500;
+    font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 2;
+  }
+  .field-user-clear:active { color: #fff; background: rgba(255,255,255,0.12); }
+  .field-user-clear[hidden] { display: none !important; }
   .field-user-dd-caret {
     position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
     width: 0; height: 0;
@@ -167,6 +181,10 @@
     width: 100%; padding: 15px; background: #007aff; color: #fff; border: none;
     border-radius: 14px; font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer;
   }
+  .overlay-btn:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
 
   .toast { position: fixed; bottom: 32px; left: 50%;
            transform: translateX(-50%) translateY(20px);
@@ -196,10 +214,15 @@
              onblur="fieldUserOnBlur()"
              oninput="fieldUserOnInputSuggest()"
              onkeydown="fieldUserOnKeydown(event)" />
+      <button type="button" class="field-user-clear" id="user-input-clear" hidden
+              aria-label="班長の入力をクリア"
+              onmousedown="event.preventDefault()"
+              onclick="fieldUserClearInput(event)">×</button>
       <span class="field-user-dd-caret" aria-hidden="true"></span>
       <div id="user-suggest" class="field-user-dropdown" role="listbox" hidden></div>
     </div>
-    <button type="button" class="overlay-btn" onclick="confirmUser()">この内容で使う</button>
+    <button type="button" class="overlay-btn" id="btn-overlay-confirm" disabled
+            onclick="confirmUser()">この内容で使う</button>
   </div>
 </div>
 
@@ -308,7 +331,54 @@ let fieldUserSuggestBlurTimer = null;
 let _bootstrapFromLeaderChoice = false;
 /** 実績保存後の連続入力で、次の実績画面ではDBに残る前回行を表示しない */
 let _forceBlankActualOnce = false;
+/**
+ * 再読込直後は担当者入力を空にする（前回名は入れない）。
+ * 確定後は company 別キー field_v2_last_user:{id} に保存し、getConfig().user が使える。
+ */
+let _fieldUserSessionConfirmed = false;
 const MSG_PLANNED_UNSAVED = "予告内容が未保存です。先に「予告を登録」してください。";
+
+function fieldUserStorageKeyUser(companyId) {
+  return "field_v2_last_user:" + String(companyId || "").trim();
+}
+function fieldUserStorageKeyProc(companyId) {
+  return "field_v2_last_leader_proc:" + String(companyId || "").trim();
+}
+function removeLegacyFieldUserStorageKeys() {
+  try {
+    localStorage.removeItem("mo_v2_user");
+    localStorage.removeItem("mo_v2_leader_proc");
+  } catch (_) { /* ok */ }
+}
+function readSavedUserNameForCompany(companyId) {
+  try {
+    return (localStorage.getItem(fieldUserStorageKeyUser(companyId)) || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+function readSavedLeaderProcForCompany(companyId) {
+  try {
+    return (localStorage.getItem(fieldUserStorageKeyProc(companyId)) || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+/** 班長マスタに存在する保存名だけ表示用ラベルを返す。該当なしは "" */
+function computeOverlayUserInputHint() {
+  const cid = getConfig().company;
+  const savedName = readSavedUserNameForCompany(cid);
+  if (!savedName) return "";
+  const matches = fieldUserSuggestRows.filter((r) => r.name === savedName);
+  if (!matches.length) return "";
+  if (matches.length === 1) {
+    return fieldUserBuildLabel(matches[0].name, matches[0].proc);
+  }
+  const savedProc = readSavedLeaderProcForCompany(cid);
+  const hit = matches.find((r) => (r.proc || "").trim() === savedProc);
+  if (hit) return fieldUserBuildLabel(hit.name, hit.proc);
+  return fieldUserBuildLabel(matches[0].name, matches[0].proc);
+}
 
 function param(key, fb) {
   const v = new URLSearchParams(location.search).get(key);
@@ -330,7 +400,9 @@ function getConfig() {
       || param("task_id", null) || param("task", "task_01"),
     process: document.getElementById("cfg-process").value.trim()
       || param("process_id", null) || param("process", "proc_01"),
-    user: localStorage.getItem("mo_v2_user") || "",
+    user: _fieldUserSessionConfirmed
+      ? readSavedUserNameForCompany(company)
+      : "",
   };
 }
 
@@ -355,7 +427,12 @@ document.getElementById("cfg-company").addEventListener("change", () => {
   if (ov && !ov.classList.contains("hidden")) {
     fieldUserSuggestClose();
     fieldUserSuggestRows = [];
-    fieldUserFetchMaster();
+    fieldUserFetchMaster().then(() => {
+      const input = document.getElementById("user-input");
+      if (input) input.value = computeOverlayUserInputHint();
+      fieldUserUpdateClearBtnVisibility();
+      fieldUserUpdateConfirmButtonState();
+    });
   }
 });
 ["cfg-task", "cfg-process"].forEach((id) => {
@@ -620,7 +697,7 @@ function fieldUserResolveForCommit(rawInput) {
   const sameName = fieldUserSuggestRows.filter((r) => v === r.name);
   if (sameName.length === 1) return { name: sameName[0].name, proc: (sameName[0].proc || "").trim() };
   if (sameName.length > 1) {
-    const saved = (localStorage.getItem("mo_v2_leader_proc") || "").trim();
+    const saved = readSavedLeaderProcForCompany(getConfig().company);
     const hit = sameName.find((r) => (r.proc || "").trim() === saved);
     if (hit) return { name: hit.name, proc: (hit.proc || "").trim() };
     return { name: sameName[0].name, proc: (sameName[0].proc || "").trim() };
@@ -640,7 +717,7 @@ async function fieldUserFetchMaster() {
     } else {
       const data = await res.json();
       const next = fieldUserParseFieldUsersRaw(data.field_users || "");
-      if (next.length) fieldUserSuggestRows = next;
+      fieldUserSuggestRows = next;
     }
   } catch (_) {
     if (!hadLocal) toast("班長一覧を取得できませんでした");
@@ -657,6 +734,40 @@ function fieldUserSuggestClose() {
     box.innerHTML = "";
   }
   if (input) input.setAttribute("aria-expanded", "false");
+}
+
+/** 入力欄に文字があるときだけクリアボタンを表示（前後空白のみは非表示） */
+function fieldUserUpdateClearBtnVisibility() {
+  const input = document.getElementById("user-input");
+  const btn = document.getElementById("user-input-clear");
+  if (!btn) return;
+  const has = input && String(input.value || "").trim() !== "";
+  btn.hidden = !has;
+}
+
+/** 未入力時は「この内容で使う」を無効化（リロード直後は必ず未確定） */
+function fieldUserUpdateConfirmButtonState() {
+  const input = document.getElementById("user-input");
+  const btn = document.getElementById("btn-overlay-confirm");
+  if (!btn || !input) return;
+  btn.disabled = String(input.value || "").trim() === "";
+}
+
+/** ×: 入力と候状態を即リセット（確定前の選択解除。confirm なし） */
+function fieldUserClearInput(ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  clearTimeout(fieldUserSuggestBlurTimer);
+  const input = document.getElementById("user-input");
+  if (input) input.value = "";
+  _fieldUserSessionConfirmed = false;
+  fieldUserSuggestClose();
+  fieldUserSuggestRefresh();
+  fieldUserUpdateClearBtnVisibility();
+  fieldUserUpdateConfirmButtonState();
+  if (input) input.focus();
 }
 
 function fieldUserSuggestRefresh() {
@@ -713,6 +824,8 @@ function fieldUserOnBlur() {
 function fieldUserOnInputSuggest() {
   clearTimeout(fieldUserSuggestBlurTimer);
   fieldUserSuggestRefresh();
+  fieldUserUpdateClearBtnVisibility();
+  fieldUserUpdateConfirmButtonState();
 }
 
 function fieldUserOnPick(r) {
@@ -724,9 +837,12 @@ function pickRegisteredLeader(r) {
   if (!r || !String(r.name || "").trim()) return;
   const name = String(r.name).trim();
   const proc = String(r.proc || "").trim();
-  localStorage.setItem("mo_v2_user", name);
-  if (proc) localStorage.setItem("mo_v2_leader_proc", proc);
-  else localStorage.removeItem("mo_v2_leader_proc");
+  const cid = getConfig().company;
+  localStorage.setItem(fieldUserStorageKeyUser(cid), name);
+  if (proc) localStorage.setItem(fieldUserStorageKeyProc(cid), proc);
+  else localStorage.removeItem(fieldUserStorageKeyProc(cid));
+  removeLegacyFieldUserStorageKeys();
+  _fieldUserSessionConfirmed = true;
   document.getElementById("overlay").classList.add("hidden");
   document.getElementById("header-user").textContent = name;
   saveCfgToLocal();
@@ -744,23 +860,37 @@ function fieldUserOnKeydown(ev) {
     }
     const input = document.getElementById("user-input");
     if (input && input.value) input.value = "";
+    fieldUserUpdateClearBtnVisibility();
+    fieldUserUpdateConfirmButtonState();
     return;
   }
   if (ev.key === "Enter") {
+    const ob = document.getElementById("btn-overlay-confirm");
+    if (ob && ob.disabled) {
+      ev.preventDefault();
+      return;
+    }
     fieldUserSuggestClose();
     confirmUser();
   }
 }
 
 function confirmUser() {
+  const raw0 = document.getElementById("user-input").value.trim();
+  if (!raw0) {
+    toast("班長を選ぶか入力してください");
+    return;
+  }
   fieldUserSuggestClose();
-  const raw = document.getElementById("user-input").value.trim();
-  if (!raw) { toast("班長を選ぶか入力してください"); return; }
+  const raw = raw0;
   const { name, proc } = fieldUserResolveForCommit(raw);
   if (!name) { toast("班長を選ぶか入力してください"); return; }
-  localStorage.setItem("mo_v2_user", name);
-  if (proc) localStorage.setItem("mo_v2_leader_proc", proc);
-  else localStorage.removeItem("mo_v2_leader_proc");
+  const cid = getConfig().company;
+  localStorage.setItem(fieldUserStorageKeyUser(cid), name);
+  if (proc) localStorage.setItem(fieldUserStorageKeyProc(cid), proc);
+  else localStorage.removeItem(fieldUserStorageKeyProc(cid));
+  removeLegacyFieldUserStorageKeys();
+  _fieldUserSessionConfirmed = true;
   document.getElementById("overlay").classList.add("hidden");
   document.getElementById("header-user").textContent = name;
   saveCfgToLocal();
@@ -770,11 +900,16 @@ function confirmUser() {
 
 function changeUser() {
   fieldUserSuggestClose();
-  document.getElementById("user-input").value = "";
+  _fieldUserSessionConfirmed = false;
   const ov = document.getElementById("overlay");
   ov.classList.remove("hidden");
   ov.scrollTop = 0;
-  fieldUserFetchMaster();
+  fieldUserFetchMaster().then(() => {
+    const input = document.getElementById("user-input");
+    if (input) input.value = computeOverlayUserInputHint();
+    fieldUserUpdateClearBtnVisibility();
+    fieldUserUpdateConfirmButtonState();
+  });
 }
 
 function show(name) {
@@ -853,6 +988,12 @@ async function api(method, url, body) {
 
 async function bootstrapWork() {
   const cfg = getConfig();
+  if (!cfg.user || !String(cfg.user).trim()) {
+    toast("担当者を確定してください");
+    document.getElementById("overlay").classList.remove("hidden");
+    document.getElementById("overlay").scrollTop = 0;
+    return;
+  }
   document.getElementById("header-user").textContent = cfg.user;
   await loadCompanyInputMode();
   await fillDatalistsFromWorkList();
@@ -1076,19 +1217,23 @@ function applyEmbeddedFieldUsers() {
 }
 
 (function init() {
+  _fieldUserSessionConfirmed = false;
+  removeLegacyFieldUserStorageKeys();
   syncCompanyFromServerBootstrap();
   loadCfgFromLocal();
   applyEmbeddedFieldUsers();
-  if (!localStorage.getItem("mo_v2_user")) {
-    const ov = document.getElementById("overlay");
-    ov.classList.remove("hidden");
-    ov.scrollTop = 0;
-    document.getElementById("user-input").value = "";
-    fieldUserFetchMaster();
-  } else {
-    document.getElementById("overlay").classList.add("hidden");
-    bootstrapWork();
-  }
+  const ov = document.getElementById("overlay");
+  ov.classList.remove("hidden");
+  ov.scrollTop = 0;
+  document.getElementById("header-user").textContent = "—";
+  document.getElementById("user-input").value = "";
+  fieldUserUpdateConfirmButtonState();
+  fieldUserFetchMaster().then(() => {
+    const input = document.getElementById("user-input");
+    if (input) input.value = "";
+    fieldUserUpdateClearBtnVisibility();
+    fieldUserUpdateConfirmButtonState();
+  });
 })();
 </script>
 

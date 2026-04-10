@@ -28,6 +28,7 @@ from app.services.judgement_promote import (
     next_work_end_boundary_jst,
     reference_now_jst,
 )
+from app.services.phase2 import is_phase2_enabled
 
 router = APIRouter(tags=["作業記録"])
 logger = logging.getLogger(__name__)
@@ -260,9 +261,10 @@ def _apply_minimal_judgement(
 
     登録済:
       A*（プロセス不備）: 予告なし+着手 / 予告なし+実績 / 着手なし+実績
-      B*（結果不備）: 予告なし+実績、または 予告あり+実績あり+tolerance 超過
+      B*（数値乖離・pattern 専用）: 予告あり+実績ありで |actual−planned| > tolerance のみ。
+        予告なしで実績だけ進んだケースは A* のみ（結果不備の青判定は内部の sys_b で扱うが B* ラベルは付けない）。
     status（青）:
-      順序違反・数値乖離: sys_a / sys_b に該当するとき即時 blue
+      順序違反・結果不備（予告なし実績含む）・数値乖離: sys_a または sys_b に該当するとき即時 blue
       未完了（予告あり・実績なし）: 翌営業日の work_end_time を跨いだ後のみ blue
     未登録: pattern 空・blue。
     上記いずれでもない（登録済）: pattern 空・normal。
@@ -331,7 +333,8 @@ def _apply_minimal_judgement(
         parts: List[str] = []
         if sys_a:
             parts.append("A*")
-        if sys_b:
+        # B* は is_diff_anomaly と同義（許容超過のみ）。予告なし実績は A* で表す。
+        if b_tolerance:
             parts.append("B*")
         computed_pattern = ",".join(parts)
         unit.system_pattern = computed_pattern
@@ -434,13 +437,82 @@ def _audit_x_save(unit: models.WorkUnit, settings: models.CompanySettings, route
     )
 
 
+def _update_is_missing_summary(
+    unit: models.WorkUnit, settings: models.CompanySettings, db: Session
+) -> None:
+    """
+    未入力（is_missing）の要約。
+    - 現行営業日かつ status が normal: 予告だけ等・未完了でもまだ立てない（境界・再判定で blue 後に同期）。
+    - 過去営業日かつ normal: 欠けがあれば true（事後照会）。
+    - blue: missing_boundary と同式（着手だけ即時 blue の T2 等と整合）。
+    """
+    cur = (unit.status or "").strip().lower()
+    if cur in ("closed", "red"):
+        return
+
+    def _missing_triplet() -> bool:
+        return (
+            unit.planned_value is None
+            or unit.actual_value is None
+            or unit.started_at is None
+        )
+
+    ref = reference_utc_now()
+    current_biz = calc_business_date(ref, settings, db)
+    is_past = unit.business_date < current_biz
+
+    if cur == "normal":
+        if not is_past:
+            unit.is_missing = False
+            return
+        unit.is_missing = _missing_triplet()
+        return
+
+    if cur == "blue":
+        unit.is_missing = _missing_triplet()
+        return
+
+    unit.is_missing = _missing_triplet()
+
+
 def _update_flags(unit: models.WorkUnit, settings: models.CompanySettings) -> None:
-    """補助フラグのみ。is_diff_anomaly は DB 確定後の system_pattern に追随（再判定しない）。"""
-    unit.is_invalid_flow = bool(
-        _has_actual_signal(unit, settings) and unit.started_at is None
-    )
+    """
+    補助フラグ。
+    - is_diff_anomaly: 数値乖離のみ（予告・実績が揃い |actual−planned| > tolerance）。
+      system_pattern の B* は「予告なし+実績」も含むが、それは結果不備であり数値乖離ではない。
+    - is_invalid_flow: A*（プロセス不備）または 実績あり・着手なし
+    """
     segs = [x.strip() for x in (unit.system_pattern or "").split(",") if x.strip()]
-    unit.is_diff_anomaly = bool("B*" in segs)
+    hp = _has_planned_nonzero(unit, settings)
+    ha = _has_actual_signal(unit, settings)
+    b_tolerance = False
+    if hp and ha:
+        tol = int(settings.tolerance_value or 0)
+        try:
+            dv = unit.diff_value
+            if dv is None:
+                dv = float(unit.actual_value) - float(unit.planned_value)
+            b_tolerance = abs(dv) > tol
+        except (TypeError, ValueError):
+            b_tolerance = False
+    unit.is_diff_anomaly = b_tolerance
+    # 順序不備: A*（プロセス不備）に該当、または 実績あり・着手なし
+    unit.is_invalid_flow = bool(
+        "A*" in segs
+        or (_has_actual_signal(unit, settings) and unit.started_at is None)
+    )
+
+
+def _sync_anomaly_started_at(unit: models.WorkUnit) -> None:
+    """
+    status が normal のときは異常開始時刻をクリア（予告だけ保存直後の整合）。
+    blue 等では従来どおり初回のみセット。
+    """
+    st = (unit.status or "").strip().lower()
+    if st == "normal":
+        unit.anomaly_started_at = None
+        return
+    _maybe_set_anomaly_started_at(unit)
 
 
 def _maybe_set_anomaly_started_at(unit: models.WorkUnit) -> None:
@@ -480,8 +552,9 @@ def _recompute_unit_derived(
     )
     _apply_user_classification(unit, settings)
     _apply_minimal_judgement(unit, settings, db=db)
+    _update_is_missing_summary(unit, settings, db)
     _update_flags(unit, settings)
-    _maybe_set_anomaly_started_at(unit)
+    _sync_anomaly_started_at(unit)
 
 
 def _status_from_db(unit: models.WorkUnit) -> str:
@@ -505,7 +578,7 @@ def _unit_to_out(
     st_out = _status_from_db(unit)
     jt = settings.judgement_time or time(13, 0)
     judgement_red_deadline_at = None
-    if st_out == "blue":
+    if st_out == "blue" and is_phase2_enabled(settings):
         judgement_red_deadline_at = compute_red_deadline_jst(
             unit.business_date, jt, unit.company_id, db
         ).isoformat()

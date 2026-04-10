@@ -2,12 +2,13 @@
 
 from typing import List
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models
 from app.database import get_db
+from app.routers.settings import _parse_time, _time_str
+from app.schemas import V2LeadersPut
 
 router = APIRouter(prefix="/v2", tags=["v2-設定"])
 
@@ -17,15 +18,6 @@ def _norm_input_mode(raw) -> str:
         return "manufacturing"
     x = str(raw).strip().lower()
     return "logistics" if x == "logistics" else "manufacturing"
-
-
-class V2LeaderRow(BaseModel):
-    name: str = ""
-    process: str = ""
-
-
-class V2LeadersPut(BaseModel):
-    leaders: List[V2LeaderRow] = Field(default_factory=list)
 
 
 @router.get("/companies", summary="登録済み company_id 一覧（v2）")
@@ -44,15 +36,23 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
     if not s:
         return {
             "company_id": company_id,
+            "company_name": "",
             "field_users": "",
             "input_mode": "manufacturing",
             "unit": "個",
+            "day_boundary_time": None,
+            "tolerance_value": None,
+            "phase2_enabled": False,
         }
     return {
         "company_id": s.company_id,
+        "company_name": (getattr(s, "company_name", None) or "").strip(),
         "field_users": (s.field_users or "").strip(),
         "input_mode": _norm_input_mode(getattr(s, "input_mode", None)),
         "unit": s.unit or "個",
+        "day_boundary_time": _time_str(s.day_boundary_time),
+        "tolerance_value": getattr(s, "tolerance_value", None),
+        "phase2_enabled": bool(getattr(s, "phase2_enabled", False)),
     }
 
 
@@ -71,10 +71,29 @@ def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(ge
         s = models.CompanySettings(company_id=company_id)
         db.add(s)
     s.field_users = raw
+    if body.company_name is not None:
+        s.company_name = (body.company_name or "").strip()
+    if body.day_boundary_time is not None:
+        t = (body.day_boundary_time or "").strip()
+        if not t:
+            s.day_boundary_time = None
+        else:
+            try:
+                s.day_boundary_time = _parse_time(t)
+            except (ValueError, AttributeError):
+                raise HTTPException(
+                    status_code=400,
+                    detail="day_boundary_time は HH:MM 形式で指定してください（例: 05:00）",
+                ) from None
+    if "tolerance_value" in body.model_fields_set:
+        s.tolerance_value = body.tolerance_value
     db.commit()
     db.refresh(s)
     return {
         "company_id": company_id,
+        "company_name": (getattr(s, "company_name", None) or "").strip(),
         "field_users": (s.field_users or "").strip(),
         "saved_count": len(parts),
+        "day_boundary_time": _time_str(s.day_boundary_time),
+        "tolerance_value": getattr(s, "tolerance_value", None),
     }

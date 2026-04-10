@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>MEASURE OS — 事務 v2（異常確認・完了）</title>
+<title>MEASURE OS — 事務（未対応確認・完了）</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -24,11 +24,11 @@
   header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; }
   .main {
     display: grid;
-    grid-template-columns: 1fr min(380px, 38vw);
+    grid-template-columns: 1fr min(400px, 40vw);
     gap: 0;
     min-height: calc(100vh - 72px);
   }
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     .main { grid-template-columns: 1fr; }
   }
   .panel {
@@ -36,7 +36,7 @@
     border-right: 1px solid #dde2e8;
     background: #fff;
   }
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     .panel { border-right: none; border-bottom: 1px solid #dde2e8; }
   }
   .detail-panel {
@@ -44,7 +44,7 @@
     padding: 16px 20px 32px;
     border-left: 1px solid #e8ecf0;
   }
-  @media (max-width: 900px) {
+  @media (max-width: 1000px) {
     .detail-panel { border-left: none; }
   }
   .bar {
@@ -88,10 +88,10 @@
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
   }
   th, td {
-    padding: 8px 10px;
+    padding: 8px 8px;
     text-align: left;
     border-bottom: 1px solid #eef1f4;
     vertical-align: top;
@@ -102,6 +102,17 @@
     font-weight: 600;
     white-space: nowrap;
   }
+  td.cell-compact {
+    max-width: 10.5em;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+  td.cell-anomaly {
+    max-width: 9em;
+    white-space: normal;
+    line-height: 1.35;
+  }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: #f7f9fc; }
   tbody tr.selected {
@@ -111,7 +122,7 @@
   }
   .status-blue { color: #1565c0; font-weight: 600; }
   .status-red { color: #c62828; font-weight: 600; }
-  .mono { font-family: ui-monospace, monospace; font-size: 0.76rem; }
+  .mono { font-family: ui-monospace, monospace; font-size: 0.74rem; }
   .detail-title {
     font-size: 0.8rem;
     font-weight: 700;
@@ -126,21 +137,28 @@
   .dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 6px 14px;
+    gap: 6px 12px;
     font-size: 0.8rem;
   }
   .dl dt { color: #6b7280; white-space: nowrap; }
   .dl dd { color: #1a1a1a; word-break: break-word; }
+  .lines-detail-list {
+    margin: 0;
+    padding-left: 1.1em;
+    line-height: 1.5;
+  }
+  .lines-detail-list li { margin: 2px 0; }
 </style>
 </head>
 <body>
 <header>
-  <h1>事務 — 異常確認（v2）</h1>
+  <h1>事務 — 未対応確認（完了）</h1>
   <p>
-    機能は <strong>一覧表示</strong>・<strong>詳細表示</strong>・<strong>closed にする</strong> のみです（修正・メモはありません）。
-    <strong>blue / red</strong> だけを表示します。完了（closed）にした行は<strong>この一覧から消えます</strong>。
-    <code>status=closed</code> の確認は <a href="/debug/v2" style="color:#a8d4ff;">debug v2</a> の一覧で行ってください。
-    完了後は API 上も <strong>status を元に戻せません</strong>（現場・事務の更新は 409 になります）。
+    <strong>一覧表示</strong>・<strong>詳細</strong>・<strong>完了（closed）</strong>のみです。
+    <span id="office-header-phase-hint"><strong>未対応（青・赤）</strong>を表示します。読み込み時にフェーズ設定を反映します。</span>
+    完了した行は<strong>この一覧から消えます</strong>。
+    完了後の確認は <a href="/debug/v2" style="color:#a8d4ff;">debug v2</a> で <code>closed</code> を確認できます。
+    完了後は <strong>状態を戻せません</strong>（現場・事務の更新は 409）。
   </p>
 </header>
 
@@ -148,14 +166,14 @@
   <div class="panel">
     <div class="bar">
       <div>
-        <label for="company">company_id</label>
+        <label for="company">会社ID</label>
         <input type="text" id="company" placeholder="例: test1" autocomplete="off" />
       </div>
       <div style="align-self: flex-end;">
         <button type="button" class="btn-load" id="btn-load">読み込み</button>
       </div>
     </div>
-    <p class="hint">GET <span class="mono">/v2/work/list?company_id=…</span> — 応答のうち <strong>blue / red</strong> の行だけを表示します（closed・normal は出しません）。</p>
+    <p class="hint" id="office-hint-api">API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち<strong>青・赤</strong>のみ表示（通常・完了は非表示）。</p>
     <p id="msg" class="err" hidden></p>
     <p id="ok" class="ok" hidden></p>
 
@@ -163,17 +181,17 @@
       <table>
         <thead>
           <tr>
-            <th>business_date</th>
-            <th>task_id</th>
-            <th>process_id</th>
-            <th>planned</th>
-            <th>actual</th>
-            <th>system_pattern</th>
-            <th>status</th>
+            <th>営業日</th>
+            <th>班長</th>
+            <th>商品</th>
+            <th>予告数</th>
+            <th>実績数</th>
+            <th>異常内容</th>
+            <th>状態</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="7" class="detail-empty">company_id を入力して読み込み</td></tr>
+          <tr><td colspan="7" class="detail-empty">会社ID を入力して読み込み</td></tr>
         </tbody>
       </table>
     </div>
@@ -184,7 +202,7 @@
     <div id="detail-empty" class="detail-empty">一覧から行を選択してください。</div>
     <div id="detail-body" hidden>
       <dl class="dl" id="detail-dl"></dl>
-      <button type="button" class="btn-close" id="btn-close" disabled>closed にする</button>
+      <button type="button" class="btn-close" id="btn-close" disabled>完了にする（closed）</button>
       <p id="close-msg" class="err" hidden></p>
     </div>
   </aside>
@@ -205,9 +223,14 @@
   const ok = $("ok");
   const closeMsg = $("close-msg");
 
+  const TABLE_COLS = 7;
+  const NAME_PREVIEW_MAX = 2;
+
   let rows = [];
   let filtered = [];
   let selected = null;
+  /** サーバのフェーズ2（新規赤化）。一覧は常に青・赤。ヒント文言のみに使用。 */
+  let phase2Enabled = false;
 
   function param(name) {
     const q = new URLSearchParams(window.location.search);
@@ -221,12 +244,41 @@
       .replace(/>/g, "&gt;");
   }
 
+  /**
+   * 商品名・ラベルを常に1つの文字列として扱う。
+   * label が配列（1文字ずつ）で来た場合に String() や join(" ") で崩れないよう、配列は空文字で連結する。
+   */
+  function coerceProductLabel(raw) {
+    if (raw == null) return "";
+    if (Array.isArray(raw)) {
+      return raw
+        .map((x) => (x == null ? "" : String(x).trim()))
+        .join("");
+    }
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return String(raw);
+    }
+    return String(raw).trim();
+  }
+
   function fmt(v) {
     if (v === null || v === undefined || v === "") return "—";
     return esc(v);
   }
 
-  /** API 日時列（UTC 想定）→ JST 表示（format-jst-datetime.js の formatJST） */
+  /** 一覧の班長列: work_unit.user_id。名前:工程 形式なら名前のみ */
+  function formatLeaderDisplay(userId) {
+    if (userId == null || String(userId).trim() === "") return "—";
+    let s = String(userId).trim();
+    const ci = s.indexOf(":");
+    const cj = s.indexOf("：");
+    let cut = -1;
+    if (ci >= 0) cut = ci;
+    if (cj >= 0 && (cut < 0 || cj < cut)) cut = cj;
+    if (cut >= 0) s = s.slice(0, cut).trim();
+    return s ? esc(s) : "—";
+  }
+
   const DATETIME_KEYS = new Set([
     "planned_at",
     "started_at",
@@ -234,9 +286,259 @@
     "created_at",
   ]);
 
-  function fmtDetail(k, v) {
-    if (DATETIME_KEYS.has(k)) return esc(formatJST(v));
+  const DETAIL_LABEL_JA = {
+    id: "ID",
+    planned_at: "予告時刻",
+    started_at: "着手時刻",
+    actual_at: "実績時刻",
+    created_at: "登録時刻",
+    user_pattern: "現場選択",
+    system_pattern: "システム判定",
+    input_source: "入力経路",
+  };
+
+  function lineDisplayName(line) {
+    if (!line || typeof line !== "object") return "";
+    const a = line.label != null ? coerceProductLabel(line.label) : "";
+    const b = line.item_name != null ? coerceProductLabel(line.item_name) : "";
+    return (a || b || "").trim();
+  }
+
+  function parseLinesJsonMaybe(raw) {
+    if (typeof raw !== "string" || !raw.trim()) return null;
+    try {
+      const data = JSON.parse(raw);
+      return Array.isArray(data) ? data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function normalizedLines(row, kind) {
+    const key = kind === "planned" ? "planned_lines" : "actual_lines";
+    let arr = row[key];
+    if (!Array.isArray(arr) || !arr.length) {
+      const rawKey = kind === "planned" ? "planned_lines_json" : "actual_lines_json";
+      const parsed = row[rawKey] != null ? parseLinesJsonMaybe(String(row[rawKey])) : null;
+      if (parsed) arr = parsed;
+    }
+    const out = [];
+    if (Array.isArray(arr)) {
+      for (const L of arr) {
+        if (!L || typeof L !== "object") continue;
+        const name = lineDisplayName(L);
+        const v = L.value;
+        if (v == null || !Number.isFinite(Number(v))) continue;
+        out.push({ name: name || "（無名）", value: Number(v) });
+      }
+    }
+    if (out.length) return out;
+    if (kind === "planned") {
+      const pv = row.planned_value;
+      const name =
+        lineDisplayName({ label: row.planned_item_name }) ||
+        lineDisplayName({ label: row.planned_work_label }) ||
+        lineDisplayName({ label: row.planned_work_type });
+      if (name && pv != null && Number.isFinite(Number(pv)))
+        return [{ name, value: Number(pv) }];
+    } else {
+      const av = row.actual_value;
+      const name =
+        lineDisplayName({ label: row.actual_item_name }) ||
+        lineDisplayName({ label: row.actual_work_label }) ||
+        lineDisplayName({ label: row.actual_work_type });
+      if (name && av != null && Number.isFinite(Number(av)))
+        return [{ name, value: Number(av) }];
+    }
+    return [];
+  }
+
+  function qtyWithUnit(n, unit) {
+    const u = unit && String(unit).trim() ? unit : "個";
+    if (n == null || !Number.isFinite(Number(n))) return "—";
+    return String(Number(n)) + u;
+  }
+
+  /** 行ごとの数量を商品名で合算（同名複数行対応） */
+  function qtyByProductName(lines) {
+    const m = new Map();
+    for (const L of lines) {
+      const k = L.name && L.name !== "（無名）" ? L.name : null;
+      if (!k) continue;
+      const v = Number(L.value);
+      if (!Number.isFinite(v)) continue;
+      m.set(k, (m.get(k) || 0) + v);
+    }
+    return m;
+  }
+
+  function fmtQtyOrDash(n) {
+    if (n == null || !Number.isFinite(Number(n))) return "—";
+    return String(Number(n));
+  }
+
+  /**
+   * 一覧「商品」: 「506（10 → 5）」形式。予告→実績の数量変化を併記。最大2件＋他N件。
+   */
+  function shortProductFlowSummary(r) {
+    const pl = normalizedLines(r, "planned");
+    const al = normalizedLines(r, "actual");
+    const pm = qtyByProductName(pl);
+    const am = qtyByProductName(al);
+    const order = [];
+    const seen = new Set();
+    for (const L of pl) {
+      const k = L.name && L.name !== "（無名）" ? L.name : null;
+      if (k && !seen.has(k)) {
+        seen.add(k);
+        order.push(k);
+      }
+    }
+    for (const L of al) {
+      const k = L.name && L.name !== "（無名）" ? L.name : null;
+      if (k && !seen.has(k)) {
+        seen.add(k);
+        order.push(k);
+      }
+    }
+    if (!order.length) {
+      const legacyName =
+        lineDisplayName({ label: r.planned_item_name }) ||
+        lineDisplayName({ label: r.planned_work_label }) ||
+        lineDisplayName({ label: r.actual_item_name }) ||
+        lineDisplayName({ label: r.actual_work_label });
+      if (legacyName) {
+        const pv = r.planned_value;
+        const av = r.actual_value;
+        return (
+          esc(legacyName) +
+          "（" +
+          fmtQtyOrDash(pv) +
+          " → " +
+          fmtQtyOrDash(av) +
+          "）"
+        );
+      }
+      return "—";
+    }
+    const parts = order.map((name) => {
+      const p = pm.has(name) ? pm.get(name) : null;
+      const a = am.has(name) ? am.get(name) : null;
+      return (
+        esc(name) +
+        "（" +
+        fmtQtyOrDash(p) +
+        " → " +
+        fmtQtyOrDash(a) +
+        "）"
+      );
+    });
+    const head = parts.slice(0, NAME_PREVIEW_MAX);
+    const rest = parts.length - NAME_PREVIEW_MAX;
+    const out = head.slice();
+    if (rest > 0) out.push("他" + rest + "件");
+    return out.join(" / ");
+  }
+
+  /** system_pattern に B*（数値乖離）が含まれるか */
+  function hasNumericDeviationPattern(raw) {
+    if (raw == null || String(raw).trim() === "") return false;
+    return String(raw)
+      .split(/[,;，]/)
+      .map((s) => s.trim())
+      .some((s) => s.toUpperCase().indexOf("B") === 0);
+  }
+
+  /**
+   * 異常内容: 日本語ラベル。B* のときは合計の予告数→実績数を補足（例: 数値乖離（10 → 5））
+   */
+  function formatAnomalyCellJa(r) {
+    const base = formatSystemPatternJa(r.system_pattern);
+    if (base === "—") return base;
+    if (!hasNumericDeviationPattern(r.system_pattern)) return base;
+    const pv = r.planned_value;
+    const av = r.actual_value;
+    const pStr = fmtQtyOrDash(pv);
+    const aStr = fmtQtyOrDash(av);
+    if (pStr === "—" && aStr === "—") return base;
+    return base + "（" + pStr + " → " + aStr + "）";
+  }
+
+  /** system_pattern → 手順不備・数値乖離 */
+  function formatSystemPatternJa(raw) {
+    if (raw == null || String(raw).trim() === "") return "—";
+    const segs = String(raw)
+      .split(/[,;，]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const labels = [];
+    const seen = new Set();
+    for (const seg of segs) {
+      const u = seg.toUpperCase();
+      let ja = null;
+      if (u.indexOf("A") === 0) ja = "手順不備";
+      else if (u.indexOf("B") === 0) ja = "数値乖離";
+      if (ja && !seen.has(ja)) {
+        seen.add(ja);
+        labels.push(ja);
+      }
+    }
+    return labels.length ? labels.join("・") : esc(String(raw));
+  }
+
+  /** user_pattern（A/B）→ 日本語 */
+  function formatUserPatternJa(raw) {
+    if (raw == null || String(raw).trim() === "") return "—";
+    const parts = String(raw)
+      .split(/[,，]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!parts.length) return "—";
+    const map = { A: "手順不備", B: "結果不備" };
+    const out = parts.map((p) => map[p] || p);
+    return out.join("・");
+  }
+
+  function statusLabelJa(st) {
+    const s = (st || "").toString().trim().toLowerCase();
+    if (s === "blue") return "未対応（青）";
+    if (s === "red") return "未対応（赤）";
+    if (s === "closed") return "完了";
+    if (s === "normal") return "通常";
+    return st ? esc(st) : "—";
+  }
+
+  function fmtDetailValue(key, r) {
+    const v = r[key];
+    if (DATETIME_KEYS.has(key)) return esc(formatJST(v));
+    if (key === "user_pattern") return formatUserPatternJa(v);
+    if (key === "system_pattern") return formatAnomalyCellJa(r);
     return fmt(v);
+  }
+
+  /** 商品コードっぽい名前（数字のみ）には「商品」を付けて詳細で判別しやすくする */
+  function displayProductLabelForDetail(name) {
+    const n = coerceProductLabel(name);
+    if (!n || n === "（無名）") return "（無名）";
+    if (/^[\d.]+$/.test(n)) return "商品" + n;
+    return n;
+  }
+
+  function linesBlockHtml(lines, unit) {
+    if (!lines.length)
+      return '<span style="color:#6b7280">—</span>';
+    return (
+      "<ul class=\"lines-detail-list\">" +
+      lines
+        .map(
+          (L) =>
+            "<li>" +
+            esc(displayProductLabelForDetail(L.name) + " " + qtyWithUnit(L.value, unit)) +
+            "</li>"
+        )
+        .join("") +
+      "</ul>"
+    );
   }
 
   function loadCompany() {
@@ -264,12 +566,14 @@
     filtered = rows.filter((r) => isAnomalyStatus(r.status));
     if (!rows.length) {
       tbody.innerHTML =
-        '<tr><td colspan="7" class="detail-empty">データなし</td></tr>';
+        '<tr><td colspan="' + TABLE_COLS + '" class="detail-empty">データなし</td></tr>';
       return;
     }
     if (!filtered.length) {
+      const emptyHint =
+        "未対応（青・赤）の行がありません（この会社は通常・完了のみ等）";
       tbody.innerHTML =
-        '<tr><td colspan="7" class="detail-empty">blue/red の行がありません（この company の全件は normal 等）</td></tr>';
+        '<tr><td colspan="' + TABLE_COLS + '" class="detail-empty">' + esc(emptyHint) + "</td></tr>";
       return;
     }
     tbody.innerHTML = filtered
@@ -286,11 +590,11 @@
           "<td class=\"mono\">" +
           fmt(r.business_date) +
           "</td>" +
-          "<td class=\"mono\">" +
-          fmt(r.task_id) +
+          "<td>" +
+          formatLeaderDisplay(r.user_id) +
           "</td>" +
-          "<td class=\"mono\">" +
-          fmt(r.process_id) +
+          '<td class="cell-compact">' +
+          shortProductFlowSummary(r) +
           "</td>" +
           "<td>" +
           fmt(r.planned_value) +
@@ -298,25 +602,18 @@
           "<td>" +
           fmt(r.actual_value) +
           "</td>" +
-          "<td>" +
-          fmt(r.system_pattern) +
+          '<td class="cell-anomaly">' +
+          formatAnomalyCellJa(r) +
           "</td>" +
           '<td class="' +
           stClass +
           '">' +
-          fmt(r.status) +
+          statusLabelJa(r.status) +
           "</td>" +
           "</tr>"
         );
       })
       .join("");
-
-    tbody.querySelectorAll("tr[data-id]").forEach((tr) => {
-      tr.addEventListener("click", () => {
-        const id = Number(tr.getAttribute("data-id"));
-        selectById(id);
-      });
-    });
   }
 
   function selectById(id) {
@@ -342,27 +639,63 @@
     detailEmpty.hidden = true;
     detailBody.hidden = false;
     const r = selected;
-    const lines = [
-      ["id", r.id],
-      ["planned_at", r.planned_at],
-      ["started_at", r.started_at],
-      ["actual_at", r.actual_at],
-      ["created_at", r.created_at],
-      ["user_pattern", r.user_pattern],
-      ["system_pattern", r.system_pattern],
-      ["input_source", r.input_source],
-    ];
-    detailDl.innerHTML = lines
-      .map(
-        ([k, v]) =>
-          "<dt>" +
-          esc(k) +
-          "</dt><dd class=\"mono\">" +
-          fmtDetail(k, v) +
-          "</dd>"
-      )
-      .join("");
     const st = (r.status || "").toLowerCase();
+    const unit = r.unit || "個";
+    const plannedLines = normalizedLines(r, "planned");
+    const actualLines = normalizedLines(r, "actual");
+
+    const metaKeys = [
+      "id",
+      "planned_at",
+      "started_at",
+      "actual_at",
+      "created_at",
+      "user_pattern",
+      "system_pattern",
+      "input_source",
+    ];
+
+    let html = metaKeys
+      .map((k) => {
+        const label = DETAIL_LABEL_JA[k] || k;
+        return (
+          "<dt>" +
+          esc(label) +
+          "</dt><dd>" +
+          (k === "system_pattern" || k === "user_pattern"
+            ? fmtDetailValue(k, r)
+            : k === "id"
+              ? '<span class="mono">' + esc(String(r.id)) + "</span>"
+              : "<span class=\"mono\">" + fmtDetailValue(k, r) + "</span>") +
+          "</dd>"
+        );
+      })
+      .join("");
+
+    html +=
+      "<dt>" +
+      esc("状態") +
+      "</dt><dd>" +
+      '<span class="' +
+      (st === "blue" ? "status-blue" : st === "red" ? "status-red" : "") +
+      '">' +
+      statusLabelJa(r.status) +
+      "</span></dd>";
+
+    html +=
+      "<dt>" +
+      esc("予告内容") +
+      "</dt><dd>" +
+      linesBlockHtml(plannedLines, unit) +
+      "</dd>" +
+      "<dt>" +
+      esc("実績内容") +
+      "</dt><dd>" +
+      linesBlockHtml(actualLines, unit) +
+      "</dd>";
+
+    detailDl.innerHTML = html;
+
     const canClose = st === "blue" || st === "red";
     btnClose.disabled = !canClose;
     btnClose.dataset.unitId = String(r.id);
@@ -373,12 +706,35 @@
     showErr("");
     showOk("");
     if (!cid) {
-      showErr("company_id を入力してください");
+      showErr("会社ID を入力してください");
       return;
     }
     history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
     btnLoad.disabled = true;
     try {
+      phase2Enabled = false;
+      try {
+        const cr = await fetch("/v2/company/" + encodeURIComponent(cid));
+        if (cr.ok) {
+          const cj = await cr.json();
+          phase2Enabled = cj.phase2_enabled === true;
+        }
+      } catch (_) {
+        /* 取得失敗時はフェーズ1扱い */
+      }
+      const headHint = $("office-header-phase-hint");
+      if (headHint) {
+        headHint.innerHTML = phase2Enabled
+          ? "<strong>未対応（青・赤）</strong>を表示します（フェーズ2オン時は新規に赤へ昇格し得ます）。"
+          : "<strong>未対応（青・赤）</strong>を表示します。フェーズ2オフのため<strong>新規の赤は発生しません</strong>が、<strong>既存の赤</strong>はここから完了できます。";
+      }
+      const apiHint = $("office-hint-api");
+      if (apiHint) {
+        apiHint.innerHTML = phase2Enabled
+          ? 'API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち <strong>青・赤</strong>のみ（通常・完了は非表示）。'
+          : 'API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち <strong>青・赤</strong>のみ（通常・完了は非表示）。フェーズ2オフ時はサーバが<strong>新規赤化</strong>しません（既存の赤はそのまま表示）。';
+      }
+
       const res = await fetch(
         "/v2/work/list?company_id=" + encodeURIComponent(cid)
       );
@@ -415,12 +771,9 @@
       selected = null;
       renderTable();
       renderDetail();
+      const nAnom = data.filter((r) => isAnomalyStatus(r.status)).length;
       showOk(
-        "全 " +
-          data.length +
-          " 件中、blue/red " +
-          data.filter((r) => isAnomalyStatus(r.status)).length +
-          " 件を表示"
+        "全 " + data.length + " 件中、未対応（青・赤） " + nAnom + " 件を表示"
       );
     } finally {
       btnLoad.disabled = false;
@@ -454,7 +807,7 @@
         btnClose.disabled = false;
         return;
       }
-      showOk("unit_id=" + id + " を closed にしました。一覧を再読込しました。");
+      showOk("完了しました（unit_id=" + id + "）。一覧を更新しました。");
       selected = null;
       await load();
     } catch (e) {
@@ -463,6 +816,14 @@
       btnClose.disabled = false;
     }
   }
+
+  tbody.addEventListener("click", (ev) => {
+    const tr = ev.target.closest("tr[data-id]");
+    if (!tr) return;
+    const id = Number(tr.getAttribute("data-id"));
+    if (Number.isNaN(id)) return;
+    selectById(id);
+  });
 
   $("btn-load").addEventListener("click", load);
   btnClose.addEventListener("click", closeUnit);

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 
@@ -30,6 +30,28 @@ class CompanySettingsOut(BaseModel):
 class FieldUsersIn(BaseModel):
     company_id:   str
     field_users:  str = ""   # カンマ区切り（名前:工程 可）
+
+
+# ─── v2 班長マスタ（sr_v2 / PUT leaders）──────────────────────
+class V2LeaderRow(BaseModel):
+    name: str = ""
+    process: str = ""
+
+
+class V2LeadersPut(BaseModel):
+    leaders: List[V2LeaderRow] = Field(default_factory=list)
+    day_boundary_time: Optional[str] = Field(
+        default=None,
+        description="HH:MM。省略時は day_boundary_time を変更しない。",
+    )
+    company_name: Optional[str] = Field(
+        default=None,
+        description="表示用会社名。省略時は company_name を変更しない。",
+    )
+    tolerance_value: Optional[int] = Field(
+        default=None,
+        description="数値乖離の許容差（±）。省略時は tolerance_value を変更しない。",
+    )
 
 
 # ─── カレンダー ─────────────────────────────────────────────
@@ -131,7 +153,7 @@ class WorkUnitOut(BaseModel):
     user_pattern:        Optional[str] = None  # 現場申告 B のみ（未申告は null）。system_pattern とは独立
     system_pattern:      str = ""  # 第5条フェーズ1・サーバ確定 A*/B*（user_pattern とは独立）
     status:              str = "normal"
-    judgement_red_deadline_at: Optional[str] = None  # blue 時のみ: 2回目の judgement 境界（ISO、JST含む）
+    judgement_red_deadline_at: Optional[str] = None  # フェーズ2かつ blue 時: 2回目 judgement 境界（ISO）
     diff_value:          Optional[float]
     is_missing:          bool
     is_invalid_flow:     bool
