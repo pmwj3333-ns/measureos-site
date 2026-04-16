@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS — 第7条・優先指示入力（事務・営業）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    background: #f2f2f7;
+    color: #1c1c1e;
+    font-size: 15px;
+    line-height: 1.45;
+    padding: 20px 16px 40px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 14px; line-height: 1.55; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+  label { font-size: 0.72rem; color: #636366; display: block; margin-bottom: 2px; }
+  input[type="text"], input[type="number"] {
+    padding: 10px 12px; border: 1px solid #c7c7cc; border-radius: 10px;
+    font-size: 0.95rem; width: 100%; max-width: 280px; font-family: inherit;
+  }
+  input[type="date"] {
+    padding: 8px 10px; border: 1px solid #c7c7cc; border-radius: 10px;
+    font-size: 0.9rem; font-family: inherit; max-width: 200px;
+  }
+  button {
+    padding: 10px 18px; border: none; border-radius: 10px; font-weight: 600;
+    font-size: 0.88rem; cursor: pointer; font-family: inherit;
+    background: #007aff; color: #fff;
+  }
+  button.secondary { background: #8e8e93; }
+  button.ghost {
+    width: 100%; margin-top: 10px; background: #fff;
+    border: 1.5px dashed #c7c7cc; color: #007aff;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
+  .hint.err { color: #ff3b30; }
+  a { color: #007aff; }
+  .nav-links { margin-bottom: 12px; font-size: 0.78rem; }
+  .row-block {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e5ea;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .row-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 720px) {
+    .row-grid {
+      grid-template-columns: 1fr 100px 100px 150px auto;
+      align-items: end;
+    }
+  }
+  .row-actions { display: flex; align-items: flex-end; justify-content: flex-end; }
+  .btn-remove {
+    min-width: 44px; min-height: 44px; padding: 0;
+    background: #f2f2f7; color: #8e8e93; font-size: 1.2rem; line-height: 1;
+    border-radius: 10px;
+  }
+  .panel-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .section-title {
+    font-size: 0.7rem; font-weight: 700; color: #8e8e93;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 10px; margin-top: 4px;
+  }
+  .csv-import-block {
+    background: #fff; border-radius: 12px; border: 1px solid #e5e5ea;
+    padding: 16px 16px 18px; margin-bottom: 20px;
+  }
+  .csv-import-block input[type="file"] {
+    font-size: 0.82rem; max-width: 100%;
+  }
+  .editor-sep {
+    border: none; border-top: 1px solid #e5e5ea; margin: 20px 0 16px;
+  }
+  .csv-preview-wrap { margin-top: 12px; overflow-x: auto; }
+  .csv-preview-wrap table {
+    width: 100%; border-collapse: collapse; font-size: 0.78rem;
+    background: #fff; border-radius: 8px; overflow: hidden;
+  }
+  .csv-preview-wrap th, .csv-preview-wrap td {
+    padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e5ea;
+    vertical-align: top;
+  }
+  .csv-preview-wrap th { background: #f2f2f7; color: #636366; font-weight: 600; }
+  .csv-errors { white-space: pre-wrap; margin-top: 10px; font-size: 0.78rem; }
+  .csv-role-hint {
+    font-size: 0.78rem; color: #636366; line-height: 1.55;
+    margin: 0 0 12px; padding: 10px 12px; background: #f2f2f7; border-radius: 10px;
+  }
+  .csv-role-hint strong { color: #3a3a3c; font-weight: 600; }
+  tr.csv-row-err { background: #ffebee; }
+  tr.csv-row-err td { color: #b71c1c; }
+  tr.csv-row-err td.csv-cell-status { font-weight: 600; }
+  td.csv-cell-ok { color: #2e7d32; font-size: 0.72rem; }
+  tr.csv-row-fatal td { background: #ffebee; color: #b71c1c; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>第7条・優先指示入力（フェーズ1）</h1>
+  <p class="sub">
+    現場の予告（第5条）とは別データです。事務・営業が「商品・出荷数・製造数・納期」を入力し、
+    <code>POST /v2/priority/create</code> で会社単位に保存します（送信内容で全置換）。製造数は出荷数以下にしてください。
+  </p>
+  <div class="nav-links">
+    <a href="/priority/v2">優先度一覧</a>
+    · <a href="/office/v2">事務 v2</a>
+    · <a href="/debug/v2">debug v2</a>
+    · <a href="/genba/v2">現場 v2</a>
+  </div>
+  <div class="bar">
+    <div>
+      <label for="company">company_id</label>
+      <input type="text" id="company" placeholder="例: demo" autocomplete="off">
+    </div>
+    <button type="button" id="btn-load" class="secondary">読み込み</button>
+  </div>
+  <p id="msg" class="hint"></p>
+
+  <div id="editor" hidden>
+    <div class="csv-import-block">
+      <div class="section-title">CSV インポート（全置換・第7条専用）</div>
+      <p class="csv-role-hint">
+        <strong>CSV：</strong>既存システムからの一括取り込み用<br />
+        <strong>手入力：</strong>個別修正・追加用
+      </p>
+      <p class="hint" style="margin-top:0;">
+        UTF-8、1行目ヘダ固定: <code>due_date,label,ship_value,prod_value</code>。
+        空行は無視。出荷数・製造数は0以上の整数。製造数は出荷数以下。ファイル選択後は必ず下のプレビューで内容を確認してから保存してください。
+      </p>
+      <div class="bar" style="margin-bottom: 0;">
+        <div style="flex:1; min-width:200px;">
+          <label for="csv-file">CSV ファイル</label>
+          <input type="file" id="csv-file" accept=".csv,text/csv,text/plain" />
+        </div>
+        <button type="button" id="btn-csv-clear" class="secondary">プレビューをクリア</button>
+      </div>
+      <pre id="csv-errors" class="hint err csv-errors" hidden></pre>
+      <div id="csv-preview-wrap" class="csv-preview-wrap" hidden>
+        <p class="hint" id="csv-preview-caption" style="margin-top:0;margin-bottom:8px;">プレビュー（保存前に内容を確認してください）</p>
+        <table>
+          <thead>
+            <tr>
+              <th>行</th>
+              <th>納期（due_date）</th>
+              <th>商品（label）</th>
+              <th>出荷数（ship_value）</th>
+              <th>製造数（prod_value）</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody id="csv-preview-body"></tbody>
+        </table>
+        <div class="panel-actions">
+          <button type="button" id="btn-csv-save" disabled>CSV を一括保存（全置換）</button>
+        </div>
+        <p id="csv-save-msg" class="hint"></p>
+      </div>
+    </div>
+
+    <hr class="editor-sep" />
+    <div class="section-title">手入力</div>
+
+    <div id="rows-host"></div>
+    <button type="button" id="btn-add" class="ghost">＋ 行を追加</button>
+    <div class="panel-actions">
+      <button type="button" id="btn-save">保存（全置換）</button>
+    </div>
+    <p id="save-msg" class="hint"></p>
+  </div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  function param(key, fb) {
+    var v = new URLSearchParams(location.search).get(key);
+    return v != null && String(v).trim() !== "" ? v.trim() : fb;
+  }
+
+  function setMsg(text, isErr) {
+    var el = $("msg");
+    el.textContent = text || "";
+    el.className = "hint" + (isErr ? " err" : "");
+  }
+
+  function setSaveMsg(text, isErr) {
+    var el = $("save-msg");
+    el.textContent = text || "";
+    el.className = "hint" + (isErr ? " err" : "");
+  }
+
+  function setCsvSaveMsg(text, isErr) {
+    var el = $("csv-save-msg");
+    if (!el) return;
+    el.textContent = text || "";
+    el.className = "hint" + (isErr ? " err" : "");
+  }
+
+  var csvParsedItems = null;
+  var REPLACE_CONFIRM_MSG =
+    "現在の第7条データをすべて置き換えます。本当に実行しますか？";
+
+  function parseCsvRow(line) {
+    var out = [];
+    var cur = "";
+    var inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (inQ) {
+        if (c === '"') {
+          if (line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQ = false;
+          }
+        } else {
+          cur += c;
+        }
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ",") {
+          out.push(cur);
+          cur = "";
+        } else cur += c;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  var CSV_HEADERS = ["due_date", "label", "ship_value", "prod_value"];
+
+  function normHeaderCell(s) {
+    return String(s).trim().toLowerCase();
+  }
+
+  function isNonNegIntStr(s) {
+    return /^\d+$/.test(String(s).trim());
+  }
+
+  function isValidYmd(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    var p = s.split("-");
+    var y = +p[0];
+    var m = +p[1];
+    var d = +p[2];
+    var dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+  }
+
+  function parsePriorityCsv(text) {
+    var previewRows = [];
+    var items = [];
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    var lines = text.split(/\r?\n/);
+    var headerDone = false;
+    var anyErr = false;
+
+    function addFatal(msg) {
+      previewRows.push({ kind: "fatal", msg: msg });
+    }
+
+    for (var idx = 0; idx < lines.length; idx++) {
+      var physical = idx + 1;
+      var raw = lines[idx];
+      if (!String(raw).trim()) continue;
+      var cells = parseCsvRow(raw);
+      if (!headerDone) {
+        if (cells.length !== 4) {
+          addFatal("行 " + physical + ": ヘッダの列数が4ではありません");
+          return { previewRows: previewRows, items: [], allOk: false };
+        }
+        var h = cells.map(normHeaderCell);
+        for (var j = 0; j < 4; j++) {
+          if (h[j] !== CSV_HEADERS[j]) {
+            addFatal(
+              "行 " +
+                physical +
+                ": ヘッダが不正です（1行目は due_date,label,ship_value,prod_value のみ）"
+            );
+            return { previewRows: previewRows, items: [], allOk: false };
+          }
+        }
+        headerDone = true;
+        continue;
+      }
+      var due = cells.length > 0 ? String(cells[0]).trim() : "";
+      var label = cells.length > 1 ? String(cells[1]).trim() : "";
+      var shipS = cells.length > 2 ? String(cells[2]).trim() : "";
+      var prodS = cells.length > 3 ? String(cells[3]).trim() : "";
+      var errMsg = null;
+      if (cells.length !== 4) {
+        errMsg = "列数が4ではありません";
+      } else if (!label) {
+        errMsg = "label が空です";
+      } else if (!isValidYmd(due)) {
+        errMsg = "due_date は YYYY-MM-DD（実在する日付）にしてください";
+      } else if (!isNonNegIntStr(shipS)) {
+        errMsg = "ship_value は0以上の整数にしてください";
+      } else if (!isNonNegIntStr(prodS)) {
+        errMsg = "prod_value は0以上の整数にしてください";
+      } else {
+        var ship = parseInt(shipS, 10);
+        var prod = parseInt(prodS, 10);
+        if (prod > ship) {
+          errMsg =
+            "製造数は出荷数以下にしてください（出荷 " +
+            ship +
+            " / 製造 " +
+            prod +
+            "）";
+        }
+      }
+      if (errMsg) {
+        anyErr = true;
+        previewRows.push({
+          kind: "row",
+          line: physical,
+          due: due,
+          label: label,
+          ship: shipS,
+          prod: prodS,
+          ok: false,
+          status: errMsg,
+        });
+      } else {
+        var shipN = parseInt(shipS, 10);
+        var prodN = parseInt(prodS, 10);
+        items.push({
+          label: label,
+          ship_value: shipN,
+          prod_value: prodN,
+          due_date: due,
+        });
+        previewRows.push({
+          kind: "row",
+          line: physical,
+          due: due,
+          label: label,
+          ship: shipS,
+          prod: prodS,
+          ok: true,
+          status: "OK",
+        });
+      }
+    }
+    if (!headerDone) {
+      addFatal(
+        "ヘッダ行がありません。先頭の非空行を due_date,label,ship_value,prod_value にしてください。"
+      );
+      return { previewRows: previewRows, items: [], allOk: false };
+    }
+    if (anyErr) {
+      return { previewRows: previewRows, items: [], allOk: false };
+    }
+    return { previewRows: previewRows, items: items, allOk: true };
+  }
+
+  function renderCsvPreviewTable(parsed) {
+    var tb = $("csv-preview-body");
+    tb.innerHTML = "";
+    var cap = $("csv-preview-caption");
+    if (cap) {
+      if (parsed.allOk) {
+        cap.textContent = "プレビュー（保存前に内容を確認してください）";
+        cap.className = "hint";
+      } else {
+        cap.textContent =
+          "問題のある行があります。修正するまでCSVは保存できません。";
+        cap.className = "hint err";
+      }
+      cap.style.marginTop = "0";
+      cap.style.marginBottom = "8px";
+    }
+    parsed.previewRows.forEach(function (r) {
+      if (r.kind === "fatal") {
+        var trF = document.createElement("tr");
+        trF.className = "csv-row-fatal";
+        var tdF = document.createElement("td");
+        tdF.colSpan = 6;
+        tdF.textContent = r.msg;
+        trF.appendChild(tdF);
+        tb.appendChild(trF);
+        return;
+      }
+      var tr = document.createElement("tr");
+      if (!r.ok) tr.className = "csv-row-err";
+      var stCell =
+        r.ok
+          ? '<td class="csv-cell-ok">OK</td>'
+          : '<td class="csv-cell-status">' + escHtml(r.status) + "</td>";
+      tr.innerHTML =
+        "<td>" +
+        escHtml(String(r.line)) +
+        "</td><td>" +
+        escHtml(r.due) +
+        "</td><td>" +
+        escHtml(r.label) +
+        "</td><td>" +
+        escHtml(r.ship) +
+        "</td><td>" +
+        escHtml(r.prod) +
+        "</td>" +
+        stCell;
+      tb.appendChild(tr);
+    });
+  }
+
+  function escHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function resetCsvImport() {
+    csvParsedItems = null;
+    var fin = $("csv-file");
+    if (fin) fin.value = "";
+    var errEl = $("csv-errors");
+    if (errEl) {
+      errEl.textContent = "";
+      errEl.hidden = true;
+    }
+    var cap = $("csv-preview-caption");
+    if (cap) {
+      cap.textContent = "プレビュー（保存前に内容を確認してください）";
+      cap.className = "hint";
+      cap.style.marginTop = "0";
+      cap.style.marginBottom = "8px";
+    }
+    var tb = $("csv-preview-body");
+    if (tb) tb.innerHTML = "";
+    var wrap = $("csv-preview-wrap");
+    if (wrap) wrap.hidden = true;
+    var btn = $("btn-csv-save");
+    if (btn) btn.disabled = true;
+    setCsvSaveMsg("", false);
+  }
+
+  function applyItemsToManualForm(items) {
+    clearRows();
+    if (!items.length) {
+      addRow("", "", "", "");
+    } else {
+      items.forEach(function (it) {
+        var due = it.due_date != null ? String(it.due_date).trim() : "";
+        var ship = it.ship_value;
+        var prod = it.prod_value;
+        if ((ship == null || ship === "") && it.value != null) ship = it.value;
+        if ((prod == null || prod === "") && it.value != null) prod = it.value;
+        addRow(it.label || "", ship, prod, due);
+      });
+    }
+  }
+
+  async function postPriorityReplace(cid, items) {
+    var res = await fetch("/v2/priority/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: cid, items: items }),
+    });
+    var text = await res.text();
+    var data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (_) {
+      data = { detail: text };
+    }
+    if (!res.ok) {
+      var detail =
+        data && data.detail
+          ? typeof data.detail === "string"
+            ? data.detail
+            : JSON.stringify(data.detail)
+          : text || String(res.status);
+      return { ok: false, detail: detail, data: null };
+    }
+    return { ok: true, detail: "", data: data };
+  }
+
+  var rowSeq = 0;
+
+  function addRow(label, shipVal, prodVal, due) {
+    var id = "r" + rowSeq++;
+    var host = $("rows-host");
+    var blk = document.createElement("div");
+    blk.className = "row-block";
+    blk.dataset.rowId = id;
+    blk.innerHTML =
+      '<div class="row-grid">' +
+      '<div><label>商品</label><input type="text" class="in-label" autocomplete="off" /></div>' +
+      '<div><label>出荷数</label><input type="number" class="in-ship" inputmode="decimal" min="0" step="any" /></div>' +
+      '<div><label>製造数</label><input type="number" class="in-prod" inputmode="decimal" min="0" step="any" /></div>' +
+      '<div><label>納期</label><input type="date" class="in-due" /></div>' +
+      '<div class="row-actions"><button type="button" class="btn-remove" aria-label="行を削除">×</button></div>' +
+      "</div>";
+    var labIn = blk.querySelector(".in-label");
+    var shipIn = blk.querySelector(".in-ship");
+    var prodIn = blk.querySelector(".in-prod");
+    var dIn = blk.querySelector(".in-due");
+    if (label) labIn.value = label;
+    if (shipVal != null && shipVal !== "" && Number.isFinite(Number(shipVal))) shipIn.value = String(shipVal);
+    if (prodVal != null && prodVal !== "" && Number.isFinite(Number(prodVal))) prodIn.value = String(prodVal);
+    if (due) dIn.value = due;
+    blk.querySelector(".btn-remove").addEventListener("click", function () {
+      var blocks = host.querySelectorAll(".row-block");
+      if (blocks.length <= 1) {
+        labIn.value = "";
+        shipIn.value = "";
+        prodIn.value = "";
+        dIn.value = "";
+        return;
+      }
+      blk.remove();
+    });
+    host.appendChild(blk);
+  }
+
+  function clearRows() {
+    $("rows-host").innerHTML = "";
+    rowSeq = 0;
+  }
+
+  function collectPayload() {
+    var blocks = $("rows-host").querySelectorAll(".row-block");
+    var items = [];
+    var err = null;
+    blocks.forEach(function (blk) {
+      var lb = (blk.querySelector(".in-label").value || "").trim();
+      var shipRaw = (blk.querySelector(".in-ship").value || "").trim();
+      var prodRaw = (blk.querySelector(".in-prod").value || "").trim();
+      var dueRaw = (blk.querySelector(".in-due").value || "").trim();
+      if (!lb && !shipRaw && !prodRaw && !dueRaw) return;
+      if (!lb) {
+        err = "商品が空の行があります（数値だけの行は削除するか商品を入力してください）";
+        return;
+      }
+      if (!shipRaw) {
+        err = "「" + lb + "」の出荷数を入力してください";
+        return;
+      }
+      if (!prodRaw) {
+        err = "「" + lb + "」の製造数を入力してください";
+        return;
+      }
+      var ship = Number(String(shipRaw).replace(",", "."));
+      var prod = Number(String(prodRaw).replace(",", "."));
+      if (!Number.isFinite(ship) || !Number.isFinite(prod)) {
+        err = "「" + lb + "」の出荷数・製造数が不正です";
+        return;
+      }
+      if (prod > ship) {
+        err =
+          "「" +
+          lb +
+          "」: 製造数は出荷数以下にしてください（出荷 " +
+          ship +
+          " / 製造 " +
+          prod +
+          "）";
+        return;
+      }
+      items.push({
+        label: lb,
+        ship_value: ship,
+        prod_value: prod,
+        due_date: dueRaw || null,
+      });
+    });
+    if (err) return { error: err };
+    return { items: items };
+  }
+
+  async function loadItems() {
+    var cid = $("company").value.trim();
+    if (!cid) {
+      setMsg("company_id を入力してください", true);
+      return;
+    }
+    var qs = "?company=" + encodeURIComponent(cid);
+    history.replaceState(null, "", qs);
+    try {
+      localStorage.setItem("priority_input_v2_company", cid);
+    } catch (_) {}
+    setMsg("");
+    $("btn-load").disabled = true;
+    try {
+      var res = await fetch("/v2/priority/items?company_id=" + encodeURIComponent(cid));
+      var text = await res.text();
+      var data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (_) {
+        data = null;
+      }
+      if (!res.ok) {
+        setMsg((data && data.detail) ? String(data.detail) : text || String(res.status), true);
+        $("editor").hidden = true;
+        return;
+      }
+      var items = (data && data.items) || [];
+      clearRows();
+      if (!items.length) {
+        addRow("", "", "", "");
+      } else {
+        items.forEach(function (it) {
+          var due = it.due_date != null ? String(it.due_date).trim() : "";
+          var ship = it.ship_value;
+          var prod = it.prod_value;
+          if ((ship == null || ship === "") && it.value != null) ship = it.value;
+          if ((prod == null || prod === "") && it.value != null) prod = it.value;
+          addRow(it.label || "", ship, prod, due);
+        });
+      }
+      $("editor").hidden = false;
+      resetCsvImport();
+    } catch (e) {
+      setMsg(String(e.message || e), true);
+      $("editor").hidden = true;
+    } finally {
+      $("btn-load").disabled = false;
+    }
+  }
+
+  async function saveItems() {
+    var cid = $("company").value.trim();
+    if (!cid) {
+      setSaveMsg("company_id を入力してください", true);
+      return;
+    }
+    var got = collectPayload();
+    if (got.error) {
+      setSaveMsg(got.error, true);
+      return;
+    }
+    if (!confirm(REPLACE_CONFIRM_MSG)) return;
+    setSaveMsg("", false);
+    $("btn-save").disabled = true;
+    try {
+      var pr = await postPriorityReplace(cid, got.items);
+      if (!pr.ok) {
+        setSaveMsg(pr.detail, true);
+        return;
+      }
+      setSaveMsg("保存しました。", false);
+      applyItemsToManualForm((pr.data && pr.data.items) || []);
+    } catch (e) {
+      setSaveMsg(String(e.message || e), true);
+    } finally {
+      $("btn-save").disabled = false;
+    }
+  }
+
+  async function saveCsvImport() {
+    var cid = $("company").value.trim();
+    if (!cid) {
+      setCsvSaveMsg("company_id を入力してください", true);
+      return;
+    }
+    if (csvParsedItems == null) {
+      setCsvSaveMsg("有効なCSVプレビューがありません", true);
+      return;
+    }
+    if (!confirm(REPLACE_CONFIRM_MSG)) return;
+    setCsvSaveMsg("", false);
+    $("btn-csv-save").disabled = true;
+    try {
+      var pr = await postPriorityReplace(cid, csvParsedItems);
+      if (!pr.ok) {
+        setCsvSaveMsg(pr.detail, true);
+        return;
+      }
+      setCsvSaveMsg("CSVを保存しました（全置換）。", false);
+      applyItemsToManualForm((pr.data && pr.data.items) || []);
+      resetCsvImport();
+    } catch (e) {
+      setCsvSaveMsg(String(e.message || e), true);
+    } finally {
+      $("btn-csv-save").disabled = csvParsedItems == null;
+    }
+  }
+
+  $("company").value =
+    param("company", localStorage.getItem("priority_input_v2_company") || "");
+  $("btn-load").addEventListener("click", loadItems);
+  $("btn-add").addEventListener("click", function () {
+    addRow("", "", "", "");
+  });
+  $("btn-save").addEventListener("click", saveItems);
+  $("company").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") loadItems();
+  });
+
+  $("csv-file").addEventListener("change", function () {
+    setCsvSaveMsg("", false);
+    var f = this.files && this.files[0];
+    if (!f) {
+      resetCsvImport();
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var txt = String(reader.result || "");
+      var parsed = parsePriorityCsv(txt);
+      var errEl = $("csv-errors");
+      var wrap = $("csv-preview-wrap");
+      var btn = $("btn-csv-save");
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.hidden = true;
+      }
+      csvParsedItems = parsed.allOk ? parsed.items : null;
+      renderCsvPreviewTable(parsed);
+      wrap.hidden = false;
+      if (btn) btn.disabled = !parsed.allOk;
+    };
+    reader.onerror = function () {
+      setCsvSaveMsg("ファイルの読み込みに失敗しました", true);
+      resetCsvImport();
+    };
+    reader.readAsText(f, "UTF-8");
+  });
+
+  $("btn-csv-clear").addEventListener("click", function () {
+    resetCsvImport();
+    setCsvSaveMsg("", false);
+  });
+
+  $("btn-csv-save").addEventListener("click", saveCsvImport);
+
+  if ($("company").value.trim()) loadItems();
+})();
+</script>
+</body>
+</html>

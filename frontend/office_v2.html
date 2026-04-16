@@ -122,6 +122,17 @@
   }
   .status-blue { color: #1565c0; font-weight: 600; }
   .status-red { color: #c62828; font-weight: 600; }
+  .unreg-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+    vertical-align: middle;
+  }
   .mono { font-family: ui-monospace, monospace; font-size: 0.74rem; }
   .detail-title {
     font-size: 0.8rem;
@@ -166,14 +177,14 @@
   <div class="panel">
     <div class="bar">
       <div>
-        <label for="company">会社ID</label>
-        <input type="text" id="company" placeholder="例: test1" autocomplete="off" />
+        <label for="company">会社ID（現場画面と共有）</label>
+        <input type="text" id="company" placeholder="URL または前回の値が入ります" autocomplete="off" />
       </div>
       <div style="align-self: flex-end;">
         <button type="button" class="btn-load" id="btn-load">読み込み</button>
       </div>
     </div>
-    <p class="hint" id="office-hint-api">API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち<strong>青・赤</strong>のみ表示（通常・完了は非表示）。</p>
+    <p class="hint" id="office-hint-api">API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち<strong>青・赤</strong>のみ表示（通常・完了は非表示）。<a href="/priority/v2">優先度一覧（第7条）</a></p>
     <p id="msg" class="err" hidden></p>
     <p id="ok" class="ok" hidden></p>
 
@@ -214,6 +225,15 @@
   const $ = (id) => document.getElementById(id);
   const tbody = $("tbody");
   const companyEl = $("company");
+  /** 現場 v2・事務 v2 で共有（field_v2 と同一キー） */
+  const LS_SHARED_COMPANY_ID = "company_id";
+
+  function persistSharedCompanyFromOffice() {
+    const v = companyEl.value.trim();
+    if (v) localStorage.setItem(LS_SHARED_COMPANY_ID, v);
+    else localStorage.removeItem(LS_SHARED_COMPANY_ID);
+  }
+
   const btnLoad = $("btn-load");
   const btnClose = $("btn-close");
   const detailEmpty = $("detail-empty");
@@ -288,6 +308,8 @@
 
   const DETAIL_LABEL_JA = {
     id: "ID",
+    is_unregistered_user: "未登録ユーザー",
+    user_source: "班長照合",
     planned_at: "予告時刻",
     started_at: "着手時刻",
     actual_at: "実績時刻",
@@ -329,7 +351,10 @@
         const name = lineDisplayName(L);
         const v = L.value;
         if (v == null || !Number.isFinite(Number(v))) continue;
-        out.push({ name: name || "（無名）", value: Number(v) });
+        const row = { name: name || "（無名）", value: Number(v) };
+        if (L.due_date != null && String(L.due_date).trim())
+          row.due_date = String(L.due_date).trim();
+        out.push(row);
       }
     }
     if (out.length) return out;
@@ -453,15 +478,20 @@
    * 異常内容: 日本語ラベル。B* のときは合計の予告数→実績数を補足（例: 数値乖離（10 → 5））
    */
   function formatAnomalyCellJa(r) {
+    const unreg = r.is_unregistered_user === true;
     const base = formatSystemPatternJa(r.system_pattern);
-    if (base === "—") return base;
-    if (!hasNumericDeviationPattern(r.system_pattern)) return base;
+    let out = base;
+    if (unreg) {
+      out = base === "—" ? "未登録ユーザー" : "未登録ユーザー・" + base;
+    }
+    if (out === "—") return "—";
+    if (!hasNumericDeviationPattern(r.system_pattern)) return out;
     const pv = r.planned_value;
     const av = r.actual_value;
     const pStr = fmtQtyOrDash(pv);
     const aStr = fmtQtyOrDash(av);
-    if (pStr === "—" && aStr === "—") return base;
-    return base + "（" + pStr + " → " + aStr + "）";
+    if (pStr === "—" && aStr === "—") return out;
+    return out + "（" + pStr + " → " + aStr + "）";
   }
 
   /** system_pattern → 手順不備・数値乖離 */
@@ -513,6 +543,14 @@
     if (DATETIME_KEYS.has(key)) return esc(formatJST(v));
     if (key === "user_pattern") return formatUserPatternJa(v);
     if (key === "system_pattern") return formatAnomalyCellJa(r);
+    if (key === "is_unregistered_user")
+      return v === true ? "はい（班長マスタに無い user_id）" : "いいえ";
+    if (key === "user_source") {
+      const s = v != null ? String(v).trim() : "";
+      if (s === "manual") return "マスタ外入力";
+      if (s === "master") return "マスタ一致";
+      return fmt(v);
+    }
     return fmt(v);
   }
 
@@ -534,6 +572,9 @@
           (L) =>
             "<li>" +
             esc(displayProductLabelForDetail(L.name) + " " + qtyWithUnit(L.value, unit)) +
+            (L.due_date
+              ? " <span style=\"color:#6b7280\">due " + esc(String(L.due_date)) + "</span>"
+              : "") +
             "</li>"
         )
         .join("") +
@@ -541,9 +582,15 @@
     );
   }
 
-  function loadCompany() {
-    const c = param("company") || param("company_id");
-    if (c) companyEl.value = c;
+  function applyCompanyIdFromUrlOrStorage() {
+    const urlCo = param("company") || param("company_id");
+    if (urlCo) {
+      localStorage.setItem(LS_SHARED_COMPANY_ID, urlCo);
+      companyEl.value = urlCo;
+      return;
+    }
+    const stored = (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
+    if (stored) companyEl.value = stored;
   }
 
   function isAnomalyStatus(st) {
@@ -592,6 +639,9 @@
           "</td>" +
           "<td>" +
           formatLeaderDisplay(r.user_id) +
+          (r.is_unregistered_user === true
+            ? ' <span class="unreg-tag" title="班長マスタに無い user_id">未登録</span>'
+            : "") +
           "</td>" +
           '<td class="cell-compact">' +
           shortProductFlowSummary(r) +
@@ -646,6 +696,8 @@
 
     const metaKeys = [
       "id",
+      "is_unregistered_user",
+      "user_source",
       "planned_at",
       "started_at",
       "actual_at",
@@ -709,6 +761,7 @@
       showErr("会社ID を入力してください");
       return;
     }
+    persistSharedCompanyFromOffice();
     history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
     btnLoad.disabled = true;
     try {
@@ -830,8 +883,10 @@
   companyEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") load();
   });
+  companyEl.addEventListener("change", persistSharedCompanyFromOffice);
+  companyEl.addEventListener("blur", persistSharedCompanyFromOffice);
 
-  loadCompany();
+  applyCompanyIdFromUrlOrStorage();
   if (companyEl.value.trim()) load();
 })();
 </script>

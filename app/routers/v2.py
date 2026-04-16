@@ -9,6 +9,11 @@ from app import models
 from app.database import get_db
 from app.routers.settings import _parse_time, _time_str
 from app.schemas import V2LeadersPut
+from app.services.package_rules import (
+    get_company_package,
+    is_phase2_enabled,
+    package_label,
+)
 
 router = APIRouter(prefix="/v2", tags=["v2-設定"])
 
@@ -42,8 +47,11 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
             "unit": "個",
             "day_boundary_time": None,
             "tolerance_value": None,
-            "phase2_enabled": False,
+            "package_code": "A",
+            "package_label": package_label("A"),
+            "phase2_enabled": is_phase2_enabled(None),
         }
+    pkg = get_company_package(s)
     return {
         "company_id": s.company_id,
         "company_name": (getattr(s, "company_name", None) or "").strip(),
@@ -52,7 +60,9 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
         "unit": s.unit or "個",
         "day_boundary_time": _time_str(s.day_boundary_time),
         "tolerance_value": getattr(s, "tolerance_value", None),
-        "phase2_enabled": bool(getattr(s, "phase2_enabled", False)),
+        "package_code": pkg,
+        "package_label": package_label(pkg),
+        "phase2_enabled": is_phase2_enabled(s),
     }
 
 
@@ -68,7 +78,7 @@ def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(ge
     raw = ",".join(parts)
     s = db.query(models.CompanySettings).filter_by(company_id=company_id).first()
     if s is None:
-        s = models.CompanySettings(company_id=company_id)
+        s = models.CompanySettings(company_id=company_id, package_code="A")
         db.add(s)
     s.field_users = raw
     if body.company_name is not None:
@@ -87,8 +97,17 @@ def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(ge
                 ) from None
     if "tolerance_value" in body.model_fields_set:
         s.tolerance_value = body.tolerance_value
+    if "package_code" in body.model_fields_set and body.package_code is not None:
+        pc = str(body.package_code).strip().upper()
+        if pc not in ("A", "B", "C", "D"):
+            raise HTTPException(
+                status_code=400,
+                detail="package_code は A / B / C / D のいずれかで指定してください",
+            )
+        s.package_code = pc
     db.commit()
     db.refresh(s)
+    pkg = get_company_package(s)
     return {
         "company_id": company_id,
         "company_name": (getattr(s, "company_name", None) or "").strip(),
@@ -96,4 +115,7 @@ def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(ge
         "saved_count": len(parts),
         "day_boundary_time": _time_str(s.day_boundary_time),
         "tolerance_value": getattr(s, "tolerance_value", None),
+        "package_code": pkg,
+        "package_label": package_label(pkg),
+        "phase2_enabled": is_phase2_enabled(s),
     }

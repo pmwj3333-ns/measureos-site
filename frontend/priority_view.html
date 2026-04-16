@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS — 優先度一覧（第7条・フェーズ1）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    background: #f2f2f7;
+    color: #1c1c1e;
+    font-size: 15px;
+    line-height: 1.45;
+    padding: 20px 16px 40px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 14px; line-height: 1.5; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+  label { font-size: 0.72rem; color: #636366; display: block; margin-bottom: 2px; }
+  input[type="text"] {
+    padding: 10px 12px; border: 1px solid #c7c7cc; border-radius: 10px;
+    font-size: 0.95rem; width: min(240px, 100%); font-family: inherit;
+  }
+  button {
+    padding: 10px 18px; border: none; border-radius: 10px; font-weight: 600;
+    font-size: 0.88rem; cursor: pointer; font-family: inherit;
+    background: #007aff; color: #fff;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
+  a { color: #007aff; }
+  .tier-block { margin-top: 18px; }
+  .tier-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 8px; }
+  .tier-list { list-style: none; }
+  .tier-list li {
+    padding: 8px 0; border-bottom: 1px solid #e5e5ea;
+    font-size: 0.88rem; color: #3a3a3c;
+  }
+  .tier-list li:last-child { border-bottom: none; }
+  .muted { color: #8e8e93; font-size: 0.78rem; }
+  .empty { color: #8e8e93; padding: 16px 0; font-size: 0.88rem; }
+  .err { color: #ff3b30; font-size: 0.85rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h1>優先度一覧（第7条・フェーズ1）</h1>
+  <p class="sub">
+    データは <code>GET /v2/priority/items</code>（事務・営業が登録した優先指示）です。
+    納期 <code>YYYY-MM-DD</code>から表示用ティアを付けます。第5条（現場の予告）とは独立しています。
+  </p>
+  <div class="bar">
+    <div>
+      <label for="company">company_id</label>
+      <input type="text" id="company" placeholder="例: demo" autocomplete="off">
+    </div>
+    <button type="button" id="btn-load">読み込み</button>
+  </div>
+  <p class="hint">
+    <a href="/priority/input/v2">優先指示の入力</a>
+    · <a href="/genba/v2">現場 v2</a>
+    · <a href="/office/v2">事務 v2</a>
+    · <a href="/debug/v2">debug v2</a>
+  </p>
+  <div id="msg" class="err" hidden></div>
+  <div id="root"></div>
+
+<script src="/static/priority-tier-due.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var companyEl = $("company");
+  var root = $("root");
+  var msg = $("msg");
+
+  function param(key, fb) {
+    var v = new URLSearchParams(location.search).get(key);
+    return v != null && String(v).trim() !== "" ? v.trim() : fb;
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function collectItems(payload, unit) {
+    var items = (payload && payload.items) || [];
+    var out = [];
+    var u = unit || "個";
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it || typeof it !== "object") continue;
+      var due = it.due_date;
+      if (!due || !String(due).trim()) continue;
+      var tier = window.priorityTierFromDueDate(String(due).trim());
+      if (!tier) continue;
+      var ship = it.ship_value;
+      var prod = it.prod_value;
+      if ((ship == null || ship === "") && it.value != null) ship = it.value;
+      if ((prod == null || prod === "") && it.value != null) prod = it.value;
+      out.push({
+        tier: tier.tier,
+        name: String(it.label || "").trim() || "（無名）",
+        ship_value: ship,
+        prod_value: prod,
+        unit: u,
+        due: String(due).trim(),
+      });
+    }
+    return out;
+  }
+
+  function render(payload, unit) {
+    msg.hidden = true;
+    msg.textContent = "";
+    var items = collectItems(payload, unit);
+    if (!items.length) {
+      root.innerHTML =
+        '<p class="empty">納期付きの優先指示がありません。<a href="/priority/input/v2">優先指示の入力</a>から登録できます。</p>';
+      return;
+    }
+    var groups = [
+      { tier: "high", head: "\uD83D\uDD34 \u9AD8\uFF08\u7D0D\u671F\u8FD1\u3044\uFF09" },
+      { tier: "mid", head: "\uD83D\uDFE1 \u4E2D" },
+      { tier: "low", head: "\uD83D\uDD35 \u4F4E" },
+    ];
+    var html = "";
+    for (var g = 0; g < groups.length; g++) {
+      var tg = groups[g].tier;
+      var slice = items.filter(function (x) { return x.tier === tg; });
+      if (!slice.length) continue;
+      html += '<section class="tier-block"><div class="tier-title">' + esc(groups[g].head) + "</div>";
+      html += '<ul class="tier-list">';
+      for (var k = 0; k < slice.length; k++) {
+        var it = slice[k];
+        html +=
+          "<li>" +
+          esc(it.name) +
+          " \u3000\u88FD\u9020 " +
+          esc(String(it.prod_value)) +
+          esc(it.unit) +
+          " \u3000\u51FA\u8377 " +
+          esc(String(it.ship_value)) +
+          esc(it.unit) +
+          " \u3000\u7D0D\u671F\uFF1A" +
+          esc(it.due) +
+          "</li>";
+      }
+      html += "</ul></section>";
+    }
+    root.innerHTML = html || '<p class="empty">表示なし</p>';
+  }
+
+  async function load() {
+    var cid = companyEl.value.trim();
+    if (!cid) {
+      msg.hidden = false;
+      msg.textContent = "company_id を入力してください";
+      return;
+    }
+    history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
+    try {
+      localStorage.setItem("company_id", cid);
+    } catch (_) {}
+    $("btn-load").disabled = true;
+    try {
+      var resItems = await fetch("/v2/priority/items?company_id=" + encodeURIComponent(cid));
+      var textItems = await resItems.text();
+      var dataItems;
+      try {
+        dataItems = textItems ? JSON.parse(textItems) : {};
+      } catch (_) {
+        dataItems = null;
+      }
+      if (!resItems.ok) {
+        msg.hidden = false;
+        msg.textContent =
+          (dataItems && dataItems.detail) ? String(dataItems.detail) : textItems || String(resItems.status);
+        return;
+      }
+      var unit = "個";
+      try {
+        var resCo = await fetch("/v2/company/" + encodeURIComponent(cid));
+        if (resCo.ok) {
+          var co = await resCo.json();
+          if (co && co.unit) unit = co.unit;
+        }
+      } catch (_) { /* ok */ }
+      render(dataItems, unit);
+    } finally {
+      $("btn-load").disabled = false;
+    }
+  }
+
+  companyEl.value =
+    param("company", "") ||
+    (function () {
+      try {
+        return (
+          localStorage.getItem("company_id") ||
+          localStorage.getItem("debug_v2_company") ||
+          ""
+        );
+      } catch (_) {
+        return "";
+      }
+    })();
+  $("btn-load").addEventListener("click", load);
+  companyEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") load();
+  });
+  if (companyEl.value.trim()) load();
+})();
+</script>
+</body>
+</html>

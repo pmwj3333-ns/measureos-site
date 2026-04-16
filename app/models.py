@@ -16,7 +16,9 @@ class CompanySettings(Base):
     judgement_time     = Column(Time, nullable=True)
     field_users        = Column(String, nullable=True, default="")
     input_mode         = Column(String, nullable=True, default="manufacturing")
-    # True: blue→red 昇格・judgement_red_deadline_at を有効（フェーズ2）
+    # Package A-D（B以上でフェーズ2・赤系を有効化）
+    package_code       = Column(String, nullable=False, default="A")
+    # 互換用（package_code 優先。新規は package_code のみで判定）
     phase2_enabled     = Column(Boolean, nullable=True, default=False)
 
 
@@ -73,6 +75,24 @@ class WorkUnit(Base):
 
     is_unregistered_user = Column(Boolean, default=False)
     user_source          = Column(String, nullable=True, default="master")
+
+
+class PriorityItem(Base):
+    """第7条フェーズ1: 事務・営業が入力する優先指示（work_unit 非依存）。"""
+
+    __tablename__ = "priority_item"
+    __table_args__ = (Index("ix_priority_item_company_id", "company_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    label = Column(String, nullable=False)
+    ship_value = Column(Float, nullable=False)
+    prod_value = Column(Float, nullable=False)
+    # 旧スキーマ互換: かつての単一数量列。INSERT 時は ship_value と同値を入れる（NOT NULL の DB 対策）
+    value = Column(Float, nullable=True)
+    due_date = Column(String, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
 
 
 class WorkUnitStatusHistory(Base):

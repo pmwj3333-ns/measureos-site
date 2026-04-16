@@ -1,5 +1,5 @@
 """
-第5条仕様に基づく blue → red 昇格（テスト再判定 POST /v2/test/recompute から呼ぶ）。
+第5条仕様に基づく blue → red 昇格（GET /work/list 再計算後・POST /test/recompute などから呼ぶ）。
 
 - blue: 順序違反・乖離は即時、予告あり未実績は翌営業日 work_end 超過で（_apply_minimal_judgement）
 - red: 「営業日の judgement_time」を**2回**跨いでも未解消のものだけ
@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.services.business_date import calc_business_date, next_business_day
-from app.services.phase2 import is_phase2_enabled
+from app.services.package_rules import get_company_package
 from app.services.status_history import (
     append_work_unit_status_history_if_changed,
     norm_work_unit_status,
@@ -130,7 +130,7 @@ def promote_blue_to_red_after_judgement(
     )
     if not settings:
         return 0
-    if not is_phase2_enabled(settings):
+    if get_company_package(settings) == "A":
         return 0
 
     jt: time = settings.judgement_time or time(13, 0)

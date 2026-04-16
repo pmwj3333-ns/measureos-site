@@ -37,6 +37,7 @@ def _get_settings(company_id: str, db: Session) -> models.CompanySettings:
             work_end_time=time(17, 0),
             judgement_time=time(13, 0),
             tolerance_value=0,
+            package_code="A",
         )
         db.add(settings)
         db.commit()

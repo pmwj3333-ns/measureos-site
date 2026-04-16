@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.database import SessionLocal, engine
 from app import models
-from app.routers import settings, v2 as v2_routes, test_control, work
+from app.routers import priority, settings, v2 as v2_routes, test_control, work
 
 
 def _sqlite_migrate():
@@ -37,6 +37,17 @@ def _sqlite_migrate():
                 conn.execute(
                     text(
                         "ALTER TABLE company_settings ADD COLUMN phase2_enabled BOOLEAN DEFAULT 0"
+                    )
+                )
+            if "package_code" not in cs:
+                conn.execute(
+                    text(
+                        "ALTER TABLE company_settings ADD COLUMN package_code VARCHAR DEFAULT 'A'"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "UPDATE company_settings SET package_code = 'A' WHERE package_code IS NULL OR TRIM(package_code) = ''"
                     )
                 )
         except Exception:
@@ -130,6 +141,36 @@ def _sqlite_migrate():
             )
         except Exception:
             pass
+        # priority_item: value → ship_value / prod_value（既存 DB 互換）
+        try:
+            pi = cols("priority_item")
+            if pi:
+                if "ship_value" not in pi:
+                    conn.execute(text("ALTER TABLE priority_item ADD COLUMN ship_value FLOAT"))
+                if "prod_value" not in pi:
+                    conn.execute(text("ALTER TABLE priority_item ADD COLUMN prod_value FLOAT"))
+                pi2 = cols("priority_item")
+                if "value" in pi2:
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET ship_value = value "
+                            "WHERE ship_value IS NULL"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET prod_value = value "
+                            "WHERE prod_value IS NULL"
+                        )
+                    )
+                conn.execute(
+                    text("UPDATE priority_item SET ship_value = 0 WHERE ship_value IS NULL")
+                )
+                conn.execute(
+                    text("UPDATE priority_item SET prod_value = 0 WHERE prod_value IS NULL")
+                )
+        except Exception:
+            pass
 
 
 # テーブルを自動作成（既存テーブルはスキップ）
@@ -142,6 +183,7 @@ app.include_router(settings.router)
 app.include_router(work.router)
 app.include_router(v2_routes.router)
 app.include_router(work.router, prefix="/v2", tags=["v2-作業"])
+app.include_router(priority.router)
 app.include_router(test_control.router, prefix="/v2")
 
 # uvicorn の cwd に依存しない（/static/debug.html 等）
@@ -260,6 +302,19 @@ def debug_v2_screen():
 @app.get("/office/v2", summary="事務 v2（blue/red 確認・完了）")
 def office_v2_screen():
     return _file_response_or_404("office_v2.html")
+
+
+@app.get("/priority/v2", summary="優先度一覧（第7条・フェーズ1・表示のみ）")
+def priority_v2_screen():
+    return _file_response_or_404("priority_view.html")
+
+
+@app.get(
+    "/priority/input/v2",
+    summary="納期入力（第7条・事務・営業・planned-due）",
+)
+def priority_input_v2_screen():
+    return _file_response_or_404("priority_input_v2.html")
 
 
 @app.get("/dev")

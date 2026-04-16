@@ -108,6 +108,19 @@
     }
     input[type="number"]:focus { outline: none; border-color: #38bdf8; }
     input:focus { outline: none; border-color: #38bdf8; }
+    select {
+      width: 100%;
+      max-width: 420px;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    select:focus { outline: none; border-color: #38bdf8; }
     .row-line {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
@@ -280,6 +293,16 @@
           placeholder="例：株式会社サンプル"
           autocomplete="organization"
         />
+        <label for="package_code" class="label-after-gap">Package</label>
+        <select id="package_code" aria-label="Package">
+          <option value="A">A — &#35352;&#37682;&#22522;&#30436;</option>
+          <option value="B">B — &#36939;&#29992;&#21487;&#35222;&#21270;</option>
+          <option value="C">C — &#32113;&#21046;&#12539;&#24375;&#21046;</option>
+          <option value="D">D — &#32076;&#21942;&#27963;&#29992;</option>
+        </select>
+        <p class="hint" style="margin-top:8px;">
+          &#22865;&#32004;&#12503;&#12521;&#12531;&#12395;&#24540;&#12376;&#12383;&#27231;&#33021;&#24133;&#12391;&#12377;&#65288;&#26465;&#25991;&#12539;&#12501;&#12455;&#12540;&#12474;&#30058;&#21495;&#12399;&#34920;&#31034;&#12375;&#12414;&#12379;&#12435;&#65289;&#12290;
+        </p>
       </div>
       <div class="card card-rules">
         <div class="rules-block">
@@ -533,6 +556,8 @@
         data.company_name != null && data.company_name !== undefined
           ? String(data.company_name)
           : "";
+      const pkg = String(data.package_code || "A").trim().toUpperCase().slice(0, 1);
+      $("package_code").value = ["A", "B", "C", "D"].includes(pkg) ? pkg : "A";
       renderFromFieldUsers(data.field_users || "");
       applyDayBoundaryFromApi(data.day_boundary_time);
       const tv = data.tolerance_value;
@@ -571,15 +596,22 @@
           return;
         }
       }
+      const pkgSel = String($("package_code").value || "A").trim().toUpperCase().slice(0, 1);
+      const package_code = ["A", "B", "C", "D"].includes(pkgSel) ? pkgSel : "A";
       const data = await api("PUT", "/v2/company/" + encodeURIComponent(cid) + "/leaders", {
         leaders,
         day_boundary_time: boundaryTime,
         company_name: $("company_name").value.trim(),
         tolerance_value: tolerancePayload,
+        package_code,
       });
       applyDayBoundaryFromApi(data.day_boundary_time);
       if (data.company_name != null && data.company_name !== undefined) {
         $("company_name").value = String(data.company_name);
+      }
+      if (data.package_code) {
+        const p = String(data.package_code).trim().toUpperCase().slice(0, 1);
+        if (["A", "B", "C", "D"].includes(p)) $("package_code").value = p;
       }
       const tv = data.tolerance_value;
       $("tolerance_value").value =

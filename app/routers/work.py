@@ -1,8 +1,10 @@
+import hashlib
 import json
 import logging
 import math
+import uuid
 from datetime import datetime, date as date_type, time
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
@@ -26,9 +28,10 @@ from app.services.judgement_promote import (
     compute_red_deadline_jst,
     incomplete_implies_status_blue,
     next_work_end_boundary_jst,
+    promote_blue_to_red_after_judgement,
     reference_now_jst,
 )
-from app.services.phase2 import is_phase2_enabled
+from app.services.package_rules import is_phase2_enabled
 
 router = APIRouter(tags=["作業記録"])
 logger = logging.getLogger(__name__)
@@ -54,6 +57,26 @@ def _opt_str(v: Optional[str]) -> Optional[str]:
     return s if s else None
 
 
+def _legacy_planned_line_id(unit_id: int, label: str, value: float) -> str:
+    """レガシー1行予告（JSON なし）用の安定 line_id（GET のたびに同じ値）。"""
+    h = hashlib.sha256(f"{unit_id}\0{label}\0{value}".encode("utf-8")).hexdigest()[:26]
+    return f"mo-legacy-{h}"
+
+
+def _norm_due_date(raw: Optional[str]) -> Optional[str]:
+    """YYYY-MM-DD のみ受理。不正なら None。"""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    try:
+        d = date_type.fromisoformat(s)
+    except ValueError:
+        return None
+    return d.isoformat()
+
+
 def _parse_lines_json(raw: Optional[str]) -> List[dict]:
     if not raw or not str(raw).strip():
         return []
@@ -74,8 +97,50 @@ def _parse_lines_json(raw: Optional[str]) -> List[dict]:
         except (TypeError, ValueError):
             continue
         if lb and math.isfinite(fv):
-            out.append({"label": lb, "value": fv})
+            row = {"label": lb, "value": fv}
+            lid = it.get("line_id")
+            if lid is not None and str(lid).strip():
+                row["line_id"] = str(lid).strip()
+            dd = it.get("due_date")
+            if dd is not None and str(dd).strip():
+                nd = _norm_due_date(str(dd).strip())
+                if nd:
+                    row["due_date"] = nd
+            out.append(row)
     return out
+
+
+def _assign_missing_line_ids_mutate(rows: List[dict]) -> bool:
+    """行に line_id が無ければ付与。重複は空き UUID で回避。変更があれば True。"""
+    changed = False
+    seen: Set[str] = set()
+    for r in rows:
+        lid = str(r.get("line_id") or "").strip()
+        if lid:
+            seen.add(lid)
+    for r in rows:
+        lid = str(r.get("line_id") or "").strip()
+        if lid:
+            continue
+        nid = str(uuid.uuid4())
+        while nid in seen:
+            nid = str(uuid.uuid4())
+        r["line_id"] = nid
+        seen.add(nid)
+        changed = True
+    return changed
+
+
+def _backfill_stored_planned_line_ids(unit: models.WorkUnit) -> bool:
+    """Ensure each stored planned JSON row has line_id; persist when missing."""
+    raw = getattr(unit, "planned_lines_json", None)
+    rows = _parse_lines_json(raw)
+    if not rows:
+        return False
+    if _assign_missing_line_ids_mutate(rows):
+        unit.planned_lines_json = _lines_json_dumps(rows)
+        return True
+    return False
 
 
 def _lines_json_dumps(lines: List[dict]) -> Optional[str]:
@@ -92,6 +157,9 @@ def _join_line_labels(lines: List[dict], sep: str = " · ") -> Optional[str]:
 
 def _strict_lines_from_body(
     rows: List[schemas.WorkLineIn],
+    *,
+    include_due_date: bool = False,
+    include_line_id: bool = False,
 ) -> Tuple[List[dict], Optional[str]]:
     """lines 指定時。空行は無視。ラベルだけ／数量だけの行はエラー。"""
     complete: List[dict] = []
@@ -110,8 +178,65 @@ def _strict_lines_from_body(
             return None, "数量の形式が不正な行があります"
         if not math.isfinite(fv):
             return None, "数量の形式が不正な行があります"
-        complete.append({"label": lb, "value": fv})
+        dct: dict = {"label": lb, "value": fv}
+        if include_line_id:
+            raw_lid = getattr(row, "line_id", None)
+            if raw_lid is not None and str(raw_lid).strip():
+                dct["line_id"] = str(raw_lid).strip()
+        if include_due_date:
+            if "due_date" in row.model_fields_set:
+                raw_due = row.due_date
+                if raw_due is None or not str(raw_due).strip():
+                    dct["_due_cleared"] = True
+                else:
+                    nd = _norm_due_date(str(raw_due).strip())
+                    if nd is None:
+                        return None, "due_date は YYYY-MM-DD で指定してください"
+                    dct["due_date"] = nd
+        complete.append(dct)
+    if include_line_id and complete:
+        seen: Set[str] = set()
+        for dct in complete:
+            lid = str(dct.get("line_id") or "").strip()
+            if lid:
+                if lid in seen:
+                    return None, "line_id が重複しています"
+                seen.add(lid)
+        for dct in complete:
+            if not str(dct.get("line_id") or "").strip():
+                nid = str(uuid.uuid4())
+                while nid in seen:
+                    nid = str(uuid.uuid4())
+                dct["line_id"] = nid
+                seen.add(nid)
     return complete, None
+
+
+def _merge_due_from_previous(new_lines: List[dict], old_lines: Optional[List[dict]]) -> None:
+    """クライアントが due_date を省略したとき、同一 line_id の直前の行から引き��ぐ。"""
+    if not old_lines:
+        return
+    key_due: Dict[str, str] = {}
+    for o in old_lines:
+        lid = str(o.get("line_id") or "").strip()
+        if not lid:
+            continue
+        dd = o.get("due_date")
+        if not dd or not str(dd).strip():
+            continue
+        nd = _norm_due_date(str(dd).strip())
+        if nd:
+            key_due[lid] = nd
+    for nl in new_lines:
+        if nl.get("due_date"):
+            nl.pop("_due_cleared", None)
+            continue
+        if nl.pop("_due_cleared", False):
+            nl.pop("due_date", None)
+            continue
+        lid = str(nl.get("line_id") or "").strip()
+        if lid and lid in key_due:
+            nl["due_date"] = key_due[lid]
 
 
 def _planned_lines_for_response(unit: models.WorkUnit, im: str) -> List[dict]:
@@ -122,15 +247,16 @@ def _planned_lines_for_response(unit: models.WorkUnit, im: str) -> List[dict]:
     if v is None or not math.isfinite(float(v)):
         return []
     fv = float(v)
+    uid = int(unit.id)
     if im == "logistics":
         lab = _opt_str(unit.planned_work_label) or _opt_str(unit.planned_work_type)
         if not lab:
             return []
-        return [{"label": lab, "value": fv}]
+        return [{"label": lab, "value": fv, "line_id": _legacy_planned_line_id(uid, lab, fv)}]
     n = (unit.planned_item_name or "").strip()
     if not n:
         return []
-    return [{"label": n, "value": fv}]
+    return [{"label": n, "value": fv, "line_id": _legacy_planned_line_id(uid, n, fv)}]
 
 
 def _actual_lines_for_response(unit: models.WorkUnit, im: str) -> List[dict]:
@@ -236,6 +362,7 @@ def _get_or_create_settings(company_id: str, db: Session) -> models.CompanySetti
             unit="個",
             tolerance_value=0,
             day_boundary_time=time(0, 0),
+            package_code="A",
         )
         db.add(s)
         db.commit()
@@ -503,6 +630,30 @@ def _update_flags(unit: models.WorkUnit, settings: models.CompanySettings) -> No
     )
 
 
+def _sync_status_blue_from_derived_flags(
+    unit: models.WorkUnit,
+    db: Session,
+) -> None:
+    """
+    is_missing / is_invalid_flow / is_diff_anomaly / is_unregistered_user と status を整合させる。
+    _apply_minimal_judgement のみでは normal のまま残り得るが、派生フラグが異常なら blue にする。
+    一覧取得・保存・テスト再判定はすべて _recompute_unit_derived 経由でここを通す。
+    """
+    st = (unit.status or "").strip().lower()
+    if st in ("closed", "red", "blue"):
+        return
+    if not (
+        bool(unit.is_missing)
+        or bool(getattr(unit, "is_invalid_flow", False))
+        or bool(getattr(unit, "is_diff_anomaly", False))
+        or bool(getattr(unit, "is_unregistered_user", False))
+    ):
+        return
+    before = norm_work_unit_status(unit.status)
+    unit.status = "blue"
+    append_work_unit_status_history_if_changed(db, unit, before, "system")
+
+
 def _sync_anomaly_started_at(unit: models.WorkUnit) -> None:
     """
     status が normal のときは異常開始時刻をクリア（予告だけ保存直後の整合）。
@@ -518,7 +669,8 @@ def _sync_anomaly_started_at(unit: models.WorkUnit) -> None:
 def _maybe_set_anomaly_started_at(unit: models.WorkUnit) -> None:
     """
     異常が初めて立った時刻（1回のみ）。既存値は上書きしない。
-    ・status が blue、または is_missing / is_invalid_flow / is_diff_anomaly のいずれかが真のときに初回セット。
+    ・status が blue、または is_missing / is_invalid_flow / is_diff_anomaly /
+    is_unregistered_user のいずれかが真のときに初回セット。
     red 化・closed では値を消さない（再計算で terminal の行はここに来ない）。
     """
     if getattr(unit, "anomaly_started_at", None) is not None:
@@ -529,6 +681,7 @@ def _maybe_set_anomaly_started_at(unit: models.WorkUnit) -> None:
         or bool(unit.is_missing)
         or bool(unit.is_invalid_flow)
         or bool(unit.is_diff_anomaly)
+        or bool(getattr(unit, "is_unregistered_user", False))
     ):
         unit.anomaly_started_at = datetime.utcnow()
 
@@ -554,6 +707,7 @@ def _recompute_unit_derived(
     _apply_minimal_judgement(unit, settings, db=db)
     _update_is_missing_summary(unit, settings, db)
     _update_flags(unit, settings)
+    _sync_status_blue_from_derived_flags(unit, db)
     _sync_anomaly_started_at(unit)
 
 
@@ -570,6 +724,10 @@ def _unit_to_out(
     db: Session,
     prev_unit: Optional[models.WorkUnit] = None,
 ) -> dict:
+    if _backfill_stored_planned_line_ids(unit):
+        _touch_updated(unit)
+    if prev_unit is not None and _backfill_stored_planned_line_ids(prev_unit):
+        _touch_updated(prev_unit)
     m = bool(unit.is_missing)
     im = _norm_input_mode(settings)
     plines = _planned_lines_for_response(unit, im)
@@ -946,10 +1104,17 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
     patch = body.model_dump(exclude_unset=True)
 
     if "lines" in patch:
+        _backfill_stored_planned_line_ids(unit)
         raw_lines = body.lines if body.lines is not None else []
-        lines, err = _strict_lines_from_body(list(raw_lines))
+        old_parsed = _parse_lines_json(unit.planned_lines_json)
+        lines, err = _strict_lines_from_body(
+            list(raw_lines),
+            include_due_date=True,
+            include_line_id=True,
+        )
         if err:
             raise HTTPException(status_code=422, detail=err)
+        _merge_due_from_previous(lines, old_parsed)
         unit.planned_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
             unit.planned_value = sum(x["value"] for x in lines)
@@ -985,6 +1150,68 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
 
     prev_unit = _find_prev_unit(unit.company_id, unit.task_id, unit.process_id,
                                 unit.user_id, unit.business_date, db)
+    return _unit_to_out(unit, settings, db, prev_unit)
+
+
+@router.post(
+    "/work/{unit_id}/planned-due",
+    summary="Merge due_date onto planned lines only (Article 7; match line_id)",
+)
+def merge_planned_due(
+    unit_id: int,
+    body: schemas.PlannedDueMergeIn,
+    db: Session = Depends(get_db),
+):
+    unit = db.get(models.WorkUnit, unit_id)
+    if not unit:
+        raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    raise_if_closed(unit)
+    settings = _get_or_create_settings(unit.company_id, db)
+    _backfill_stored_planned_line_ids(unit)
+    base = _parse_lines_json(getattr(unit, "planned_lines_json", None))
+    if not base:
+        raise HTTPException(status_code=400, detail="予告行がありません")
+    if not body.entries:
+        prev_unit = _find_prev_unit(
+            unit.company_id, unit.task_id, unit.process_id, unit.user_id, unit.business_date, db
+        )
+        return _unit_to_out(unit, settings, db, prev_unit)
+    for entry in body.entries:
+        lid = (entry.line_id or "").strip()
+        if not lid:
+            raise HTTPException(status_code=422, detail="line_id が空です")
+        matched = None
+        for row in base:
+            if str(row.get("line_id") or "").strip() == lid:
+                matched = row
+                break
+        if matched is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"line_id に一致する予告行がありません: {lid!r}",
+            )
+        if "due_date" not in entry.model_fields_set:
+            continue
+        raw = entry.due_date
+        if raw is None or (isinstance(raw, str) and not str(raw).strip()):
+            matched.pop("due_date", None)
+        else:
+            nd = _norm_due_date(str(raw).strip())
+            if nd is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="due_date は YYYY-MM-DD で指定してください",
+                )
+            matched["due_date"] = nd
+    unit.planned_lines_json = _lines_json_dumps(base)
+    _flush_then_recompute_past_missing(db, unit.company_id)
+    _recompute_unit_derived(unit, settings, db)
+    _touch_updated(unit)
+    db.commit()
+    db.refresh(unit)
+    prev_unit = _find_prev_unit(
+        unit.company_id, unit.task_id, unit.process_id, unit.user_id, unit.business_date, db
+    )
     return _unit_to_out(unit, settings, db, prev_unit)
 
 
@@ -1170,6 +1397,8 @@ def list_work(
             log_suffix,
         )
         recompute_count += 1
+
+    promote_blue_to_red_after_judgement(company_id, db)
 
     dirty_n = len(db.dirty)
     commit_called = False

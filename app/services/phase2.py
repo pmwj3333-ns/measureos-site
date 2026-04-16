@@ -1,13 +1,4 @@
-"""
-フェーズ2（赤・judgement 期限・信用度）機能の ON/OFF。
+"""互換レイヤ: フェーズ2可否は package_code 由来（package_rules.is_phase2_enabled）。"""
+from app.services.package_rules import is_phase2_enabled  # noqa: F401
 
-フェーズ1運用時は company_settings.phase2_enabled=False とし、
-blue→red 昇格と judgement_red_deadline_at の返却を止める。
-"""
-from __future__ import annotations
-
-from app import models
-
-
-def is_phase2_enabled(settings: models.CompanySettings) -> bool:
-    return bool(getattr(settings, "phase2_enabled", False))
+__all__ = ["is_phase2_enabled"]

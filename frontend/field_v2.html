@@ -107,6 +107,10 @@
     font-weight: 600; font-size: 0.9rem; cursor: pointer; font-family: inherit;
     -webkit-tap-highlight-color: transparent;
   }
+  .article7-ref { font-size: 0.88rem; line-height: 1.5; color: #3a3a3c; }
+  .article7-ref .article7-line { padding: 8px 0; border-bottom: 1px solid #e5e5ea; }
+  .article7-ref .article7-line:last-child { border-bottom: none; }
+  .article7-ref .article7-muted { font-size: 0.72rem; color: #8e8e93; margin-top: 4px; }
   .sub-text  { font-size: 0.78rem; color: #8e8e93; margin-top: 8px; line-height: 1.6; }
   .started-info { font-size: 0.74rem; color: #34c759; padding-bottom: 12px; }
 
@@ -239,8 +243,8 @@
   <summary>初期設定（会社・作業・工程）</summary>
   <div class="settings-grid">
     <div>
-      <label for="cfg-company">会社</label>
-      <input type="text" id="cfg-company" autocomplete="organization" />
+      <label for="cfg-company">会社ID（事務画面と共有）</label>
+      <input type="text" id="cfg-company" autocomplete="organization" placeholder="例: test2" />
     </div>
     <div>
       <label for="cfg-task">作業</label>
@@ -257,6 +261,8 @@
   <div class="main">
     <div class="card">
       <div class="card-label">明日の予告（任意）</div>
+      <div class="subhead" style="margin-top:4px;">第7条・優先指示（参照）</div>
+      <div id="article7-panel-planned" class="readonly-block article7-ref"></div>
       <div id="planned-block-mfg">
         <div class="field-label">商品名・対象名と数量（予定・複数行可）</div>
         <div id="planned-rows-mfg" class="multi-rows"></div>
@@ -281,6 +287,8 @@
     <div class="started-info" id="started-info" style="display:none;"></div>
     <div class="card">
       <div class="card-label">今日の実績</div>
+      <div class="subhead">第7条・優先指示（参照）</div>
+      <div id="article7-panel-actual" class="readonly-block article7-ref"></div>
       <div class="subhead">予告（参照）</div>
       <div class="readonly-block" id="actual-planned-summary"></div>
       <div class="subhead">実績（入力）</div>
@@ -317,6 +325,7 @@
 <datalist id="dl-work-label"></datalist>
 
 <script src="/static/format-jst-datetime.js"></script>
+<script src="/static/priority-tier-due.js"></script>
 <script>
 let unitId = null;
 let lastWorkData = null;
@@ -337,6 +346,15 @@ let _forceBlankActualOnce = false;
  */
 let _fieldUserSessionConfirmed = false;
 const MSG_PLANNED_UNSAVED = "予告内容が未保存です。先に「予告を登録」してください。";
+
+/** 現場 v2・事務 v2 で共有（office_v2 と同一キー） */
+const LS_SHARED_COMPANY_ID = "company_id";
+
+function persistSharedCompanyId(raw) {
+  const v = (raw != null ? String(raw) : "").trim();
+  if (v) localStorage.setItem(LS_SHARED_COMPANY_ID, v);
+  else localStorage.removeItem(LS_SHARED_COMPANY_ID);
+}
 
 function fieldUserStorageKeyUser(companyId) {
   return "field_v2_last_user:" + String(companyId || "").trim();
@@ -392,8 +410,7 @@ function getConfig() {
     companyInput ||
     param("company_id", null) ||
     param("company", null) ||
-    (localStorage.getItem("mo_v2_company") || "").trim() ||
-    "x";
+    (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
   return {
     company,
     task: document.getElementById("cfg-task").value.trim()
@@ -407,14 +424,24 @@ function getConfig() {
 }
 
 function saveCfgToLocal() {
-  localStorage.setItem("mo_v2_company", document.getElementById("cfg-company").value.trim());
+  persistSharedCompanyId(document.getElementById("cfg-company").value);
   localStorage.setItem("mo_v2_task", document.getElementById("cfg-task").value.trim());
   localStorage.setItem("mo_v2_process", document.getElementById("cfg-process").value.trim());
 }
 
 function loadCfgFromLocal() {
-  document.getElementById("cfg-company").value =
-    param("company", localStorage.getItem("mo_v2_company") || "x");
+  const urlCo = param("company_id", null) || param("company", null);
+  const stored = (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
+  let co;
+  if (urlCo) {
+    co = urlCo;
+  } else if (stored) {
+    co = stored;
+  } else {
+    co = (document.getElementById("cfg-company").value || "").trim();
+  }
+  document.getElementById("cfg-company").value = co;
+  persistSharedCompanyId(co);
   document.getElementById("cfg-task").value =
     param("task", localStorage.getItem("mo_v2_task") || "task_01");
   document.getElementById("cfg-process").value =
@@ -423,6 +450,7 @@ function loadCfgFromLocal() {
 
 document.getElementById("cfg-company").addEventListener("change", () => {
   saveCfgToLocal();
+  void refreshArticle7Panels();
   const ov = document.getElementById("overlay");
   if (ov && !ov.classList.contains("hidden")) {
     fieldUserSuggestClose();
@@ -534,18 +562,21 @@ function removeInputLineRow(lineEl) {
     const b = lineEl.querySelector("[data-line-qty]");
     if (a) a.value = "";
     if (b) b.value = "";
+    delete lineEl.dataset.lineId;
     return;
   }
   lineEl.remove();
 }
 
 function addPlannedRow() {
-  plannedRowsHost().appendChild(
+  const h = plannedRowsHost();
+  h.appendChild(
     makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name"));
 }
 
 function addActualRow() {
-  actualRowsHost().appendChild(
+  const h = actualRowsHost();
+  h.appendChild(
     makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name"));
 }
 
@@ -575,7 +606,10 @@ function scanHostLines(host) {
     if (Number.isNaN(q)) {
       return { error: "数量の形式が不正な行があります" };
     }
-    out.push({ label: lb, value: q });
+    const line = { label: lb, value: q };
+    const lid = (row.dataset.lineId || "").trim();
+    if (lid) line.line_id = lid;
+    out.push(line);
   }
   return { lines: out };
 }
@@ -584,7 +618,8 @@ function fingerprintPlannedLinesNormalized(lines) {
   const arr = (lines || []).map((L) => {
     const label = String(L.label != null ? L.label : "").trim();
     const value = Number(L.value);
-    return { label, value };
+    const line_id = L.line_id != null ? String(L.line_id).trim() : "";
+    return { label, value, line_id: line_id || undefined };
   }).filter((x) => x.label && Number.isFinite(x.value));
   return JSON.stringify(arr);
 }
@@ -606,6 +641,9 @@ function fillRowsHost(host, lines, ph, listId) {
     const qty = el.querySelector("[data-line-qty]");
     if (row.label != null && String(row.label).trim()) lab.value = row.label;
     if (row.value != null && Number.isFinite(Number(row.value))) qty.value = String(row.value);
+    const lid = row.line_id != null ? String(row.line_id).trim() : "";
+    if (lid) el.dataset.lineId = lid;
+    else delete el.dataset.lineId;
     host.appendChild(el);
   }
 }
@@ -633,10 +671,10 @@ function setActualRowsFromData(data) {
 
 function renderLinesSummaryReadonly(lines) {
   if (!lines || !lines.length) return "";
-  return lines.map((l) =>
+  return lines.map((l) => (
     `<div class="ro-line"><span class="ro-k">${escHtml(l.label)}</span>` +
     `<span class="ro-v">${escHtml(String(l.value))} ${escHtml(unitVal)}</span></div>`
-  ).join("");
+  )).join("");
 }
 
 function renderPlannedSummaryForActual(data) {
@@ -656,6 +694,66 @@ function renderPlannedSummaryForActual(data) {
     sum.innerHTML =
       `<div class="ro-line"><span class="ro-k">商品名・対象</span><span class="ro-v">${escHtml(dispStr(data.planned_item_name))}</span></div>` +
       `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+  }
+}
+
+function renderArticle7PanelHtml(items) {
+  if (!items || !items.length) {
+    return '<p class="article7-muted">事務・営業が登録した優先指示はありません。</p>';
+  }
+  return items.map((it) => {
+    const label = String(it.label || "").trim() || "（無名）";
+    const dueRaw = it.due_date != null ? String(it.due_date).trim() : "";
+    let tierLead = "";
+    if (dueRaw && typeof priorityTierFromDueDate === "function") {
+      const tier = priorityTierFromDueDate(dueRaw);
+      if (tier) tierLead = `${tier.emoji}${escHtml(tier.label)} · `;
+    }
+    const dueDisp = dueRaw ? escHtml(dueRaw) : "—";
+    const shipRaw = it.ship_value != null ? Number(it.ship_value) : (it.value != null ? Number(it.value) : NaN);
+    const prodRaw = it.prod_value != null ? Number(it.prod_value) : (it.value != null ? Number(it.value) : NaN);
+    const shipStr = Number.isFinite(shipRaw) ? String(shipRaw) : "—";
+    const prodStr = Number.isFinite(prodRaw) ? String(prodRaw) : "—";
+    return (
+      `<div class="article7-line">` +
+      `<div><strong>${escHtml(label)}</strong></div>` +
+      `<div class="article7-muted">出荷：${escHtml(shipStr)} ${escHtml(unitVal)}　製造：${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
+      `<div class="article7-muted">${tierLead}納期：${dueDisp}</div>` +
+      `</div>`
+    );
+  }).join("");
+}
+
+async function refreshArticle7Panels() {
+  const plannedEl = document.getElementById("article7-panel-planned");
+  const actualEl = document.getElementById("article7-panel-actual");
+  if (!plannedEl || !actualEl) return;
+  const cfg = getConfig();
+  if (!cfg.company) {
+    const empty = '<p class="article7-muted">会社IDを設定すると表示されます。</p>';
+    plannedEl.innerHTML = empty;
+    actualEl.innerHTML = empty;
+    return;
+  }
+  const fail = '<p class="article7-muted">優先指示の取得に失敗しました。</p>';
+  try {
+    const res = await fetch(
+      `/v2/priority/items?company_id=${encodeURIComponent(cfg.company)}`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) {
+      plannedEl.innerHTML = fail;
+      actualEl.innerHTML = fail;
+      return;
+    }
+    const data = await res.json();
+    const items = data && Array.isArray(data.items) ? data.items : [];
+    const html = renderArticle7PanelHtml(items);
+    plannedEl.innerHTML = html;
+    actualEl.innerHTML = html;
+  } catch (_) {
+    plannedEl.innerHTML = fail;
+    actualEl.innerHTML = fail;
   }
 }
 
@@ -707,6 +805,7 @@ function fieldUserResolveForCommit(rawInput) {
 
 async function fieldUserFetchMaster() {
   const companyId = getConfig().company;
+  if (!companyId) return;
   const hadLocal = fieldUserSuggestRows.length > 0;
   try {
     const res = await fetch(`/v2/company/${encodeURIComponent(companyId)}`, {
@@ -921,6 +1020,12 @@ function show(name) {
 
 async function loadCompanyInputMode() {
   const cfg = getConfig();
+  if (!cfg.company) {
+    inputMode = "manufacturing";
+    applyInputModePanels();
+    await refreshArticle7Panels();
+    return;
+  }
   try {
     const res = await fetch(`/v2/company/${encodeURIComponent(cfg.company)}`, {
       cache: "no-store",
@@ -931,10 +1036,12 @@ async function loadCompanyInputMode() {
     }
   } catch (_) { inputMode = "manufacturing"; }
   applyInputModePanels();
+  await refreshArticle7Panels();
 }
 
 async function fillDatalistsFromWorkList() {
   const cfg = getConfig();
+  if (!cfg.company) return;
   try {
     const res = await fetch(`/v2/work/list?company_id=${encodeURIComponent(cfg.company)}`);
     if (!res.ok) return;
@@ -988,6 +1095,11 @@ async function api(method, url, body) {
 
 async function bootstrapWork() {
   const cfg = getConfig();
+  if (!cfg.company || !String(cfg.company).trim()) {
+    toast("初期設定で会社IDを入力してください");
+    document.getElementById("settings-adv").open = true;
+    return;
+  }
   if (!cfg.user || !String(cfg.user).trim()) {
     toast("担当者を確定してください");
     document.getElementById("overlay").classList.remove("hidden");
@@ -1086,6 +1198,7 @@ async function showActualScreen(data, opts) {
   document.getElementById("actual-btn").textContent = "実績を記録する";
   document.getElementById("actual-btn").disabled = false;
   submitting = false;
+  await refreshArticle7Panels();
   show("actual");
 }
 
@@ -1111,7 +1224,7 @@ async function submitPlanned() {
     const data = await api("POST", `/v2/work/${id}/planned`, { lines: scanned.lines });
     lastWorkData = data;
     unitId = data.id;
-    _plannedSavedFingerprint = fingerprintPlannedLinesNormalized(scanned.lines);
+    setPlannedRowsFromData(data);
     _plannedAllowEmptyAfterSave = scanned.lines.length === 0;
     toast("予告を保存しました");
   } catch (e) {
@@ -1202,15 +1315,16 @@ async function submitActual() {
   }
 }
 
-function syncCompanyFromServerBootstrap() {
-  const sc = window.__MO_BOOTSTRAP_COMPANY__;
-  if (typeof sc !== "string" || !sc.trim()) return;
-  document.getElementById("cfg-company").value = sc.trim();
-  localStorage.setItem("mo_v2_company", sc.trim());
-}
-
 function applyEmbeddedFieldUsers() {
   const raw = window.__MO_FIELD_USERS_RAW__;
+  const bootCo =
+    typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
+      ? window.__MO_BOOTSTRAP_COMPANY__.trim()
+      : "";
+  const resolved = (document.getElementById("cfg-company").value || "").trim();
+  if (bootCo && (!resolved || bootCo !== resolved)) {
+    return;
+  }
   if (typeof raw === "string" && String(raw).trim()) {
     fieldUserSuggestRows = fieldUserParseFieldUsersRaw(raw);
   }
@@ -1219,7 +1333,6 @@ function applyEmbeddedFieldUsers() {
 (function init() {
   _fieldUserSessionConfirmed = false;
   removeLegacyFieldUserStorageKeys();
-  syncCompanyFromServerBootstrap();
   loadCfgFromLocal();
   applyEmbeddedFieldUsers();
   const ov = document.getElementById("overlay");

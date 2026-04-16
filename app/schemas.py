@@ -52,6 +52,10 @@ class V2LeadersPut(BaseModel):
         default=None,
         description="数値乖離の許容差（±）。省略時は tolerance_value を変更しない。",
     )
+    package_code: Optional[str] = Field(
+        default=None,
+        description="Package A|B|C|D。省略時は package_code を変更しない。",
+    )
 
 
 # ─── カレンダー ─────────────────────────────────────────────
@@ -79,9 +83,11 @@ class NextDayQuery(BaseModel):
 
 
 class WorkLineIn(BaseModel):
-    """1行＝ラベル（商品名・対象名／作業内容）＋数量。不完全な行はクライアントで弾く想定。"""
+    """One planned line: label, quantity, optional line_id (stable row id), optional due_date."""
     label: str = ""
     value: Optional[float] = None
+    line_id: Optional[str] = None
+    due_date: Optional[str] = None
 
 
 class ActualIn(BaseModel):
@@ -114,6 +120,47 @@ class DebugSetBusinessDateIn(BaseModel):
 class WorkLineOut(BaseModel):
     label: str
     value: float
+    line_id: Optional[str] = None
+    due_date: Optional[str] = None  # YYYY-MM-DD
+
+
+class PlannedDueMergeEntry(BaseModel):
+    """PATCH planned line due_date by line_id (POST .../planned-due)."""
+
+    line_id: str
+    due_date: Optional[str] = None
+
+
+class PlannedDueMergeIn(BaseModel):
+    """Merge due_date onto planned rows matched by line_id (office / debug)."""
+
+    entries: List[PlannedDueMergeEntry] = Field(default_factory=list)
+
+
+# ─── 第7条フェーズ1・priority_item（work_unit 非依存）────────────────
+
+class PriorityItemIn(BaseModel):
+    label: str = ""
+    ship_value: Optional[float] = None
+    prod_value: Optional[float] = None
+    due_date: Optional[str] = None
+
+
+class PriorityItemsCreateIn(BaseModel):
+    company_id: str
+    items: List[PriorityItemIn] = Field(default_factory=list)
+
+
+class PriorityItemOut(BaseModel):
+    id: int
+    label: str
+    ship_value: float
+    prod_value: float
+    due_date: Optional[str] = None
+
+
+class PriorityItemsOut(BaseModel):
+    items: List[PriorityItemOut] = Field(default_factory=list)
 
 
 class WorkUnitStatusHistoryItem(BaseModel):

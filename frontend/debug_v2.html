@@ -237,6 +237,19 @@
     top: 0;
   }
   #status-history-body .err { color: #f85149; }
+  .due-merge-panel {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #30363d;
+    font-size: 0.78rem;
+  }
+  .due-merge-panel h3 { font-size: 0.82rem; color: #79c0ff; margin-bottom: 6px; }
+  .due-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .due-row label { flex: 1 1 140px; color: #c9d1d9; }
+  .due-row input[type="date"] {
+    padding: 6px 8px; border-radius: 6px; border: 1px solid #30363d;
+    background: #0d1117; color: #e6edf3; font-family: inherit;
+  }
   tbody tr[data-unit-id] { cursor: pointer; }
   tbody tr.row-selected {
     outline: 2px solid #58a6ff;
@@ -271,11 +284,13 @@
     </label>
   </div>
   <p class="last-updated" id="last-updated" hidden>最終更新: —</p>
+  <p class="hint" id="debug-package-hint" style="margin-top:4px;color:#7ee787;" hidden>Package: —</p>
   <p class="hint">
     <a href="/sr/v2">班長マスタ（sr v2）</a>
     · <a href="/genba/v2">現場 v2</a>
     · <a href="/office/v2">事務 v2（異常・完了）</a>
     · <a href="/debug/v2">debug v2</a>
+    · <a href="/priority/v2">優先度一覧</a>
   </p>
 
   <details class="test-clock-panel" id="test-clock-details">
@@ -304,6 +319,11 @@
           <th>id</th>
           <th>company_id</th>
           <th>user_id</th>
+          <th>is_unreg</th>
+          <th>user_source</th>
+          <th>is_missing</th>
+          <th>is_invalid_flow</th>
+          <th>is_diff_anomaly</th>
           <th>task_id</th>
           <th>process_id</th>
           <th>business_date</th>
@@ -323,7 +343,7 @@
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="18" class="empty">company_id を入力して読み込み</td></tr>
+        <tr><td colspan="24" class="empty">company_id を入力して読み込み</td></tr>
       </tbody>
     </table>
   </div>
@@ -332,6 +352,13 @@
     <h2 class="detail-h">status 履歴</h2>
     <p id="status-history-hint" class="hint">一覧の行をクリックすると表示されます。</p>
     <div id="status-history-body"></div>
+    <div id="due-merge-panel" class="due-merge-panel" hidden>
+      <h3>Due date (Article 7)</h3>
+      <p class="hint">Set <code>due_date</code> per planned line (matched by <code>line_id</code>). API: <code>POST /v2/work/{id}/planned-due</code> with <code>{ entries: [{ line_id, due_date }] }</code>. Empty date clears.</p>
+      <div id="due-merge-rows"></div>
+      <button type="button" class="btn-primary" id="btn-due-merge">Save due dates</button>
+      <p id="due-merge-msg" class="hint"></p>
+    </div>
   </aside>
   </div>
 
@@ -347,18 +374,25 @@
   let lastRows = null;
   /** 一覧で選択中の unit_id（自動更新後も再取得する） */
   let selectedUnitId = null;
+  /** planned-due フォーム用 { line_id, label, value } のスナップショット */
+  let dueEditSnapshot = [];
   let pollTimer = null;
   const AUTO_MS = 3000;
   const LS_AUTO = "debug_v2_auto_refresh";
-  /** フェーズ2 ON で列19（judgement 期限あり）。OFF で18。 */
+  /** フェーズ2 ON で列24（judgement 期限あり）。OFF で23。 */
   let phase2Enabled = false;
-  let debugTableColCount = 18;
+  let debugTableColCount = 23;
 
   function getDebugCols() {
     const all = [
       "id",
       "company_id",
       "user_id",
+      "is_unregistered_user",
+      "user_source",
+      "is_missing",
+      "is_invalid_flow",
+      "is_diff_anomaly",
       "task_id",
       "process_id",
       "business_date",
@@ -571,6 +605,126 @@
     $("company").value = param("company", localStorage.getItem("debug_v2_company") || "");
   }
 
+  function renderDueMergePanel() {
+    const panel = $("due-merge-panel");
+    const rowsEl = $("due-merge-rows");
+    const msg = $("due-merge-msg");
+    if (msg) {
+      msg.textContent = "";
+      msg.className = "hint";
+    }
+    dueEditSnapshot = [];
+    if (!panel || !rowsEl) return;
+    if (!selectedUnitId || !lastRows) {
+      panel.hidden = true;
+      return;
+    }
+    const r = lastRows.find((x) => x.id === selectedUnitId);
+    if (!r) {
+      panel.hidden = true;
+      return;
+    }
+    const pl = r.planned_lines;
+    if (!Array.isArray(pl) || !pl.length) {
+      panel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    dueEditSnapshot = pl.map((L) => ({
+      line_id: L.line_id != null ? String(L.line_id).trim() : "",
+      label: L.label != null ? String(L.label) : "",
+      value: Number(L.value),
+    }));
+    const missingLineId = dueEditSnapshot.some((x) => !x.line_id);
+    const btnDue = $("btn-due-merge");
+    if (btnDue) btnDue.disabled = missingLineId;
+    if (missingLineId && msg) {
+      msg.textContent =
+        "一部の行に line_id がありません。一覧を再読込（Load）してから再度お試しください。";
+      msg.className = "hint err";
+    }
+    rowsEl.innerHTML = dueEditSnapshot
+      .map((L, idx) => {
+        const line = pl[idx];
+        const due = line && line.due_date != null ? String(line.due_date).trim() : "";
+        const id = "due-in-" + idx;
+        return (
+          '<div class="due-row">' +
+          "<label>" +
+          esc(L.label || "（無名）") +
+          " · " +
+          (Number.isFinite(L.value) ? esc(String(L.value)) : "—") +
+          "</label>" +
+          '<input type="date" id="' +
+          id +
+          '" value="' +
+          esc(due) +
+          '" />' +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  async function saveDueMerge() {
+    const msg = $("due-merge-msg");
+    const btn = $("btn-due-merge");
+    if (!selectedUnitId || !dueEditSnapshot.length) return;
+    if (dueEditSnapshot.some((x) => !x.line_id)) {
+      if (msg) {
+        msg.textContent =
+          "line_id がありません。一覧を再読込（Load）してください。";
+        msg.className = "hint err";
+      }
+      return;
+    }
+    if (msg) {
+      msg.textContent = "";
+      msg.className = "hint";
+    }
+    btn.disabled = true;
+    const entries = dueEditSnapshot.map((L, idx) => {
+      const inp = $("due-in-" + idx);
+      const raw = inp && inp.value ? inp.value.trim() : "";
+      return { line_id: L.line_id, due_date: raw || "" };
+    });
+    try {
+      const res = await fetch(
+        "/v2/work/" + encodeURIComponent(selectedUnitId) + "/planned-due",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entries }),
+        }
+      );
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (_) {
+        data = { detail: text };
+      }
+      if (!res.ok) {
+        const detail =
+          data && data.detail
+            ? typeof data.detail === "string"
+              ? data.detail
+              : JSON.stringify(data.detail)
+            : text || String(res.status);
+        msg.textContent = detail;
+        msg.className = "hint err";
+        return;
+      }
+      msg.textContent = "保存しました。一覧を更新しました。";
+      await load({ fromAuto: true });
+    } catch (e) {
+      msg.textContent = String(e.message || e);
+      msg.className = "hint err";
+    } finally {
+      btn.disabled = dueEditSnapshot.some((x) => !x.line_id);
+    }
+  }
+
   async function fetchStatusHistory(unitId) {
     const body = $("status-history-body");
     const hint = $("status-history-hint");
@@ -669,15 +823,32 @@
     localStorage.setItem("debug_v2_company", cid);
     if (!fromAuto) $("btn-load").disabled = true;
     try {
+      let companySnap = null;
       phase2Enabled = false;
       try {
         const cr = await fetch("/v2/company/" + encodeURIComponent(cid));
         if (cr.ok) {
-          const cj = await cr.json();
-          phase2Enabled = cj.phase2_enabled === true;
+          companySnap = await cr.json();
+          phase2Enabled = companySnap.phase2_enabled === true;
         }
       } catch (_) {
-        /* フェーズ1扱い */
+        /* 会社GET失敗時はフェーズ1のみ */
+      }
+      const pkgEl = $("debug-package-hint");
+      if (pkgEl) {
+        if (companySnap && companySnap.package_code != null) {
+          const pc = String(companySnap.package_code || "A").trim();
+          const pl = String(companySnap.package_label || "").trim();
+          pkgEl.textContent =
+            "Package: " +
+            pc +
+            (pl ? "（" + pl + "）" : "") +
+            " · red/期限: " +
+            (phase2Enabled ? "有効（B〜D）" : "無効（A）");
+          pkgEl.hidden = false;
+        } else {
+          pkgEl.hidden = true;
+        }
       }
       debugTableColCount = getDebugCols().length;
       const thJr = document.getElementById("th-judgement-red");
@@ -761,10 +932,12 @@
             .forEach((el) => el.classList.remove("row-selected"));
           tr.classList.add("row-selected");
           fetchStatusHistory(selectedUnitId);
+          renderDueMergePanel();
         } else {
           selectedUnitId = null;
           $("status-history-body").innerHTML =
             '<p class="hint">選択していた行が一覧に無いため解除しました。</p>';
+          renderDueMergePanel();
         }
       }
     } finally {
@@ -791,7 +964,10 @@
       .forEach((el) => el.classList.remove("row-selected"));
     tr.classList.add("row-selected");
     fetchStatusHistory(id);
+    renderDueMergePanel();
   });
+
+  $("btn-due-merge").addEventListener("click", () => saveDueMerge());
 
   $("btn-load").addEventListener("click", () => load({ fromAuto: false }));
   $("btn-json").addEventListener("click", () => {
@@ -943,7 +1119,7 @@
         " 件";
       if (data.judgement_red_skipped) {
         reText +=
-          " （フェーズ2無効のため blue→red はスキップ。phase2_enabled を ON にすると有効）";
+          " （Package A のため blue→red はスキップ。sr v2 で Package B 以上に変更）";
       }
       $("test-recompute-result").textContent = reText;
       load({ fromAuto: false });
