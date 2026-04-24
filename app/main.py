@@ -8,7 +8,16 @@ from sqlalchemy import text
 
 from app.database import SessionLocal, engine
 from app import models
-from app.routers import priority, settings, v2 as v2_routes, test_control, work
+from app.routers import (
+    priority,
+    product_master,
+    settings,
+    shipment,
+    stock,
+    v2 as v2_routes,
+    test_control,
+    work,
+)
 
 
 def _sqlite_migrate():
@@ -50,6 +59,10 @@ def _sqlite_migrate():
                         "UPDATE company_settings SET package_code = 'A' WHERE package_code IS NULL OR TRIM(package_code) = ''"
                     )
                 )
+            if "order_cutoff_time" not in cs:
+                conn.execute(
+                    text("ALTER TABLE company_settings ADD COLUMN order_cutoff_time TIME")
+                )
         except Exception:
             pass
         try:
@@ -63,6 +76,25 @@ def _sqlite_migrate():
             if "user_source" not in wu:
                 conn.execute(
                     text("ALTER TABLE work_unit ADD COLUMN user_source VARCHAR DEFAULT 'master'")
+                )
+            if "is_deviation" not in wu:
+                conn.execute(
+                    text("ALTER TABLE work_unit ADD COLUMN is_deviation BOOLEAN DEFAULT 0")
+                )
+            if "deviation_reason" not in wu:
+                conn.execute(
+                    text("ALTER TABLE work_unit ADD COLUMN deviation_reason VARCHAR")
+                )
+            if "is_article7_deviation" not in wu:
+                conn.execute(
+                    text(
+                        "ALTER TABLE work_unit ADD COLUMN is_article7_deviation BOOLEAN DEFAULT 0"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "UPDATE work_unit SET is_article7_deviation = 1 WHERE is_deviation = 1"
+                    )
                 )
             if "planned_lines_json" not in wu:
                 conn.execute(
@@ -169,6 +201,75 @@ def _sqlite_migrate():
                 conn.execute(
                     text("UPDATE priority_item SET prod_value = 0 WHERE prod_value IS NULL")
                 )
+                if "product_code" not in pi2:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE priority_item ADD COLUMN product_code VARCHAR DEFAULT ''"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET product_code = '' WHERE product_code IS NULL"
+                        )
+                    )
+                pi3 = cols("priority_item")
+                if pi3 and "stock_qty" not in pi3:
+                    conn.execute(
+                        text("ALTER TABLE priority_item ADD COLUMN stock_qty FLOAT")
+                    )
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET stock_qty = "
+                            "MAX(0, COALESCE(ship_value, 0) - COALESCE(prod_value, 0)) "
+                            "WHERE stock_qty IS NULL"
+                        )
+                    )
+                pi4 = cols("priority_item")
+                if pi4 and "stock_qty" in pi4:
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET stock_qty = 0 "
+                            "WHERE stock_qty IS NULL"
+                        )
+                    )
+                pi5 = cols("priority_item")
+                if pi5 and "status" not in pi5:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE priority_item ADD COLUMN status VARCHAR DEFAULT 'open'"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET status = 'open' "
+                            "WHERE status IS NULL OR TRIM(COALESCE(status, '')) = ''"
+                        )
+                    )
+        except Exception:
+            pass
+        try:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS product_master (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        company_id VARCHAR NOT NULL,
+                        product_code VARCHAR,
+                        label VARCHAR NOT NULL,
+                        is_active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME,
+                        updated_at DATETIME,
+                        CONSTRAINT uq_product_master_company_label UNIQUE (company_id, label)
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_product_master_company_id "
+                    "ON product_master (company_id)"
+                )
+            )
         except Exception:
             pass
 
@@ -184,6 +285,9 @@ app.include_router(work.router)
 app.include_router(v2_routes.router)
 app.include_router(work.router, prefix="/v2", tags=["v2-作業"])
 app.include_router(priority.router)
+app.include_router(stock.router)
+app.include_router(product_master.router)
+app.include_router(shipment.router)
 app.include_router(test_control.router, prefix="/v2")
 
 # uvicorn の cwd に依存しない（/static/debug.html 等）
@@ -304,17 +408,41 @@ def office_v2_screen():
     return _file_response_or_404("office_v2.html")
 
 
-@app.get("/priority/v2", summary="優先度一覧（第7条・フェーズ1・表示のみ）")
+@app.get("/priority/v2", summary="第7条・事務の優先指示一覧（表示のみ・現場は変更しない）")
 def priority_v2_screen():
     return _file_response_or_404("priority_view.html")
 
 
 @app.get(
     "/priority/input/v2",
-    summary="納期入力（第7条・事務・営業・planned-due）",
+    summary="第7条・優先指示の入力（事務・営業・CSV/API）",
 )
 def priority_input_v2_screen():
     return _file_response_or_404("priority_input_v2.html")
+
+
+@app.get(
+    "/stock/import/v2",
+    summary="在庫CSV取り込み（第7条ステップ①・投入のみ）",
+)
+def stock_import_v2_screen():
+    return _file_response_or_404("stock_import_v2.html")
+
+
+@app.get(
+    "/shipment/import/v2",
+    summary="出荷予定CSV取り込み（第7条ステップ②・投入のみ）",
+)
+def shipment_import_v2_screen():
+    return _file_response_or_404("shipment_import_v2.html")
+
+
+@app.get(
+    "/product/master/v2",
+    summary="商品マスタ（第5条・product_code 補完・事務向け）",
+)
+def product_master_v2_screen():
+    return _file_response_or_404("product_master_v2.html")
 
 
 @app.get("/dev")

@@ -184,7 +184,7 @@
         <button type="button" class="btn-load" id="btn-load">読み込み</button>
       </div>
     </div>
-    <p class="hint" id="office-hint-api">API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち<strong>青・赤</strong>のみ表示（通常・完了は非表示）。<a href="/priority/v2">優先度一覧（第7条）</a></p>
+    <p class="hint" id="office-hint-api">API: <span class="mono">GET /v2/work/list?company_id=…</span> のうち<strong>青・赤</strong>のみ表示（通常・完了は非表示）。<a href="/priority/v2">優先度一覧（第7条）</a> · <a href="/product/master/v2">商品マスタ</a></p>
     <p id="msg" class="err" hidden></p>
     <p id="ok" class="ok" hidden></p>
 
@@ -484,7 +484,11 @@
     if (unreg) {
       out = base === "—" ? "未登録ユーザー" : "未登録ユーザー・" + base;
     }
+    if (r.is_article7_deviation === true || r.is_deviation === true) {
+      out = out === "—" ? "第7条逸脱" : out + "・第7条逸脱";
+    }
     if (out === "—") return "—";
+    if (r.is_article7_deviation === true || r.is_deviation === true) return out;
     if (!hasNumericDeviationPattern(r.system_pattern)) return out;
     const pv = r.planned_value;
     const av = r.actual_value;
@@ -508,6 +512,7 @@
       let ja = null;
       if (u.indexOf("A") === 0) ja = "手順不備";
       else if (u.indexOf("B") === 0) ja = "数値乖離";
+      else if (String(seg).indexOf("7条") === 0 || seg === "7条逸脱") ja = "7条逸脱";
       if (ja && !seen.has(ja)) {
         seen.add(ja);
         labels.push(ja);
@@ -733,6 +738,24 @@
       '">' +
       statusLabelJa(r.status) +
       "</span></dd>";
+
+    if (r.is_article7_deviation === true || r.is_deviation === true) {
+      const dr =
+        r.deviation_reason != null && String(r.deviation_reason).trim()
+          ? String(r.deviation_reason).trim()
+          : "";
+      html +=
+        "<dt>" +
+        esc("第7条逸脱") +
+        "</dt><dd>" +
+        esc("あり") +
+        "</dd>" +
+        "<dt>" +
+        esc("逸脱の理由（現場の記録）") +
+        "</dt><dd>" +
+        (dr ? esc(dr).replace(/\n/g, "<br/>") : "—") +
+        "</dd>";
+    }
 
     html +=
       "<dt>" +

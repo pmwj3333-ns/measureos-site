@@ -346,6 +346,14 @@
             予告と実績の差がこの値を超えると、数値乖離として判定します
           </p>
         </div>
+        <div class="rules-block">
+          <h2>第7条・受注締切（3条）</h2>
+          <label for="order_cutoff_time">受注締切</label>
+          <input type="time" id="order_cutoff_time" step="60" />
+          <p class="hint">
+            この時刻<strong>以降</strong>の受注は、第7条に載せる製造日（due_date）を<strong>翌々営業日</strong>にずらします（在庫×出荷からの再生成時）。未入力のときは3条スライドを行いません。
+          </p>
+        </div>
       </div>
     </div>
     <div class="card card-leaders">
@@ -563,6 +571,11 @@
       const tv = data.tolerance_value;
       $("tolerance_value").value =
         tv === null || tv === undefined ? "" : String(tv);
+      const oct = data.order_cutoff_time;
+      $("order_cutoff_time").value =
+        oct != null && String(oct).trim()
+          ? normalizeTime(String(oct))
+          : "";
       lastFetchedCompanyId = cid;
       rememberCompanyContext(cid);
       showMsg(true, "読み込みました");
@@ -598,12 +611,14 @@
       }
       const pkgSel = String($("package_code").value || "A").trim().toUpperCase().slice(0, 1);
       const package_code = ["A", "B", "C", "D"].includes(pkgSel) ? pkgSel : "A";
+      const orderCutoff = normalizeTime($("order_cutoff_time").value);
       const data = await api("PUT", "/v2/company/" + encodeURIComponent(cid) + "/leaders", {
         leaders,
         day_boundary_time: boundaryTime,
         company_name: $("company_name").value.trim(),
         tolerance_value: tolerancePayload,
         package_code,
+        order_cutoff_time: orderCutoff || "",
       });
       applyDayBoundaryFromApi(data.day_boundary_time);
       if (data.company_name != null && data.company_name !== undefined) {
@@ -616,6 +631,11 @@
       const tv = data.tolerance_value;
       $("tolerance_value").value =
         tv === null || tv === undefined ? "" : String(tv);
+      const oct2 = data.order_cutoff_time;
+      $("order_cutoff_time").value =
+        oct2 != null && String(oct2).trim()
+          ? normalizeTime(String(oct2))
+          : "";
       lastFetchedCompanyId = cid;
       rememberCompanyContext(cid);
       const preview = leaders.length

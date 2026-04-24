@@ -46,6 +46,7 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
             "input_mode": "manufacturing",
             "unit": "個",
             "day_boundary_time": None,
+            "order_cutoff_time": None,
             "tolerance_value": None,
             "package_code": "A",
             "package_label": package_label("A"),
@@ -59,6 +60,7 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
         "input_mode": _norm_input_mode(getattr(s, "input_mode", None)),
         "unit": s.unit or "個",
         "day_boundary_time": _time_str(s.day_boundary_time),
+        "order_cutoff_time": _time_str(getattr(s, "order_cutoff_time", None)),
         "tolerance_value": getattr(s, "tolerance_value", None),
         "package_code": pkg,
         "package_label": package_label(pkg),
@@ -105,6 +107,18 @@ def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(ge
                 detail="package_code は A / B / C / D のいずれかで指定してください",
             )
         s.package_code = pc
+    if "order_cutoff_time" in body.model_fields_set:
+        t = (body.order_cutoff_time or "").strip()
+        if not t:
+            s.order_cutoff_time = None
+        else:
+            try:
+                s.order_cutoff_time = _parse_time(t)
+            except (ValueError, AttributeError):
+                raise HTTPException(
+                    status_code=400,
+                    detail="order_cutoff_time は HH:MM 形式で指定してください（例: 15:00）",
+                ) from None
     db.commit()
     db.refresh(s)
     pkg = get_company_package(s)
@@ -114,6 +128,7 @@ def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(ge
         "field_users": (s.field_users or "").strip(),
         "saved_count": len(parts),
         "day_boundary_time": _time_str(s.day_boundary_time),
+        "order_cutoff_time": _time_str(getattr(s, "order_cutoff_time", None)),
         "tolerance_value": getattr(s, "tolerance_value", None),
         "package_code": pkg,
         "package_label": package_label(pkg),

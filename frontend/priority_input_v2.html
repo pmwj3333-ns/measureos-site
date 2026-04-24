@@ -42,6 +42,7 @@
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
   .hint.err { color: #ff3b30; }
+  .hint.ok { color: #2e7d32; }
   a { color: #007aff; }
   .nav-links { margin-bottom: 12px; font-size: 0.78rem; }
   .row-block {
@@ -62,7 +63,16 @@
       align-items: end;
     }
   }
-  .row-actions { display: flex; align-items: flex-end; justify-content: flex-end; }
+  .row-actions {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end;
+    gap: 6px;
+  }
+  .btn-close-office {
+    font-size: 0.76rem; padding: 8px 12px; border: none; border-radius: 10px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+    background: #5ac8fa; color: #fff;
+  }
+  .btn-close-office:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-remove {
     min-width: 44px; min-height: 44px; padding: 0;
     background: #f2f2f7; color: #8e8e93; font-size: 1.2rem; line-height: 1;
@@ -110,11 +120,13 @@
 <body>
   <h1>第7条・優先指示入力（フェーズ1）</h1>
   <p class="sub">
-    現場の予告（第5条）とは別データです。事務・営業が「商品・出荷数・製造数・納期」を入力し、
-    <code>POST /v2/priority/create</code> で会社単位に保存します（送信内容で全置換）。製造数は出荷数以下にしてください。
+    <strong>初期は在庫・出荷CSVから第7条を生成</strong>し、日々の更新は<strong>事務のクローズ</strong>と手入力・CSV（<strong>open 行のみ全置換</strong>）で行います。第5条実績は数量を変えません。
+    <code>POST /v2/priority/create</code> は open 行だけ差し替え、クローズ済み行は残ります。製造数は出荷数以下にしてください。
   </p>
   <div class="nav-links">
     <a href="/priority/v2">優先度一覧</a>
+    · <a href="/stock/import/v2">在庫CSV取り込み</a>
+    · <a href="/shipment/import/v2">出荷予定CSV取り込み</a>
     · <a href="/office/v2">事務 v2</a>
     · <a href="/debug/v2">debug v2</a>
     · <a href="/genba/v2">現場 v2</a>
@@ -125,6 +137,7 @@
       <input type="text" id="company" placeholder="例: demo" autocomplete="off">
     </div>
     <button type="button" id="btn-load" class="secondary">読み込み</button>
+    <button type="button" class="secondary btn-rebuild-priority" title="open 行のみ在庫×出荷で再計算（closed は温存）">CSVから第7条を再生成</button>
   </div>
   <p id="msg" class="hint"></p>
 
@@ -132,8 +145,8 @@
     <div class="csv-import-block">
       <div class="section-title">CSV インポート（全置換・第7条専用）</div>
       <p class="csv-role-hint">
-        <strong>CSV：</strong>既存システムからの一括取り込み用<br />
-        <strong>手入力：</strong>個別修正・追加用
+        <strong>CSV：</strong>事務向け・既存システムからの一括取り込み<br />
+        <strong>手入力：</strong>事務向け・個別の修正・追加
       </p>
       <p class="hint" style="margin-top:0;">
         UTF-8、1行目ヘダ固定: <code>due_date,label,ship_value,prod_value</code>。
@@ -170,7 +183,10 @@
     </div>
 
     <hr class="editor-sep" />
-    <div class="section-title">手入力</div>
+    <div class="section-title">手入力（事務・営業）・クローズ</div>
+    <p class="hint" style="margin-top:0;margin-bottom:10px;">
+      各行情報を外部システムに反映済みのうえ <strong>クローズ</strong>すると、優先度一覧から消えます（第5条からは自動では閉じません）。
+    </p>
 
     <div id="rows-host"></div>
     <button type="button" id="btn-add" class="ghost">＋ 行を追加</button>
@@ -210,7 +226,7 @@
 
   var csvParsedItems = null;
   var REPLACE_CONFIRM_MSG =
-    "現在の第7条データをすべて置き換えます。本当に実行しますか？";
+    "現在の open 行をすべて置き換えます（クローズ済みは残ります）。本当に実行しますか？";
 
   function parseCsvRow(line) {
     var out = [];
@@ -455,7 +471,7 @@
   function applyItemsToManualForm(items) {
     clearRows();
     if (!items.length) {
-      addRow("", "", "", "");
+      addRow("", "", "", "", null);
     } else {
       items.forEach(function (it) {
         var due = it.due_date != null ? String(it.due_date).trim() : "";
@@ -463,8 +479,57 @@
         var prod = it.prod_value;
         if ((ship == null || ship === "") && it.value != null) ship = it.value;
         if ((prod == null || prod === "") && it.value != null) prod = it.value;
-        addRow(it.label || "", ship, prod, due);
+        addRow(it.label || "", ship, prod, due, it.id != null ? it.id : null);
       });
+    }
+  }
+
+  async function closePriorityRow(itemId) {
+    var cid = $("company").value.trim();
+    if (!cid) {
+      setMsg("company_id を入力してください", true);
+      return;
+    }
+    if (
+      !confirm(
+        "この行をクローズしますか？\n5条実績・外部反映を確認し、不足が解消したうえで実行してください。"
+      )
+    ) {
+      return;
+    }
+    setMsg("");
+    try {
+      var res = await fetch("/v2/priority/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: cid, item_ids: [itemId] }),
+      });
+      var text = await res.text();
+      var data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (_) {
+        data = {};
+      }
+      if (!res.ok) {
+        var det =
+          data && data.detail
+            ? typeof data.detail === "string"
+              ? data.detail
+              : JSON.stringify(data.detail)
+            : text || String(res.status);
+        setMsg(det, true);
+        return;
+      }
+      var n = data.closed_count != null ? data.closed_count : 0;
+      if (n < 1) {
+        setMsg("クローズできませんでした（すでにクローズ済み、または対象外の可能性があります）。", true);
+        return;
+      }
+      await loadItems();
+      setMsg("クローズしました。", false);
+    } catch (e) {
+      setMsg(String(e.message || e), true);
     }
   }
 
@@ -495,19 +560,25 @@
 
   var rowSeq = 0;
 
-  function addRow(label, shipVal, prodVal, due) {
+  function addRow(label, shipVal, prodVal, due, priorityId) {
     var id = "r" + rowSeq++;
     var host = $("rows-host");
     var blk = document.createElement("div");
     blk.className = "row-block";
     blk.dataset.rowId = id;
+    var pid = priorityId != null && priorityId !== "" ? Number(priorityId) : NaN;
+    var hasPid = Number.isFinite(pid);
+    var closeBtn =
+      '<button type="button" class="btn-close-office">クローズ</button>';
     blk.innerHTML =
       '<div class="row-grid">' +
       '<div><label>商品</label><input type="text" class="in-label" autocomplete="off" /></div>' +
       '<div><label>出荷数</label><input type="number" class="in-ship" inputmode="decimal" min="0" step="any" /></div>' +
       '<div><label>製造数</label><input type="number" class="in-prod" inputmode="decimal" min="0" step="any" /></div>' +
       '<div><label>納期</label><input type="date" class="in-due" /></div>' +
-      '<div class="row-actions"><button type="button" class="btn-remove" aria-label="行を削除">×</button></div>' +
+      '<div class="row-actions">' +
+      (hasPid ? closeBtn : "") +
+      '<button type="button" class="btn-remove" aria-label="行を削除">×</button></div>' +
       "</div>";
     var labIn = blk.querySelector(".in-label");
     var shipIn = blk.querySelector(".in-ship");
@@ -517,6 +588,13 @@
     if (shipVal != null && shipVal !== "" && Number.isFinite(Number(shipVal))) shipIn.value = String(shipVal);
     if (prodVal != null && prodVal !== "" && Number.isFinite(Number(prodVal))) prodIn.value = String(prodVal);
     if (due) dIn.value = due;
+    if (hasPid) {
+      var cbtn = blk.querySelector(".btn-close-office");
+      if (cbtn)
+        cbtn.addEventListener("click", function () {
+          closePriorityRow(pid);
+        });
+    }
     blk.querySelector(".btn-remove").addEventListener("click", function () {
       var blocks = host.querySelectorAll(".row-block");
       if (blocks.length <= 1) {
@@ -616,7 +694,7 @@
       var items = (data && data.items) || [];
       clearRows();
       if (!items.length) {
-        addRow("", "", "", "");
+        addRow("", "", "", "", null);
       } else {
         items.forEach(function (it) {
           var due = it.due_date != null ? String(it.due_date).trim() : "";
@@ -624,7 +702,7 @@
           var prod = it.prod_value;
           if ((ship == null || ship === "") && it.value != null) ship = it.value;
           if ((prod == null || prod === "") && it.value != null) prod = it.value;
-          addRow(it.label || "", ship, prod, due);
+          addRow(it.label || "", ship, prod, due, it.id != null ? it.id : null);
         });
       }
       $("editor").hidden = false;
@@ -699,7 +777,7 @@
     param("company", localStorage.getItem("priority_input_v2_company") || "");
   $("btn-load").addEventListener("click", loadItems);
   $("btn-add").addEventListener("click", function () {
-    addRow("", "", "", "");
+    addRow("", "", "", "", null);
   });
   $("btn-save").addEventListener("click", saveItems);
   $("company").addEventListener("keydown", function (e) {
@@ -744,6 +822,52 @@
   $("btn-csv-save").addEventListener("click", saveCsvImport);
 
   if ($("company").value.trim()) loadItems();
+})();
+</script>
+<script>
+(function () {
+  var btn = document.querySelector(".btn-rebuild-priority");
+  var msg = document.getElementById("msg");
+  if (!btn) return;
+  function setRebuildMsg(text, isErr, isOk) {
+    if (!msg) return;
+    msg.textContent = text || "";
+    msg.className = "hint" + (isErr ? " err" : isOk ? " ok" : "");
+  }
+  btn.addEventListener("click", async function () {
+    var co = (document.getElementById("company") && document.getElementById("company").value || "").trim();
+    if (!co) {
+      setRebuildMsg("company_id を入力してください。", true, false);
+      return;
+    }
+    btn.disabled = true;
+    try {
+      var res = await fetch("/v2/priority/rebuild", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: co }),
+      });
+      var data = {};
+      try {
+        data = await res.json();
+      } catch (e) {}
+      if (!res.ok) {
+        var d = data.detail;
+        if (typeof d !== "string") d = JSON.stringify(data.detail || data);
+        setRebuildMsg("再生成に失敗しました: " + (d || res.statusText), true, false);
+        return;
+      }
+      var n = data.success_count != null ? data.success_count : 0;
+      var line = "第7条データを再生成しました（" + n + "件）";
+      var det = data.detail != null ? String(data.detail).trim() : "";
+      if (det) line += "。" + det;
+      setRebuildMsg(line, false, true);
+    } catch (e) {
+      setRebuildMsg(String(e.message || e), true, false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 })();
 </script>
 </body>

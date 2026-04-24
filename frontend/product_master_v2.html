@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS — 商品マスタ（第5条）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    background: #f2f2f7;
+    color: #1c1c1e;
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 20px 16px 48px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 14px; line-height: 1.55; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+  label { font-size: 0.72rem; color: #636366; display: block; margin-bottom: 2px; }
+  input[type="text"] {
+    padding: 8px 10px; border: 1px solid #c7c7cc; border-radius: 8px;
+    font-size: 0.88rem; font-family: inherit;
+  }
+  button {
+    padding: 8px 14px; border: none; border-radius: 8px; font-weight: 600;
+    font-size: 0.82rem; cursor: pointer; font-family: inherit;
+    background: #007aff; color: #fff;
+  }
+  button.secondary { background: #8e8e93; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
+  .hint.err { color: #ff3b30; }
+  .hint.ok { color: #2e7d32; }
+  a { color: #007aff; }
+  .nav-links { margin-bottom: 12px; font-size: 0.78rem; }
+  table {
+    width: 100%; border-collapse: collapse; background: #fff;
+    border-radius: 10px; overflow: hidden; border: 1px solid #e5e5ea; font-size: 0.8rem;
+  }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e5ea; vertical-align: middle; }
+  th { background: #f2f2f7; color: #636366; font-weight: 600; }
+  tr.inactive td { color: #8e8e93; background: #fafafa; }
+  td input.code-inp { width: 100%; max-width: 200px; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+</style>
+</head>
+<body>
+  <p class="nav-links"><a href="/office/v2">事務 v2</a> · <a href="/priority/input/v2">第7条入力</a></p>
+  <h1>商品マスタ</h1>
+  <p class="sub">現場の第5条実績で使う商品名の一覧です。商品コードを後から紐づけると、第7条との突合がコード優先になります。無効にした行は現場の候補に出ません。</p>
+
+  <div class="bar">
+    <div>
+      <label for="company">company_id</label>
+      <input type="text" id="company" placeholder="例: demo_co" style="width:220px" />
+    </div>
+    <div>
+      <label for="show-inactive">表示</label>
+      <div style="padding-top:6px;">
+        <label><input type="checkbox" id="show-inactive" /> 無効行も含める</label>
+      </div>
+    </div>
+    <button type="button" id="btn-load">読み込み</button>
+  </div>
+  <p id="msg" class="hint"></p>
+
+  <div style="overflow-x:auto;">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>商品名（label）</th>
+          <th>product_code</th>
+          <th>状態</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="5" class="hint">company_id を入力して読み込み</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="hint">API: <code>GET /v2/product-master?company_id=…</code> · <code>PATCH /v2/product-master/{id}</code></p>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+  }
+  function setMsg(text, cls) {
+    const el = $("msg");
+    el.textContent = text || "";
+    el.className = "hint" + (cls ? " " + cls : "");
+  }
+
+  async function patchRow(id, body) {
+    const res = await fetch("/v2/product-master/" + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || res.statusText || String(res.status));
+    }
+    return data;
+  }
+
+  function renderRows(rows) {
+    const tb = $("tbody");
+    if (!rows.length) {
+      tb.innerHTML = "<tr><td colspan=\"5\" class=\"hint\">データなし</td></tr>";
+      return;
+    }
+    tb.innerHTML = rows.map((r) => {
+      const inactive = r.is_active === false;
+      const codeVal = r.product_code != null ? String(r.product_code) : "";
+      return (
+        "<tr class=\"" + (inactive ? "inactive" : "") + "\" data-id=\"" + r.id + "\">" +
+        "<td>" + esc(r.id) + "</td>" +
+        "<td>" + esc(r.label) + "</td>" +
+        "<td><input class=\"code-inp\" type=\"text\" data-code-input value=\"" + esc(codeVal) + "\" placeholder=\"空なら null\" /></td>" +
+        "<td>" + (inactive ? "無効" : "有効") + "</td>" +
+        "<td><div class=\"row-actions\">" +
+        "<button type=\"button\" data-save>コード保存</button>" +
+        (inactive
+          ? "<button type=\"button\" class=\"secondary\" data-active>有効化</button>"
+          : "<button type=\"button\" class=\"secondary\" data-inactive>無効化</button>") +
+        "</div></td></tr>"
+      );
+    }).join("");
+
+    tb.querySelectorAll("tr[data-id]").forEach((tr) => {
+      const id = Number(tr.getAttribute("data-id"));
+      const saveBtn = tr.querySelector("[data-save]");
+      const inactiveBtn = tr.querySelector("[data-inactive]");
+      const activeBtn = tr.querySelector("[data-active]");
+      const codeInp = tr.querySelector("[data-code-input]");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", async () => {
+          saveBtn.disabled = true;
+          setMsg("");
+          try {
+            const raw = codeInp ? String(codeInp.value || "").trim() : "";
+            await patchRow(id, { product_code: raw || null });
+            setMsg("保存しました（ID " + id + "）", "ok");
+            await load();
+          } catch (e) {
+            setMsg(String(e.message || e), "err");
+          } finally {
+            saveBtn.disabled = false;
+          }
+        });
+      }
+      if (inactiveBtn) {
+        inactiveBtn.addEventListener("click", async () => {
+          inactiveBtn.disabled = true;
+          setMsg("");
+          try {
+            await patchRow(id, { is_active: false });
+            setMsg("無効にしました（ID " + id + "）", "ok");
+            await load();
+          } catch (e) {
+            setMsg(String(e.message || e), "err");
+          } finally {
+            inactiveBtn.disabled = false;
+          }
+        });
+      }
+      if (activeBtn) {
+        activeBtn.addEventListener("click", async () => {
+          activeBtn.disabled = true;
+          setMsg("");
+          try {
+            await patchRow(id, { is_active: true });
+            setMsg("有効化しました（ID " + id + "）", "ok");
+            await load();
+          } catch (e) {
+            setMsg(String(e.message || e), "err");
+          } finally {
+            activeBtn.disabled = false;
+          }
+        });
+      }
+    });
+  }
+
+  async function load() {
+    const cid = $("company").value.trim();
+    if (!cid) {
+      setMsg("company_id を入力してください", "err");
+      return;
+    }
+    const inc = $("show-inactive").checked ? "false" : "true";
+    setMsg("読み込み中…");
+    try {
+      const res = await fetch(
+        "/v2/product-master?company_id=" + encodeURIComponent(cid) + "&active_only=" + inc,
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setMsg((data && data.detail) || res.statusText || String(res.status), "err");
+        $("tbody").innerHTML = "<tr><td colspan=\"5\" class=\"hint err\">取得できませんでした</td></tr>";
+        return;
+      }
+      const rows = Array.isArray(data) ? data : [];
+      renderRows(rows);
+      setMsg(rows.length + " 件", "ok");
+    } catch (e) {
+      setMsg(String(e.message || e), "err");
+    }
+  }
+
+  $("btn-load").addEventListener("click", load);
+  const params = new URLSearchParams(location.search);
+  const qc = params.get("company_id") || params.get("company");
+  if (qc) $("company").value = qc.trim();
+})();
+</script>
+</body>
+</html>

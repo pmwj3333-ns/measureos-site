@@ -32,6 +32,11 @@ from app.services.judgement_promote import (
     reference_now_jst,
 )
 from app.services.package_rules import is_phase2_enabled
+from app.services.article7_deviation import is_actual_deviation_from_article7
+from app.services.product_master import (
+    enrich_actual_lines_product_codes,
+    ensure_product_master_labels,
+)
 
 router = APIRouter(tags=["作業記録"])
 logger = logging.getLogger(__name__)
@@ -98,6 +103,9 @@ def _parse_lines_json(raw: Optional[str]) -> List[dict]:
             continue
         if lb and math.isfinite(fv):
             row = {"label": lb, "value": fv}
+            pc_line = str(it.get("product_code", "")).strip()
+            if pc_line:
+                row["product_code"] = pc_line
             lid = it.get("line_id")
             if lid is not None and str(lid).strip():
                 row["line_id"] = str(lid).strip()
@@ -160,6 +168,7 @@ def _strict_lines_from_body(
     *,
     include_due_date: bool = False,
     include_line_id: bool = False,
+    include_product_code: bool = False,
 ) -> Tuple[List[dict], Optional[str]]:
     """lines 指定時。空行は無視。ラベルだけ／数量だけの行はエラー。"""
     complete: List[dict] = []
@@ -179,6 +188,10 @@ def _strict_lines_from_body(
         if not math.isfinite(fv):
             return None, "数量の形式が不正な行があります"
         dct: dict = {"label": lb, "value": fv}
+        if include_product_code:
+            raw_pc = getattr(row, "product_code", None)
+            if raw_pc is not None and str(raw_pc).strip():
+                dct["product_code"] = str(raw_pc).strip()
         if include_line_id:
             raw_lid = getattr(row, "line_id", None)
             if raw_lid is not None and str(raw_lid).strip():
@@ -463,6 +476,8 @@ def _apply_minimal_judgement(
         # B* は is_diff_anomaly と同義（許容超過のみ）。予告なし実績は A* で表す。
         if b_tolerance:
             parts.append("B*")
+        if bool(getattr(unit, "is_article7_deviation", False)):
+            parts.append("7条逸脱")
         computed_pattern = ",".join(parts)
         unit.system_pattern = computed_pattern
         print(
@@ -647,6 +662,8 @@ def _sync_status_blue_from_derived_flags(
         or bool(getattr(unit, "is_invalid_flow", False))
         or bool(getattr(unit, "is_diff_anomaly", False))
         or bool(getattr(unit, "is_unregistered_user", False))
+        or bool(getattr(unit, "is_deviation", False))
+        or bool(getattr(unit, "is_article7_deviation", False))
     ):
         return
     before = norm_work_unit_status(unit.status)
@@ -682,6 +699,8 @@ def _maybe_set_anomaly_started_at(unit: models.WorkUnit) -> None:
         or bool(unit.is_invalid_flow)
         or bool(unit.is_diff_anomaly)
         or bool(getattr(unit, "is_unregistered_user", False))
+        or bool(getattr(unit, "is_deviation", False))
+        or bool(getattr(unit, "is_article7_deviation", False))
     ):
         unit.anomaly_started_at = datetime.utcnow()
 
@@ -741,6 +760,9 @@ def _unit_to_out(
             unit.business_date, jt, unit.company_id, db
         ).isoformat()
 
+    deviation_reason_out = str(getattr(unit, "deviation_reason", None) or "").strip()
+    deviation_reason_out = deviation_reason_out or None
+
     return {
         "id":                 unit.id,
         "company_id":         unit.company_id,
@@ -781,6 +803,9 @@ def _unit_to_out(
         else None,
         "is_unregistered_user": bool(unit.is_unregistered_user),
         "user_source":        unit.user_source or "master",
+        "is_deviation":       bool(getattr(unit, "is_deviation", False)),
+        "is_article7_deviation": bool(getattr(unit, "is_article7_deviation", False)),
+        "deviation_reason":   deviation_reason_out,
         "prev_planned_value": prev_unit.planned_value if prev_unit else None,
         "prev_planned_work_type": prev_unit.planned_work_type if prev_unit else None,
         "prev_planned_work_label": prev_unit.planned_work_label if prev_unit else None,
@@ -1023,11 +1048,50 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
     im = _norm_input_mode(settings)
     patch = body.model_dump(exclude_unset=True)
 
+    lines_for_dev: List[dict] = []
+    parsed_lines: Optional[List[dict]] = None
     if "lines" in patch:
         raw_lines = body.lines if body.lines is not None else []
-        lines, err = _strict_lines_from_body(list(raw_lines))
+        parsed_lines, err = _strict_lines_from_body(
+            list(raw_lines), include_product_code=True
+        )
         if err:
             raise HTTPException(status_code=422, detail=err)
+        if parsed_lines:
+            ensure_product_master_labels(unit.company_id, parsed_lines, db)
+            db.flush()
+            enrich_actual_lines_product_codes(unit.company_id, parsed_lines, db)
+        lines_for_dev = list(parsed_lines) if parsed_lines else []
+    else:
+        an = _opt_str(body.actual_item_name)
+        if an and body.actual_value is not None:
+            try:
+                lines_for_dev = [{"label": an.strip(), "value": float(body.actual_value)}]
+            except (TypeError, ValueError):
+                lines_for_dev = []
+        else:
+            lines_for_dev = []
+        if lines_for_dev:
+            ensure_product_master_labels(unit.company_id, lines_for_dev, db)
+            db.flush()
+            enrich_actual_lines_product_codes(unit.company_id, lines_for_dev, db)
+
+    # 第7条逸脱: product_code 優先・両方コード無しのときのみ label。数量・順序は見ない。
+    is_dev = is_actual_deviation_from_article7(unit.company_id, lines_for_dev, db)
+    if is_dev:
+        dr = getattr(body, "deviation_reason", None)
+        reason_ok = str(dr).strip() if dr is not None else ""
+        if not reason_ok:
+            raise HTTPException(
+                status_code=422,
+                detail="7条に無い作業です。理由を入力してください",
+            )
+        deviation_reason_saved = reason_ok
+    else:
+        deviation_reason_saved = None
+
+    if "lines" in patch:
+        lines = parsed_lines if parsed_lines is not None else []
         unit.actual_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
             unit.actual_value = sum(x["value"] for x in lines)
@@ -1051,6 +1115,15 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
         unit.actual_work_type = _opt_str(body.actual_work_type)
         unit.actual_work_label = _opt_str(body.actual_work_label)
         unit.actual_item_name = _opt_str(body.actual_item_name)
+
+    if is_dev:
+        unit.is_article7_deviation = True
+        unit.is_deviation = True
+        unit.deviation_reason = deviation_reason_saved
+    else:
+        unit.is_article7_deviation = False
+        unit.is_deviation = False
+        unit.deviation_reason = None
 
     unit.actual_at = datetime.utcnow()
 
@@ -1111,6 +1184,7 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
             list(raw_lines),
             include_due_date=True,
             include_line_id=True,
+            include_product_code=True,
         )
         if err:
             raise HTTPException(status_code=422, detail=err)

@@ -343,7 +343,7 @@
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="24" class="empty">company_id を入力して読み込み</td></tr>
+        <tr><td colspan="27" class="empty">company_id を入力して読み込み</td></tr>
       </tbody>
     </table>
   </div>
@@ -379,9 +379,9 @@
   let pollTimer = null;
   const AUTO_MS = 3000;
   const LS_AUTO = "debug_v2_auto_refresh";
-  /** フェーズ2 ON で列24（judgement 期限あり）。OFF で23。 */
+  /** フェーズ2 ON で列27（judgement 期限あり）。OFF で26。読み込み後は getDebugCols().length で上書き。 */
   let phase2Enabled = false;
-  let debugTableColCount = 23;
+  let debugTableColCount = 26;
 
   function getDebugCols() {
     const all = [
@@ -408,6 +408,9 @@
       "system_pattern",
       "judgement_red_deadline_at",
       "anomaly_started_at",
+      "is_article7_deviation",
+      "is_deviation",
+      "deviation_reason",
       "status",
     ];
     if (phase2Enabled) return all;

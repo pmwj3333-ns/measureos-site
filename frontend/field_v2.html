@@ -59,6 +59,19 @@
                 border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
                 background: transparent; font-family: inherit; color: #1c1c1e; }
   .input-text:focus { border-bottom-color: #007aff; }
+  .input-textarea {
+    width: 100%;
+    min-height: 88px;
+    margin-top: 6px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    border: 1px solid #c7c7cc;
+    border-radius: 10px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  .deviation-reason-wrap { margin-top: 12px; }
   .input-unit { font-size: 0.9rem; color: #8e8e93; flex-shrink: 0; }
   .field-label { font-size: 0.72rem; font-weight: 600; color: #8e8e93;
                  margin-bottom: 4px; letter-spacing: 0.04em; }
@@ -110,9 +123,13 @@
   .article7-ref { font-size: 0.88rem; line-height: 1.5; color: #3a3a3c; }
   .article7-ref .article7-line { padding: 8px 0; border-bottom: 1px solid #e5e5ea; }
   .article7-ref .article7-line:last-child { border-bottom: none; }
+  .article7-ref .article7-shortfall { font-size: 0.9rem; font-weight: 600; color: #1c1c1e; margin-top: 4px; }
+  .article7-ref .article7-shortfall .lbl { font-weight: 600; font-size: 0.78rem; color: #636366; margin-right: 6px; }
   .article7-ref .article7-muted { font-size: 0.72rem; color: #8e8e93; margin-top: 4px; }
   .sub-text  { font-size: 0.78rem; color: #8e8e93; margin-top: 8px; line-height: 1.6; }
   .started-info { font-size: 0.74rem; color: #34c759; padding-bottom: 12px; }
+  /* 実績行の product_code は非表示（サーバ・第7条突合用に内部保持） */
+  .line-resolved-pc { display: none !important; }
 
   /* 縦中央だと班長一覧が画面外（上）に逃げて「入力欄だけ見える」ことがある → 上から表示 */
   .overlay { position: fixed; inset: 0; background: #1c1c1e; z-index: 100;
@@ -201,9 +218,59 @@
   .screen { display: none; }
   .screen.active { display: block; }
 
+  /* 会社ID未設定時：入力のみ（中央寄せ） */
+  body.field-company-pick {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+  body.field-company-pick #field-main-shell {
+    display: none !important;
+  }
+  body.field-company-pick #companyBox {
+    display: block !important;
+    margin-top: 0;
+    width: 100%;
+    max-width: 400px;
+  }
+  #companyBox .company-input {
+    width: 100%;
+    max-width: 320px;
+    padding: 12px 14px;
+    font-size: 1rem;
+    border: 1px solid #c7c7cc;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  #companyBox .company-confirm {
+    padding: 12px 28px;
+    background: #007aff;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
 </style>
 </head>
 <body>
+
+<div id="companyBox" style="display:none; text-align:center; margin-top:40px;">
+  <input type="text" id="companyInput" class="company-input" placeholder="会社IDを入力" autocomplete="organization" />
+  <div>
+    <button type="button" class="company-confirm" onclick="saveCompany()">確定</button>
+  </div>
+</div>
+
+<div id="field-main-shell">
 
 <div class="overlay" id="overlay">
   <div class="overlay-box">
@@ -260,16 +327,19 @@
 <div id="screen-planned" class="screen">
   <div class="main">
     <div class="card">
-      <div class="card-label">明日の予告（任意）</div>
-      <div class="subhead" style="margin-top:4px;">第7条・優先指示（参照）</div>
+      <div class="card-label">第5条・明日の予告（任意）</div>
+      <div class="subhead" style="margin-top:4px;">事務の指示（第7条・参照のみ）</div>
+      <p class="sub-text" style="margin-top:0;margin-bottom:10px;">
+        事務が決めるのは<strong>何を・どれだけ・いつまでに・見る順（優先）</strong>までです。第7条に機械・担当・段取りは含みません。ここからの入力では第7条は変わりません。
+      </p>
       <div id="article7-panel-planned" class="readonly-block article7-ref"></div>
       <div id="planned-block-mfg">
-        <div class="field-label">商品名・対象名と数量（予定・複数行可）</div>
+        <div class="field-label">第5条・予告：商品名・対象名と数量（複数行可）</div>
         <div id="planned-rows-mfg" class="multi-rows"></div>
         <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
       </div>
       <div id="planned-block-log" style="display:none;">
-        <div class="field-label">作業内容と数量（予定・複数行可）</div>
+        <div class="field-label">第5条・予告：作業内容と数量（複数行可）</div>
         <div id="planned-rows-log" class="multi-rows"></div>
         <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
       </div>
@@ -286,23 +356,31 @@
   <div class="main">
     <div class="started-info" id="started-info" style="display:none;"></div>
     <div class="card">
-      <div class="card-label">今日の実績</div>
-      <div class="subhead">第7条・優先指示（参照）</div>
+      <div class="card-label">第5条・今日の実績</div>
+      <div class="subhead">事務の指示（第7条・参照のみ）</div>
+      <p class="sub-text" style="margin-top:0;margin-bottom:10px;">
+        事務が決めるのは<strong>何を・どれだけ・いつまでに・見る順（優先）</strong>までです。第7条に機械・担当・段取りは含みません。実績入力で第7条そのものを書き換えられることはありません。
+      </p>
       <div id="article7-panel-actual" class="readonly-block article7-ref"></div>
-      <div class="subhead">予告（参照）</div>
+      <div class="subhead">第5条・予告（参照）</div>
       <div class="readonly-block" id="actual-planned-summary"></div>
-      <div class="subhead">実績（入力）</div>
+      <div class="subhead">第5条・実績（入力）</div>
       <div id="actual-inputs-mfg">
-        <div class="field-label">商品名・対象名と数量（複数行可）</div>
+        <div class="field-label">第5条・実績：商品名・対象名と数量（複数行可）</div>
         <div id="actual-rows-mfg" class="multi-rows"></div>
         <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
       </div>
       <div id="actual-inputs-log" style="display:none;">
-        <div class="field-label">作業内容と数量（複数行可）</div>
+        <div class="field-label">第5条・実績：作業内容と数量（複数行可）</div>
         <div id="actual-rows-log" class="multi-rows"></div>
         <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
       </div>
-      <p class="sub-text">予告と違う内容でも、そのまま記録できます。</p>
+      <p class="sub-text">数量・順序の違いは第7条逸脱ではありません。<strong>open の第7条に無い商品</strong>を実績に含めたときだけ逸脱となり、理由の入力が必要です。商品名はこれまでどおり入力でき、裏側で商品コードが付く場合はコード優先で突合します（コード片側のみと名前だけの突合はしません）。入力自体は止めません。</p>
+      <div id="deviation-reason-wrap" class="deviation-reason-wrap" style="display:none;">
+        <label for="deviation-reason" class="field-label">逸脱の理由（現場の記録）（必須）</label>
+        <textarea id="deviation-reason" class="input-textarea" rows="3" autocomplete="off"
+          placeholder="なぜ第7条に無い商品を作成したか"></textarea>
+      </div>
       <div class="subhead" style="margin-top:16px;">異常の分類（任意）</div>
       <div class="pattern-row">
         <label class="pattern-check">
@@ -324,9 +402,54 @@
 <datalist id="dl-item-name"></datalist>
 <datalist id="dl-work-label"></datalist>
 
+</div>
+
 <script src="/static/format-jst-datetime.js"></script>
 <script src="/static/priority-tier-due.js"></script>
 <script>
+/** 現場 v2・事務 v2 で共有（office_v2 と同一キー）。スクリプト先頭で参照するため最上部に置く。 */
+const LS_SHARED_COMPANY_ID = "company_id";
+
+function saveCompany() {
+  const id = document.getElementById("companyInput").value.trim();
+  if (!id) {
+    alert("会社IDを入力してください");
+    return;
+  }
+  localStorage.setItem("company_id", id);
+  location.href = "/現場/v2?company=" + encodeURIComponent(id);
+}
+
+(function resolveFieldV2Company() {
+  const params = new URLSearchParams(location.search);
+  let companyId = (params.get("company") || params.get("company_id") || "").trim();
+  if (!companyId) companyId = (localStorage.getItem("company_id") || "").trim();
+
+  if (!companyId) {
+    document.body.classList.add("field-company-pick");
+    const box = document.getElementById("companyBox");
+    if (box) box.style.display = "block";
+    const inp = document.getElementById("companyInput");
+    if (inp) {
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") saveCompany();
+      });
+      try {
+        inp.focus();
+      } catch (_) { /* ok */ }
+    }
+    window.__FIELD_V2_NEEDS_COMPANY__ = true;
+    return;
+  }
+
+  if (!params.get("company") && !params.get("company_id")) {
+    location.replace("/現場/v2?company=" + encodeURIComponent(companyId));
+    return;
+  }
+
+  window.__FIELD_V2_NEEDS_COMPANY__ = false;
+})();
+
 let unitId = null;
 let lastWorkData = null;
 let unitVal = "個";
@@ -345,10 +468,15 @@ let _forceBlankActualOnce = false;
  * 確定後は company 別キー field_v2_last_user:{id} に保存し、getConfig().user が使える。
  */
 let _fieldUserSessionConfirmed = false;
+/** 事務の第7条 GET /v2/priority/items のキャッシュ（実績の商品ラベルがこの予定に含まれるか照合。数量・順序は見ない） */
+let article7ItemsCache = [];
+/** GET /v2/product-master のキャッシュ（候補・内部 product_code） */
+let fieldProductMasterRows = [];
+/** label → product_code（空文字はコードなしで確定） */
+let fieldProductCodeByLabel = Object.create(null);
+/** GET /v2/work/list のキャッシュ（過去の予告・実績から候補・コードヒント） */
+let fieldPastWorkListRows = [];
 const MSG_PLANNED_UNSAVED = "予告内容が未保存です。先に「予告を登録」してください。";
-
-/** 現場 v2・事務 v2 で共有（office_v2 と同一キー） */
-const LS_SHARED_COMPANY_ID = "company_id";
 
 function persistSharedCompanyId(raw) {
   const v = (raw != null ? String(raw) : "").trim();
@@ -533,11 +661,16 @@ function actualRowsHost() {
   return document.getElementById(isLogistics() ? "actual-rows-log" : "actual-rows-mfg");
 }
 
-function makeInputLineRow(placeholder, listId) {
+function makeInputLineRow(placeholder, listId, withProductCode) {
   const wrap = document.createElement("div");
   wrap.className = "multi-row-line";
+  const hiddenPc =
+    withProductCode === true && !isLogistics()
+      ? '<input type="hidden" class="line-resolved-pc" data-line-resolved-pc value="" autocomplete="off" />'
+      : "";
   wrap.innerHTML =
     `<div class="multi-row-fields">
+       ${hiddenPc}
        <input class="input-text" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />
        <div class="input-row">
          <input class="input-num" type="number" data-line-qty="" inputmode="decimal" placeholder="数量" min="0" step="any" />
@@ -550,6 +683,17 @@ function makeInputLineRow(placeholder, listId) {
   labIn.setAttribute("list", listId);
   wrap.querySelector(".line-unit-suffix").textContent = unitVal;
   wrap.querySelector(".btn-line-remove").addEventListener("click", () => removeInputLineRow(wrap));
+  const qtyIn = wrap.querySelector("[data-line-qty]");
+  function onLabOrQty() {
+    syncResolvedProductCodeForRow(wrap);
+    syncDeviationReasonPanel();
+  }
+  labIn.addEventListener("input", onLabOrQty);
+  labIn.addEventListener("change", onLabOrQty);
+  if (qtyIn) {
+    qtyIn.addEventListener("input", syncDeviationReasonPanel);
+    qtyIn.addEventListener("change", syncDeviationReasonPanel);
+  }
   return wrap;
 }
 
@@ -560,24 +704,33 @@ function removeInputLineRow(lineEl) {
   if (rows.length <= 1) {
     const a = lineEl.querySelector("[data-line-label]");
     const b = lineEl.querySelector("[data-line-qty]");
+    const c = lineEl.querySelector("[data-line-resolved-pc]");
     if (a) a.value = "";
     if (b) b.value = "";
+    if (c) c.value = "";
     delete lineEl.dataset.lineId;
+    syncDeviationReasonPanel();
     return;
   }
   lineEl.remove();
+  syncDeviationReasonPanel();
 }
 
 function addPlannedRow() {
   const h = plannedRowsHost();
   h.appendChild(
-    makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name"));
+    makeInputLineRow(
+      "候補から選ぶか入力",
+      isLogistics() ? "dl-work-label" : "dl-item-name",
+      !isLogistics(),
+    ));
 }
 
 function addActualRow() {
   const h = actualRowsHost();
   h.appendChild(
-    makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name"));
+    makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name", true));
+  syncDeviationReasonPanel();
 }
 
 function parseQtyInput(raw) {
@@ -593,6 +746,8 @@ function scanHostLines(host) {
   for (const row of host.querySelectorAll(".multi-row-line")) {
     const labEl = row.querySelector("[data-line-label]");
     const qtyEl = row.querySelector("[data-line-qty]");
+    const pcEl = row.querySelector("[data-line-resolved-pc]");
+    const pc = pcEl ? String(pcEl.value || "").trim() : "";
     const lb = (labEl && labEl.value || "").trim();
     const rawQ = qtyEl ? qtyEl.value : "";
     const q = parseQtyInput(rawQ);
@@ -607,6 +762,7 @@ function scanHostLines(host) {
       return { error: "数量の形式が不正な行があります" };
     }
     const line = { label: lb, value: q };
+    if (pc) line.product_code = pc;
     const lid = (row.dataset.lineId || "").trim();
     if (lid) line.line_id = lid;
     out.push(line);
@@ -614,12 +770,116 @@ function scanHostLines(host) {
   return { lines: out };
 }
 
+function escAttr(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+function syncResolvedProductCodeForRow(rowEl) {
+  if (!rowEl) return;
+  const hid = rowEl.querySelector("[data-line-resolved-pc]");
+  const labIn = rowEl.querySelector("[data-line-label]");
+  if (!hid || !labIn) return;
+  const lb = String(labIn.value || "").trim();
+  if (!lb) {
+    hid.value = "";
+    return;
+  }
+  if (Object.prototype.hasOwnProperty.call(fieldProductCodeByLabel, lb)) {
+    const v = fieldProductCodeByLabel[lb];
+    hid.value = v ? String(v).trim() : "";
+    return;
+  }
+  hid.value = "";
+}
+
+function rebuildFieldProductCodeMap() {
+  const map = Object.create(null);
+  for (const r of fieldProductMasterRows || []) {
+    if (r.is_active === false) continue;
+    const lb = String(r.label || "").trim();
+    if (!lb) continue;
+    const pc = String(r.product_code || "").trim();
+    if (pc) {
+      map[lb] = pc;
+    } else if (!Object.prototype.hasOwnProperty.call(map, lb)) {
+      map[lb] = "";
+    }
+  }
+  for (const it of article7ItemsCache || []) {
+    const lb = String(it.label || "").trim();
+    if (!lb) continue;
+    const pc = String(it.product_code || "").trim();
+    if (!pc) continue;
+    const cur = map[lb];
+    if (!cur || !String(cur).trim()) map[lb] = pc;
+  }
+  for (const r of fieldPastWorkListRows || []) {
+    for (const x of r.planned_lines || []) {
+      if (!x || typeof x !== "object") continue;
+      const lb = String(x.label || "").trim();
+      const pc = String(x.product_code || "").trim();
+      if (!lb || !pc) continue;
+      const cur = map[lb];
+      if (!cur || !String(cur).trim()) map[lb] = pc;
+    }
+  }
+  for (const r of fieldPastWorkListRows || []) {
+    for (const x of r.actual_lines || []) {
+      if (!x || typeof x !== "object") continue;
+      const lb = String(x.label || "").trim();
+      const pc = String(x.product_code || "").trim();
+      if (!lb || !pc) continue;
+      const cur = map[lb];
+      if (!cur || !String(cur).trim()) map[lb] = pc;
+    }
+  }
+  fieldProductCodeByLabel = map;
+}
+
+/** 製造の dl-item-name と物流の dl-work-label を同一ソース（マスタ・第7条・過去作業）で埋める */
+function refillUnifiedFieldDatalists() {
+  const labels = new Set();
+  for (const r of fieldProductMasterRows || []) {
+    if (r.is_active === false) continue;
+    const lb = String(r.label || "").trim();
+    if (lb) labels.add(lb);
+  }
+  for (const it of article7ItemsCache || []) {
+    const lb = String(it.label || "").trim();
+    if (lb) labels.add(lb);
+  }
+  for (const r of fieldPastWorkListRows || []) {
+    if (r.planned_item_name) labels.add(String(r.planned_item_name).trim());
+    if (r.actual_item_name) labels.add(String(r.actual_item_name).trim());
+    if (r.planned_work_label) labels.add(String(r.planned_work_label).trim());
+    if (r.actual_work_label) labels.add(String(r.actual_work_label).trim());
+    for (const x of r.planned_lines || []) {
+      if (x && x.label) labels.add(String(x.label).trim());
+    }
+    for (const x of r.actual_lines || []) {
+      if (x && x.label) labels.add(String(x.label).trim());
+    }
+  }
+  const sorted = [...labels].filter(Boolean).sort((a, b) => a.localeCompare(b, "ja"));
+  const html = sorted.map((l) => "<option value=\"" + escAttr(l) + "\"></option>").join("");
+  const dlItem = document.getElementById("dl-item-name");
+  const dlWl = document.getElementById("dl-work-label");
+  if (dlItem) dlItem.innerHTML = html;
+  if (dlWl) dlWl.innerHTML = html;
+}
+
 function fingerprintPlannedLinesNormalized(lines) {
   const arr = (lines || []).map((L) => {
     const label = String(L.label != null ? L.label : "").trim();
     const value = Number(L.value);
     const line_id = L.line_id != null ? String(L.line_id).trim() : "";
-    return { label, value, line_id: line_id || undefined };
+    const pcRaw = L.product_code != null ? String(L.product_code).trim() : "";
+    const out = { label, value, line_id: line_id || undefined };
+    if (pcRaw) out.product_code = pcRaw;
+    return out;
   }).filter((x) => x.label && Number.isFinite(x.value));
   return JSON.stringify(arr);
 }
@@ -632,20 +892,30 @@ function plannedFingerprintFromServerPayload(data) {
   return "[]";
 }
 
-function fillRowsHost(host, lines, ph, listId) {
+function fillRowsHost(host, lines, ph, listId, withProductCode) {
   host.innerHTML = "";
   const L = lines && lines.length ? lines : [{}];
+  const wpc = withProductCode === true;
   for (const row of L) {
-    const el = makeInputLineRow(ph, listId);
+    const el = makeInputLineRow(ph, listId, wpc);
     const lab = el.querySelector("[data-line-label]");
     const qty = el.querySelector("[data-line-qty]");
+    const pcIn = el.querySelector("[data-line-resolved-pc]");
     if (row.label != null && String(row.label).trim()) lab.value = row.label;
     if (row.value != null && Number.isFinite(Number(row.value))) qty.value = String(row.value);
+    if (pcIn) {
+      if (row.product_code != null && String(row.product_code).trim()) {
+        pcIn.value = String(row.product_code).trim();
+      } else {
+        syncResolvedProductCodeForRow(el);
+      }
+    }
     const lid = row.line_id != null ? String(row.line_id).trim() : "";
     if (lid) el.dataset.lineId = lid;
     else delete el.dataset.lineId;
     host.appendChild(el);
   }
+  syncDeviationReasonPanel();
 }
 
 function setPlannedRowsFromData(data) {
@@ -655,7 +925,7 @@ function setPlannedRowsFromData(data) {
   if (data && Array.isArray(data.planned_lines) && data.planned_lines.length) {
     lines = data.planned_lines;
   }
-  fillRowsHost(host, lines, "候補から選ぶか入力", listId);
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId, !isLogistics());
   _plannedSavedFingerprint = plannedFingerprintFromServerPayload(data);
 }
 
@@ -666,7 +936,18 @@ function setActualRowsFromData(data) {
   if (data && Array.isArray(data.actual_lines) && data.actual_lines.length) {
     lines = data.actual_lines;
   }
-  fillRowsHost(host, lines, "候補から選ぶか入力", listId);
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId, true);
+  const ta = document.getElementById("deviation-reason");
+  if (ta) ta.value = "";
+  syncDeviationReasonPanel();
+  if (
+    ta &&
+    (data.is_article7_deviation === true || data.is_deviation === true) &&
+    data.deviation_reason != null
+  ) {
+    const t = String(data.deviation_reason).trim();
+    if (t) ta.value = t;
+  }
 }
 
 function renderLinesSummaryReadonly(lines) {
@@ -697,9 +978,48 @@ function renderPlannedSummaryForActual(data) {
   }
 }
 
+/** サーバ article7_deviation と同趣旨: コード同士一致、または両方コード無しで label 一致のみ非逸脱 */
+function isActualLineCoveredByArticle7(line, items) {
+  const lnPc = String(line.product_code || "").trim();
+  const lnLb = String(line.label || "").trim();
+  if (!lnPc && !lnLb) return true;
+  for (const p of items || []) {
+    const pPc = String(p.product_code || "").trim();
+    const pLb = String(p.label || "").trim();
+    if (lnPc && pPc && lnPc === pPc) return true;
+    if (!lnPc && !pPc && lnLb && pLb && lnLb === pLb) return true;
+  }
+  return false;
+}
+
+function isActualDeviantVsArticle7(lines, items) {
+  if (!lines || !lines.length) return false;
+  for (const L of lines) {
+    const lnPc = String(L.product_code || "").trim();
+    const lnLb = String(L.label || "").trim();
+    if (!lnPc && !lnLb) continue;
+    if (!isActualLineCoveredByArticle7(L, items)) return true;
+  }
+  return false;
+}
+
+function syncDeviationReasonPanel() {
+  const wrap = document.getElementById("deviation-reason-wrap");
+  const ta = document.getElementById("deviation-reason");
+  if (!wrap || !ta) return;
+  const scanned = scanHostLines(actualRowsHost());
+  if (scanned.error) {
+    wrap.style.display = "none";
+    return;
+  }
+  const dev = isActualDeviantVsArticle7(scanned.lines, article7ItemsCache);
+  wrap.style.display = dev ? "block" : "none";
+  if (!dev) ta.value = "";
+}
+
 function renderArticle7PanelHtml(items) {
   if (!items || !items.length) {
-    return '<p class="article7-muted">事務・営業が登録した優先指示はありません。</p>';
+    return '<p class="article7-muted">事務から登録された第7条の一覧（納期・不足の目安）はまだありません。</p>';
   }
   return items.map((it) => {
     const label = String(it.label || "").trim() || "（無名）";
@@ -712,13 +1032,20 @@ function renderArticle7PanelHtml(items) {
     const dueDisp = dueRaw ? escHtml(dueRaw) : "—";
     const shipRaw = it.ship_value != null ? Number(it.ship_value) : (it.value != null ? Number(it.value) : NaN);
     const prodRaw = it.prod_value != null ? Number(it.prod_value) : (it.value != null ? Number(it.value) : NaN);
+    let stockRaw =
+      it.stock_qty != null && it.stock_qty !== "" ? Number(it.stock_qty) : NaN;
+    if (!Number.isFinite(stockRaw) && Number.isFinite(shipRaw) && Number.isFinite(prodRaw)) {
+      stockRaw = Math.max(0, shipRaw - prodRaw);
+    }
     const shipStr = Number.isFinite(shipRaw) ? String(shipRaw) : "—";
     const prodStr = Number.isFinite(prodRaw) ? String(prodRaw) : "—";
+    const stockStr = Number.isFinite(stockRaw) ? String(stockRaw) : "—";
     return (
       `<div class="article7-line">` +
       `<div><strong>${escHtml(label)}</strong></div>` +
-      `<div class="article7-muted">出荷：${escHtml(shipStr)} ${escHtml(unitVal)}　製造：${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
-      `<div class="article7-muted">${tierLead}納期：${dueDisp}</div>` +
+      `<div class="article7-shortfall"><span class="lbl">不足</span>${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
+      `<div class="article7-muted">出荷：${escHtml(shipStr)} ${escHtml(unitVal)}　在庫：${escHtml(stockStr)} ${escHtml(unitVal)}　${tierLead}納期：${dueDisp}</div>` +
+      `<div class="article7-muted">製造目安 ${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
       `</div>`
     );
   }).join("");
@@ -735,19 +1062,43 @@ async function refreshArticle7Panels() {
     actualEl.innerHTML = empty;
     return;
   }
-  const fail = '<p class="article7-muted">優先指示の取得に失敗しました。</p>';
+  const fail = '<p class="article7-muted">第7条一覧の取得に失敗しました。</p>';
   try {
-    const res = await fetch(
-      `/v2/priority/items?company_id=${encodeURIComponent(cfg.company)}`,
-      { cache: "no-store" },
-    );
-    if (!res.ok) {
+    const cid = encodeURIComponent(cfg.company);
+    const [priRes, pmRes, wlRes] = await Promise.all([
+      fetch(`/v2/priority/items?company_id=${cid}`, { cache: "no-store" }),
+      fetch(`/v2/product-master?company_id=${cid}&active_only=true`, { cache: "no-store" }),
+      fetch(`/v2/work/list?company_id=${cid}`, { cache: "no-store" }),
+    ]);
+    if (!priRes.ok) {
       plannedEl.innerHTML = fail;
       actualEl.innerHTML = fail;
       return;
     }
-    const data = await res.json();
+    const data = await priRes.json();
     const items = data && Array.isArray(data.items) ? data.items : [];
+    article7ItemsCache = items;
+    if (pmRes.ok) {
+      const pmData = await pmRes.json();
+      fieldProductMasterRows = Array.isArray(pmData) ? pmData : [];
+    } else {
+      fieldProductMasterRows = [];
+    }
+    if (wlRes.ok) {
+      const wlData = await wlRes.json();
+      fieldPastWorkListRows = Array.isArray(wlData) ? wlData : [];
+    } else {
+      fieldPastWorkListRows = [];
+    }
+    rebuildFieldProductCodeMap();
+    refillUnifiedFieldDatalists();
+    [plannedRowsHost(), actualRowsHost()].forEach((host) => {
+      if (!host) return;
+      host.querySelectorAll(".multi-row-line").forEach((rowEl) => {
+        syncResolvedProductCodeForRow(rowEl);
+      });
+    });
+    syncDeviationReasonPanel();
     const html = renderArticle7PanelHtml(items);
     plannedEl.innerHTML = html;
     actualEl.innerHTML = html;
@@ -1039,41 +1390,6 @@ async function loadCompanyInputMode() {
   await refreshArticle7Panels();
 }
 
-async function fillDatalistsFromWorkList() {
-  const cfg = getConfig();
-  if (!cfg.company) return;
-  try {
-    const res = await fetch(`/v2/work/list?company_id=${encodeURIComponent(cfg.company)}`);
-    if (!res.ok) return;
-    const rows = await res.json();
-    const nm = new Set();
-    const wl = new Set();
-    for (const r of rows) {
-      if (r.planned_item_name) nm.add(String(r.planned_item_name).trim());
-      if (r.actual_item_name) nm.add(String(r.actual_item_name).trim());
-      if (r.planned_work_label) wl.add(String(r.planned_work_label).trim());
-      if (r.actual_work_label) wl.add(String(r.actual_work_label).trim());
-      for (const x of r.planned_lines || []) {
-        if (x && x.label) { nm.add(String(x.label).trim()); wl.add(String(x.label).trim()); }
-      }
-      for (const x of r.actual_lines || []) {
-        if (x && x.label) { nm.add(String(x.label).trim()); wl.add(String(x.label).trim()); }
-      }
-    }
-    const fillDl = (id, set) => {
-      const el = document.getElementById(id);
-      el.innerHTML = "";
-      [...set].filter(Boolean).sort().slice(0, 80).forEach((v) => {
-        const o = document.createElement("option");
-        o.value = v;
-        el.appendChild(o);
-      });
-    };
-    fillDl("dl-item-name", nm);
-    fillDl("dl-work-label", wl);
-  } catch (_) { /* ok */ }
-}
-
 async function api(method, url, body) {
   const opt = { method, headers: {} };
   if (body !== undefined) {
@@ -1108,7 +1424,6 @@ async function bootstrapWork() {
   }
   document.getElementById("header-user").textContent = cfg.user;
   await loadCompanyInputMode();
-  await fillDatalistsFromWorkList();
 
   let data;
   try {
@@ -1149,7 +1464,6 @@ async function bootstrapWork() {
 async function showPlannedScreen(prefill) {
   await loadCompanyInputMode();
   if (prefill) syncInputModeFromPayload(prefill);
-  await fillDatalistsFromWorkList();
   setPlannedRowsFromData(prefill || lastWorkData);
   document.getElementById("planned-btn").disabled = false;
   document.getElementById("planned-btn").textContent = "予告を登録";
@@ -1162,7 +1476,6 @@ async function showPlannedScreen(prefill) {
 async function showPlannedScreenForNextEntry(serverPayload) {
   await loadCompanyInputMode();
   if (serverPayload) syncInputModeFromPayload(serverPayload);
-  await fillDatalistsFromWorkList();
   if (serverPayload) applyUnit(serverPayload.unit);
   setPlannedRowsFromData({ planned_lines: [] });
   _plannedAllowEmptyAfterSave = false;
@@ -1177,7 +1490,6 @@ async function showPlannedScreenForNextEntry(serverPayload) {
 async function showActualScreen(data, opts) {
   opts = opts || {};
   syncInputModeFromPayload(data);
-  await fillDatalistsFromWorkList();
   renderPlannedSummaryForActual(data);
   const stInfo = document.getElementById("started-info");
   if (data.started_at) {
@@ -1293,12 +1605,23 @@ async function submitActual() {
   }
 
   const bChecked = document.getElementById("pattern-b-cb").checked;
+  const needDevReason = isActualDeviantVsArticle7(scanned.lines, article7ItemsCache);
+  const reasonEl = document.getElementById("deviation-reason");
+  const reasonVal = reasonEl ? String(reasonEl.value || "").trim() : "";
+  if (needDevReason && !reasonVal) {
+    toast("7条に無い作業です。理由を入力してください");
+    btn.disabled = false;
+    btn.textContent = "実績を記録する";
+    submitting = false;
+    return;
+  }
   const payload = {
     lines: scanned.lines,
     pattern_a: document.getElementById("pattern-a-cb").checked,
     pattern_b: bChecked,
     user_pattern: bChecked ? "B" : null,
   };
+  if (needDevReason) payload.deviation_reason = reasonVal;
 
   try {
     const data = await api("POST", `/v2/work/${unitId}/actual`, payload);
@@ -1331,6 +1654,7 @@ function applyEmbeddedFieldUsers() {
 }
 
 (function init() {
+  if (window.__FIELD_V2_NEEDS_COMPANY__) return;
   _fieldUserSessionConfirmed = false;
   removeLegacyFieldUserStorageKeys();
   loadCfgFromLocal();

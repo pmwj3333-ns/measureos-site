@@ -56,6 +56,10 @@ class V2LeadersPut(BaseModel):
         default=None,
         description="Package A|B|C|D。省略時は package_code を変更しない。",
     )
+    order_cutoff_time: Optional[str] = Field(
+        default=None,
+        description="HH:MM。第7条・3条の受注締切。unset で変更しない。空文字でクリア。",
+    )
 
 
 # ─── カレンダー ─────────────────────────────────────────────
@@ -88,6 +92,7 @@ class WorkLineIn(BaseModel):
     value: Optional[float] = None
     line_id: Optional[str] = None
     due_date: Optional[str] = None
+    product_code: Optional[str] = None
 
 
 class ActualIn(BaseModel):
@@ -100,6 +105,8 @@ class ActualIn(BaseModel):
     pattern_b: Optional[bool] = None
     # 現場チェック B のみ（"B" / null）。system_pattern とは独立
     user_pattern: Optional[str] = None
+    # 第7条逸脱（予定外ラベル）のときのみ必須。逸脱でないときは送らずサーバがクリアする。
+    deviation_reason: Optional[str] = None
 
 
 class PlannedIn(BaseModel):
@@ -122,6 +129,7 @@ class WorkLineOut(BaseModel):
     value: float
     line_id: Optional[str] = None
     due_date: Optional[str] = None  # YYYY-MM-DD
+    product_code: Optional[str] = None
 
 
 class PlannedDueMergeEntry(BaseModel):
@@ -153,14 +161,96 @@ class PriorityItemsCreateIn(BaseModel):
 
 class PriorityItemOut(BaseModel):
     id: int
+    product_code: str = ""
     label: str
     ship_value: float
+    stock_qty: float = 0
     prod_value: float
     due_date: Optional[str] = None
+    status: str = "open"
+    # Package A: 第5条（WorkUnit 実績）から付与する表示のみ。第7条の数量は変更しない。
+    article7_actual_hint: Optional[str] = None
+    article7_notices: List[str] = Field(default_factory=list)
 
 
 class PriorityItemsOut(BaseModel):
     items: List[PriorityItemOut] = Field(default_factory=list)
+
+
+class PriorityRebuildIn(BaseModel):
+    company_id: str
+
+
+class PriorityRebuildOut(BaseModel):
+    """POST /v2/priority/rebuild（在庫×出荷予定から第7条再生成）。"""
+
+    ok: bool = True
+    success_count: int = 0
+    warning_count: int = Field(
+        0,
+        description=(
+            "在庫未登録・コード空欄・不要（在庫で賄う）・納期不正などの件数の合算（参考）。"
+        ),
+    )
+    detail: Optional[str] = Field(
+        None,
+        description="警告の内訳を1行にまとめた文言（該当なしは null）。",
+    )
+
+
+class PriorityCloseIn(BaseModel):
+    company_id: str
+    item_ids: List[int] = Field(..., min_length=1)
+
+
+class PriorityCloseOut(BaseModel):
+    ok: bool = True
+    closed_count: int = 0
+
+
+# ─── 商品マスタ（第5条・product_code 補完）──────────────────────────
+
+class ProductMasterOut(BaseModel):
+    id: int
+    company_id: str
+    product_code: Optional[str] = None
+    label: str
+    is_active: bool = True
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class ProductMasterEnsureIn(BaseModel):
+    company_id: str
+    label: str
+
+
+class ProductMasterPatchIn(BaseModel):
+    product_code: Optional[str] = None
+    label: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class StockImportOut(BaseModel):
+    """POST /v2/stock/import の応答（在庫CSV・会社単位全置換）。"""
+
+    ok: bool = True
+    success_count: int = 0
+    error_count: int = 0
+
+
+class ShipmentImportOut(BaseModel):
+    """POST /v2/shipment/import の応答（出荷予定CSV・会社単位全置換）。"""
+
+    ok: bool = True
+    success_count: int = Field(
+        0,
+        description=(
+            "最終的に保存されたユニーク件数（product_code + due_date 単位）。"
+            "同一キーの重複行は後勝ちで1件にまとめた後の件数。"
+        ),
+    )
+    error_count: int = 0
 
 
 class WorkUnitStatusHistoryItem(BaseModel):
@@ -215,3 +305,6 @@ class WorkUnitOut(BaseModel):
     prev_planned_lines:      Optional[List[WorkLineOut]] = None
     unit:                str = "個"               # 会社設定から取得
     input_mode:          str = "manufacturing"
+    is_deviation:        bool = False
+    is_article7_deviation: bool = False
+    deviation_reason:    Optional[str] = None

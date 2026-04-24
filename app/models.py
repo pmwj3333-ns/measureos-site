@@ -1,4 +1,16 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, Time, ForeignKey, Index
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    Boolean,
+    Date,
+    DateTime,
+    Time,
+    ForeignKey,
+    Index,
+    UniqueConstraint,
+)
 from app.database import Base
 
 
@@ -14,6 +26,8 @@ class CompanySettings(Base):
     day_boundary_time  = Column(Time, nullable=True)
     work_end_time      = Column(Time, nullable=True)
     judgement_time     = Column(Time, nullable=True)
+    # 第7条・3条：受注がこの時刻以降なら製造スロット日を翌々営業日へ（未設定なら3条スキップ）
+    order_cutoff_time  = Column(Time, nullable=True)
     field_users        = Column(String, nullable=True, default="")
     input_mode         = Column(String, nullable=True, default="manufacturing")
     # Package A-D（B以上でフェーズ2・赤系を有効化）
@@ -76,23 +90,81 @@ class WorkUnit(Base):
     is_unregistered_user = Column(Boolean, default=False)
     user_source          = Column(String, nullable=True, default="master")
 
+    # 第5条・Package A: 第7条（open）に無い商品の実績（数量・順序は対象外）
+    is_deviation = Column(Boolean, nullable=True, default=False)
+    is_article7_deviation = Column(Boolean, nullable=True, default=False)
+    deviation_reason = Column(String, nullable=True)
+
+
+class ProductMaster(Base):
+    """第5条・商品マスタ（会社単位）。現場は商品名で入力し、裏で product_code を紐づけ可能。"""
+
+    __tablename__ = "product_master"
+    __table_args__ = (
+        Index("ix_product_master_company_id", "company_id"),
+        UniqueConstraint("company_id", "label", name="uq_product_master_company_label"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    product_code = Column(String, nullable=True)
+    label = Column(String, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
 
 class PriorityItem(Base):
-    """第7条フェーズ1: 事務・営業が入力する優先指示（work_unit 非依存）。"""
+    """第7条フェーズ1: 事務（OS）が決める優先指示（work_unit 非依存）。現場の「やり方」は持たない。"""
 
     __tablename__ = "priority_item"
     __table_args__ = (Index("ix_priority_item_company_id", "company_id"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(String, nullable=False)
+    product_code = Column(String, nullable=False, default="")
     label = Column(String, nullable=False)
     ship_value = Column(Float, nullable=False)
+    stock_qty = Column(Float, nullable=False, default=0)
     prod_value = Column(Float, nullable=False)
     # 旧スキーマ互換: かつての単一数量列。INSERT 時は ship_value と同値を入れる（NOT NULL の DB 対策）
     value = Column(Float, nullable=True)
     due_date = Column(String, nullable=True)
+    # open = 現場・一覧に出す / closed = 事務クローズ済み（一覧・GET items では返さない）
+    status = Column(String, nullable=False, default="open")
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+
+
+class StockItem(Base):
+    """第7条ステップ①: 在庫CSV取り込み（計算なし・投入のみ）。"""
+
+    __tablename__ = "stock_item"
+    __table_args__ = (Index("ix_stock_item_company_id", "company_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    product_code = Column(String, nullable=False)
+    label = Column(String, nullable=False)
+    stock_qty = Column(Float, nullable=False)
+    safety_stock = Column(Float, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+
+
+class ShipmentPlanItem(Base):
+    """第7条ステップ②: 出荷予定CSV取り込み（在庫突合・第7条計算は別途）。"""
+
+    __tablename__ = "shipment_plan_item"
+    __table_args__ = (Index("ix_shipment_plan_item_company_id", "company_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    product_code = Column(String, nullable=False)
+    label = Column(String, nullable=False)
+    ship_qty = Column(Float, nullable=False)
+    due_date = Column(String, nullable=False)
+    ordered_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=True)
 
 
 class WorkUnitStatusHistory(Base):

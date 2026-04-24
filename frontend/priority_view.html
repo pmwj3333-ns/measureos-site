@@ -9,21 +9,35 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-    background: #f2f2f7;
+    background: #e8e8ed;
     color: #1c1c1e;
     font-size: 15px;
     line-height: 1.45;
-    padding: 20px 16px 40px;
+    padding: 16px 16px 40px;
     max-width: 520px;
     margin: 0 auto;
   }
-  h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 14px; line-height: 1.5; }
+  .page-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .page-top h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0; flex: 1; min-width: 0; }
+  .updated-at {
+    font-size: 0.72rem;
+    color: #8e8e93;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 12px; line-height: 1.5; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
   label { font-size: 0.72rem; color: #636366; display: block; margin-bottom: 2px; }
   input[type="text"] {
     padding: 10px 12px; border: 1px solid #c7c7cc; border-radius: 10px;
     font-size: 0.95rem; width: min(240px, 100%); font-family: inherit;
+    background: #fff;
   }
   button {
     padding: 10px 18px; border: none; border-radius: 10px; font-weight: 600;
@@ -33,34 +47,141 @@
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
   a { color: #007aff; }
-  .tier-block { margin-top: 18px; }
-  .tier-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 8px; }
-  .tier-list { list-style: none; }
-  .tier-list li {
-    padding: 8px 0; border-bottom: 1px solid #e5e5ea;
-    font-size: 0.88rem; color: #3a3a3c;
-  }
-  .tier-list li:last-child { border-bottom: none; }
-  .muted { color: #8e8e93; font-size: 0.78rem; }
-  .empty { color: #8e8e93; padding: 16px 0; font-size: 0.88rem; }
   .err { color: #ff3b30; font-size: 0.85rem; margin-top: 8px; }
+
+  .card-list { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+  .prio-card {
+    border-radius: 14px;
+    padding: 14px 14px 12px;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .prio-card--high { background: #fde8e8; border-color: rgba(255,59,48,0.12); }
+  .prio-card--mid { background: #fff8e6; border-color: rgba(255,149,0,0.15); }
+  .prio-card--low { background: #e8f2ff; border-color: rgba(0,122,255,0.12); }
+
+  .prio-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .prio-badge--high { background: rgba(255,59,48,0.2); color: #c41a12; }
+  .prio-badge--mid { background: rgba(255,193,7,0.35); color: #946c00; }
+  .prio-badge--low { background: rgba(0,122,255,0.2); color: #0056b3; }
+
+  .prio-title {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: #1c1c1e;
+    line-height: 1.3;
+    margin-bottom: 12px;
+  }
+  .prio-main {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #1c1c1e;
+    letter-spacing: 0.02em;
+    margin-bottom: 10px;
+    line-height: 1.25;
+  }
+  .prio-breakdown {
+    font-size: 0.8rem;
+    color: #636366;
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .prio-breakdown div { margin-bottom: 2px; }
+  .prio-due--urgent { color: #ff3b30; font-weight: 600; }
+
+  .prio-actual-hint {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #3a3a3c;
+    margin-bottom: 10px;
+    padding: 9px 11px;
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  .prio-notices {
+    margin-bottom: 12px;
+  }
+  .prio-notice-line {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #c2410c;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    letter-spacing: 0.01em;
+  }
+  .prio-notice-line:last-child { margin-bottom: 0; }
+
+  .action-pill {
+    display: inline-block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1c1c1e;
+    background: rgba(255,255,255,0.75);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    cursor: default;
+    user-select: none;
+  }
+  .prio-card--high .action-pill { background: rgba(255,255,255,0.9); }
+  .prio-card--mid .action-pill { background: rgba(255,255,255,0.9); }
+  .prio-card--low .action-pill { background: rgba(255,255,255,0.9); }
+
+  .empty-state {
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px 20px;
+    text-align: center;
+    border: 1px solid #e5e5ea;
+    margin-top: 8px;
+  }
+  .empty-state-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #1c1c1e;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .empty-state-sub {
+    font-size: 0.82rem;
+    color: #8e8e93;
+    line-height: 1.5;
+  }
+  .empty-fallback {
+    color: #8e8e93;
+    padding: 16px 0;
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
 </style>
 </head>
 <body>
-  <h1>優先度一覧（第7条・フェーズ1）</h1>
+  <div class="page-top">
+    <h1>優先度一覧（第7条・フェーズ1）</h1>
+    <div class="updated-at" id="updated-at" hidden></div>
+  </div>
   <p class="sub">
-    データは <code>GET /v2/priority/items</code>（事務・営業が登録した優先指示）です。
-    納期 <code>YYYY-MM-DD</code>から表示用ティアを付けます。第5条（現場の予告）とは独立しています。
+    第7条は事務の道標として据え置き、第5条の実績はここに<strong>状況として</strong>載せるだけです（数量の自動更新やブロックはしません）。<code>GET /v2/priority/items</code>
   </p>
   <div class="bar">
     <div>
       <label for="company">company_id</label>
       <input type="text" id="company" placeholder="例: demo" autocomplete="off">
     </div>
-    <button type="button" id="btn-load">読み込み</button>
+    <button type="button" id="btn-load">再読み込み</button>
   </div>
   <p class="hint">
-    <a href="/priority/input/v2">優先指示の入力</a>
+    <a href="/priority/input/v2">第7条の入力（事務）</a>
     · <a href="/genba/v2">現場 v2</a>
     · <a href="/office/v2">事務 v2</a>
     · <a href="/debug/v2">debug v2</a>
@@ -75,6 +196,7 @@
   var companyEl = $("company");
   var root = $("root");
   var msg = $("msg");
+  var updatedAtEl = $("updated-at");
 
   function param(key, fb) {
     var v = new URLSearchParams(location.search).get(key);
@@ -89,6 +211,34 @@
       .replace(/"/g, "&quot;");
   }
 
+  function pad2(n) {
+    return n < 10 ? "0" + n : String(n);
+  }
+
+  function localTodayYmd() {
+    var x = new Date();
+    return x.getFullYear() + "-" + pad2(x.getMonth() + 1) + "-" + pad2(x.getDate());
+  }
+
+  function tierRank(tier) {
+    if (tier === "high") return 0;
+    if (tier === "mid") return 1;
+    return 2;
+  }
+
+  function sortItems(arr) {
+    arr.sort(function (a, b) {
+      var tr = tierRank(a.tier) - tierRank(b.tier);
+      if (tr !== 0) return tr;
+      if (a.due < b.due) return -1;
+      if (a.due > b.due) return 1;
+      var pa = a.prodNum;
+      var pb = b.prodNum;
+      return pb - pa;
+    });
+    return arr;
+  }
+
   function collectItems(payload, unit) {
     var items = (payload && payload.items) || [];
     var out = [];
@@ -98,63 +248,143 @@
       if (!it || typeof it !== "object") continue;
       var due = it.due_date;
       if (!due || !String(due).trim()) continue;
-      var tier = window.priorityTierFromDueDate(String(due).trim());
-      if (!tier) continue;
+      var tierObj = window.priorityTierFromDueDate(String(due).trim());
+      if (!tierObj) continue;
       var ship = it.ship_value;
       var prod = it.prod_value;
       if ((ship == null || ship === "") && it.value != null) ship = it.value;
       if ((prod == null || prod === "") && it.value != null) prod = it.value;
+      var stock = it.stock_qty;
+      if (stock == null || stock === "") {
+        var sn = Number(ship);
+        var pn0 = Number(prod);
+        stock = Number.isFinite(sn) && Number.isFinite(pn0) ? Math.max(0, sn - pn0) : 0;
+      }
+      var prodNum = Number(prod);
+      if (!Number.isFinite(prodNum)) prodNum = 0;
+      var stockNum = Number(stock);
+      if (!Number.isFinite(stockNum)) stockNum = 0;
+      var noticesRaw = it.article7_notices;
+      var notices = Array.isArray(noticesRaw) ? noticesRaw : [];
       out.push({
-        tier: tier.tier,
+        tier: tierObj.tier,
         name: String(it.label || "").trim() || "（無名）",
         ship_value: ship,
+        stock_qty: stockNum,
         prod_value: prod,
+        prodNum: prodNum,
         unit: u,
         due: String(due).trim(),
+        article7_actual_hint: it.article7_actual_hint || "",
+        article7_notices: notices,
       });
     }
     return out;
   }
 
+  function badgeHtml(tier) {
+    if (tier === "high") {
+      return '<span class="prio-badge prio-badge--high">\uD83D\uDD34 high</span>';
+    }
+    if (tier === "mid") {
+      return '<span class="prio-badge prio-badge--mid">\uD83D\uDFE1 mid</span>';
+    }
+    return '<span class="prio-badge prio-badge--low">\uD83D\uDD35 low</span>';
+  }
+
   function render(payload, unit) {
     msg.hidden = true;
     msg.textContent = "";
-    var items = collectItems(payload, unit);
-    if (!items.length) {
+    var rawList = (payload && payload.items) || [];
+    var rawEmpty = rawList.length === 0;
+    var items = sortItems(collectItems(payload, unit));
+
+    if (!items.length && rawEmpty) {
       root.innerHTML =
-        '<p class="empty">納期付きの優先指示がありません。<a href="/priority/input/v2">優先指示の入力</a>から登録できます。</p>';
+        '<div class="empty-state">' +
+        '<div class="empty-state-title">現在、製造の必要はありません</div>' +
+        '<div class="empty-state-sub">在庫で出荷をカバーできています</div>' +
+        "</div>";
       return;
     }
-    var groups = [
-      { tier: "high", head: "\uD83D\uDD34 \u9AD8\uFF08\u7D0D\u671F\u8FD1\u3044\uFF09" },
-      { tier: "mid", head: "\uD83D\uDFE1 \u4E2D" },
-      { tier: "low", head: "\uD83D\uDD35 \u4F4E" },
-    ];
-    var html = "";
-    for (var g = 0; g < groups.length; g++) {
-      var tg = groups[g].tier;
-      var slice = items.filter(function (x) { return x.tier === tg; });
-      if (!slice.length) continue;
-      html += '<section class="tier-block"><div class="tier-title">' + esc(groups[g].head) + "</div>";
-      html += '<ul class="tier-list">';
-      for (var k = 0; k < slice.length; k++) {
-        var it = slice[k];
-        html +=
-          "<li>" +
-          esc(it.name) +
-          " \u3000\u88FD\u9020 " +
-          esc(String(it.prod_value)) +
-          esc(it.unit) +
-          " \u3000\u51FA\u8377 " +
-          esc(String(it.ship_value)) +
-          esc(it.unit) +
-          " \u3000\u7D0D\u671F\uFF1A" +
-          esc(it.due) +
-          "</li>";
-      }
-      html += "</ul></section>";
+    if (!items.length) {
+      root.innerHTML =
+        '<p class="empty-fallback">納期を表示できる項目がありません。' +
+        '<a href="/priority/input/v2">第7条の入力（事務）</a>から登録できます。</p>';
+      return;
     }
-    root.innerHTML = html || '<p class="empty">表示なし</p>';
+
+    var todayY = localTodayYmd();
+    var html = '<ul class="card-list">';
+    for (var k = 0; k < items.length; k++) {
+      var it = items[k];
+      var cardMod =
+        it.tier === "high"
+          ? "prio-card--high"
+          : it.tier === "mid"
+            ? "prio-card--mid"
+            : "prio-card--low";
+      var dueInner =
+        it.due <= todayY
+          ? '<span class="prio-due--urgent">' + esc(it.due) + "</span>"
+          : esc(it.due);
+      html +=
+        '<li class="prio-card ' +
+        cardMod +
+        '">' +
+        badgeHtml(it.tier) +
+        '<div class="prio-title">' +
+        esc(it.name) +
+        "</div>" +
+        '<div class="prio-main">不足：' +
+        esc(String(it.prod_value)) +
+        esc(it.unit) +
+        "</div>" +
+        '<div class="prio-breakdown">' +
+        "<div>出荷：" +
+        esc(String(it.ship_value)) +
+        esc(it.unit) +
+        "</div>" +
+        "<div>在庫：" +
+        esc(String(it.stock_qty)) +
+        esc(it.unit) +
+        "</div>" +
+        "<div>納期：" +
+        dueInner +
+        "</div>" +
+        "</div>";
+      if (it.article7_actual_hint) {
+        html +=
+          '<div class="prio-actual-hint">' +
+          esc(String(it.article7_actual_hint)) +
+          "</div>";
+      }
+      if (it.article7_notices && it.article7_notices.length) {
+        html += '<div class="prio-notices">';
+        for (var ni = 0; ni < it.article7_notices.length; ni++) {
+          html +=
+            '<div class="prio-notice-line">⚠ ' +
+            esc(String(it.article7_notices[ni])) +
+            "</div>";
+        }
+        html += "</div>";
+      }
+      html +=
+        '<div class="action-pill">▶ 製造する：' +
+        esc(String(it.prod_value)) +
+        esc(it.unit) +
+        "</div>" +
+        "</li>";
+    }
+    html += "</ul>";
+    root.innerHTML = html;
+  }
+
+  function showUpdatedAt() {
+    var d = new Date();
+    var t = pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+    updatedAtEl.textContent = "更新時刻：" + t;
+    updatedAtEl.hidden = false;
   }
 
   async function load() {
@@ -162,6 +392,7 @@
     if (!cid) {
       msg.hidden = false;
       msg.textContent = "company_id を入力してください";
+      updatedAtEl.hidden = true;
       return;
     }
     history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
@@ -182,6 +413,7 @@
         msg.hidden = false;
         msg.textContent =
           (dataItems && dataItems.detail) ? String(dataItems.detail) : textItems || String(resItems.status);
+        updatedAtEl.hidden = true;
         return;
       }
       var unit = "個";
@@ -193,6 +425,7 @@
         }
       } catch (_) { /* ok */ }
       render(dataItems, unit);
+      showUpdatedAt();
     } finally {
       $("btn-load").disabled = false;
     }
