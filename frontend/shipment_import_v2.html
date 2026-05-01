@@ -521,7 +521,36 @@ document.addEventListener("DOMContentLoaded", function () {
     return v != null && String(v).trim() !== "" ? v.trim() : fb;
   }
 
+  /** company_id 変更時: 別会社のCSVを誤投入しないようファイル・プレビューを捨てる */
+  function resetCsvStateOnCompanyChange() {
+    fileRef = null;
+    if (input) input.value = "";
+    var tb = $("csv-preview-body");
+    if (tb) tb.innerHTML = "";
+    var wrap = $("csv-preview-wrap");
+    if (wrap) wrap.hidden = true;
+    var imp = $("btn-import");
+    if (imp) imp.disabled = true;
+    var cap = $("csv-preview-caption");
+    if (cap) {
+      cap.textContent = "プレビュー（取り込み前に内容を確認してください）";
+      cap.className = "hint";
+    }
+    setMsg("", "");
+    updateFileStatusUi();
+  }
+
   $("company").value = param("company", "");
+
+  var companyEl = $("company");
+  var companyIdPrevious = (companyEl.value || "").trim();
+  companyEl.addEventListener("change", function () {
+    var v = (companyEl.value || "").trim();
+    if (v !== companyIdPrevious) {
+      resetCsvStateOnCompanyChange();
+      companyIdPrevious = v;
+    }
+  });
 
   input.addEventListener("change", function (e) {
     const file = e.target.files[0];

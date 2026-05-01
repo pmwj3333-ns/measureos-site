@@ -168,6 +168,9 @@ class PriorityItemOut(BaseModel):
     prod_value: float
     due_date: Optional[str] = None
     status: str = "open"
+    # 第7条フェーズ1・在庫×出荷×納期から算出（CSV再生成・手入力どちらも GET 時に同じ式）
+    priority_level: str = "low"
+    priority_score: float = 0.0
     # Package A: 第5条（WorkUnit 実績）から付与する表示のみ。第7条の数量は変更しない。
     article7_actual_hint: Optional[str] = None
     article7_notices: List[str] = Field(default_factory=list)
@@ -308,3 +311,4 @@ class WorkUnitOut(BaseModel):
     is_deviation:        bool = False
     is_article7_deviation: bool = False
     deviation_reason:    Optional[str] = None
+    office_chain_hint:   str = ""

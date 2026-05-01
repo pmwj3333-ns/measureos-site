@@ -171,7 +171,9 @@
     <div class="updated-at" id="updated-at" hidden></div>
   </div>
   <p class="sub">
-    第7条は事務の道標として据え置き、第5条の実績はここに<strong>状況として</strong>載せるだけです（数量の自動更新やブロックはしません）。<code>GET /v2/priority/items</code>
+    第7条は事務の道標として据え置き、第5条の実績はここに<strong>状況として</strong>載せるだけです（数量の自動更新やブロックはしません）。
+    優先度（high / mid / low）は<strong>在庫・出荷・納期からサーバが自動算出</strong>します（赤・黄・青）。
+    <code>GET /v2/priority/items</code>
   </p>
   <div class="bar">
     <div>
@@ -239,6 +241,14 @@
     return arr;
   }
 
+  function tierFromApiOrDue(it, dueStr) {
+    var pl = it.priority_level != null ? String(it.priority_level).trim().toLowerCase() : "";
+    if (pl === "high" || pl === "mid" || pl === "low") return pl;
+    if (!dueStr || !window.priorityTierFromDueDate) return "low";
+    var tierObj = window.priorityTierFromDueDate(String(dueStr).trim());
+    return tierObj && tierObj.tier ? tierObj.tier : "low";
+  }
+
   function collectItems(payload, unit) {
     var items = (payload && payload.items) || [];
     var out = [];
@@ -248,8 +258,7 @@
       if (!it || typeof it !== "object") continue;
       var due = it.due_date;
       if (!due || !String(due).trim()) continue;
-      var tierObj = window.priorityTierFromDueDate(String(due).trim());
-      if (!tierObj) continue;
+      var tier = tierFromApiOrDue(it, due);
       var ship = it.ship_value;
       var prod = it.prod_value;
       if ((ship == null || ship === "") && it.value != null) ship = it.value;
@@ -267,7 +276,7 @@
       var noticesRaw = it.article7_notices;
       var notices = Array.isArray(noticesRaw) ? noticesRaw : [];
       out.push({
-        tier: tierObj.tier,
+        tier: tier,
         name: String(it.label || "").trim() || "（無名）",
         ship_value: ship,
         stock_qty: stockNum,
@@ -395,7 +404,12 @@
       updatedAtEl.hidden = true;
       return;
     }
-    history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
+    /** 明示的な「再読み込み」のみ URL を更新（localStorage からの自動付与はしない） */
+    var u = new URL(window.location.href);
+    u.searchParams.set("company", cid);
+    u.searchParams.delete("company_id");
+    var q = u.searchParams.toString();
+    history.replaceState(null, "", u.pathname + (q ? "?" + q : "") + u.hash);
     try {
       localStorage.setItem("company_id", cid);
     } catch (_) {}
@@ -431,23 +445,13 @@
     }
   }
 
-  companyEl.value =
-    param("company", "") ||
-    (function () {
-      try {
-        return (
-          localStorage.getItem("company_id") ||
-          localStorage.getItem("debug_v2_company") ||
-          ""
-        );
-      } catch (_) {
-        return "";
-      }
-    })();
+  /** クエリに company / company_id があるときだけ入力欄に反映（localStorage は参照しない） */
+  companyEl.value = param("company", "") || param("company_id", "");
   $("btn-load").addEventListener("click", load);
   companyEl.addEventListener("keydown", function (e) {
     if (e.key === "Enter") load();
   });
+  /** URL で会社が指定されているときだけ初回取得（手動の「再読み込み」以外の自動付与なし） */
   if (companyEl.value.trim()) load();
 })();
 </script>

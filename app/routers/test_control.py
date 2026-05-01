@@ -12,15 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app import models
 from app.database import get_db
 from app.services.judgement_promote import promote_blue_to_red_after_judgement
 from app.services.package_rules import get_company_package, is_phase2_enabled
-from app.services.status_history import (
-    append_work_unit_status_history_if_changed,
-    norm_work_unit_status,
-)
-from app.services.missing_boundary import recompute_is_missing_for_past_business_dates
 from app.services.test_clock import (
     get_clock_state,
     parse_iso_to_naive_utc,
@@ -97,40 +91,14 @@ class TestRecomputeBody(BaseModel):
 @router.post("/recompute")
 def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
     """
-    テスト用の一括再判定。
-
-    1) 過去営業日の is_missing + 従来の _recompute（本番同等）
-    2) closed 以外は **既存 blue/red を一旦無視**：red を外してから _recompute_unit_derived で
-       system_pattern 基準の blue/normal を再計算（red→blue 可）
-    3) apply_judgement_red 時のみ、blue かつ参照時刻が judgement 2回目境界以上なら red。
-       （API の judgement_red_deadline_at が null＝blue でないなら red にならない）
+    append-only のため既存 work_unit は書き換えない。
+    apply_judgement_red が真かつフェーズ2 Package のときのみ blue→red の INSERT を試みる。
     """
     _require_test_clock()
-    # work 参照は関数内で（import 周りの明確化）
-    from app.routers.work import _get_or_create_settings, _recompute_unit_derived
+    from app.routers.work import _get_or_create_settings
 
     cid = body.company_id.strip()
-    db.flush()
-    n_miss = recompute_is_missing_for_past_business_dates(
-        cid, db, apply_derived=False
-    )
-
     settings = _get_or_create_settings(cid, db)
-
-    units = (
-        db.query(models.WorkUnit).filter(models.WorkUnit.company_id == cid).all()
-    )
-    n_red_cleared = 0
-    for unit in units:
-        st = (unit.status or "").strip().lower()
-        if st == "closed":
-            continue
-        if st == "red":
-            before_clear = norm_work_unit_status(unit.status)
-            unit.status = "normal"
-            append_work_unit_status_history_if_changed(db, unit, before_clear, "system")
-            n_red_cleared += 1
-        _recompute_unit_derived(unit, settings, db)
 
     n_red = 0
     if body.apply_judgement_red:
@@ -141,8 +109,9 @@ def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
     db.commit()
     return {
         "company_id": cid,
-        "recomputed_past_business_date_rows": n_miss,
-        "red_cleared_for_rejudge": n_red_cleared,
+        "note": "append_only_no_bulk_derived_updates",
+        "recomputed_past_business_date_rows": 0,
+        "red_cleared_for_rejudge": 0,
         "promoted_blue_to_red": n_red,
         "phase2_enabled": phase2_on,
         "package_code": get_company_package(settings),

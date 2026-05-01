@@ -19,10 +19,35 @@ from app.schemas import (
     PriorityRebuildIn,
     PriorityRebuildOut,
 )
+from app.services.article7_priority_phase1 import compute_article7_priority_phase1
 from app.services.priority_article7_context import article7_context_for_priority_items
 from app.services.priority_rebuild import rebuild_priority_items_for_company
 
 router = APIRouter(prefix="/v2/priority", tags=["v2-第7条"])
+
+
+def _priority_rank(level: str) -> int:
+    s = (level or "").strip().lower()
+    if s == "high":
+        return 0
+    if s == "mid":
+        return 1
+    return 2
+
+
+def _priority_tuple_for_row(r: models.PriorityItem) -> Tuple[str, float]:
+    pl, sc = compute_article7_priority_phase1(
+        r.ship_value,
+        getattr(r, "stock_qty", None) or 0,
+        r.due_date,
+    )
+    return pl, float(sc)
+
+
+def _priority_sort_key(rr: models.PriorityItem) -> Tuple[int, str, int]:
+    pl, _ = _priority_tuple_for_row(rr)
+    due_s = str(rr.due_date or "").strip() or "9999-12-31"
+    return (_priority_rank(pl), due_s, int(rr.id))
 
 
 def _norm_due_date(raw: Optional[str]) -> Optional[str]:
@@ -46,6 +71,7 @@ def _rows_to_out(
     items: List[PriorityItemOut] = []
     for r in rows:
         hint, notices = ctx.get(int(r.id), (None, []))
+        pl, pscore = _priority_tuple_for_row(r)
         items.append(
             PriorityItemOut(
                 id=r.id,
@@ -56,6 +82,8 @@ def _rows_to_out(
                 prod_value=float(r.prod_value),
                 due_date=r.due_date,
                 status=(getattr(r, "status", None) or "open").strip() or "open",
+                priority_level=str(pl),
+                priority_score=float(pscore),
                 article7_actual_hint=hint,
                 article7_notices=list(notices),
             )
@@ -78,8 +106,10 @@ def list_priority_items(
         .order_by(models.PriorityItem.id.asc())
         .all()
     )
-    ctx = article7_context_for_priority_items(cid, rows, db)
-    return PriorityItemsOut(items=_rows_to_out(rows, ctx))
+
+    rows_sorted = sorted(rows, key=_priority_sort_key)
+    ctx = article7_context_for_priority_items(cid, rows_sorted, db)
+    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx))
 
 
 @router.post(
@@ -216,5 +246,7 @@ def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get
         .order_by(models.PriorityItem.id.asc())
         .all()
     )
-    ctx = article7_context_for_priority_items(cid, rows, db)
-    return PriorityItemsOut(items=_rows_to_out(rows, ctx))
+
+    rows_sorted = sorted(rows, key=_priority_sort_key)
+    ctx = article7_context_for_priority_items(cid, rows_sorted, db)
+    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx))

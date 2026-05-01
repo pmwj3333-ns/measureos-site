@@ -183,3 +183,12 @@ class WorkUnitStatusHistory(Base):
     to_status = Column(String, nullable=False)
     changed_at = Column(DateTime, nullable=False)
     trigger_type = Column(String, nullable=True)
+
+
+class OfficeClosedWorkUnitSuppress(Base):
+    """事務が POST /work/{id}/close で処理した anomaly head（peer）。レコードは残すが事務一覧では除外する。"""
+
+    __tablename__ = "office_closed_work_unit_suppress"
+
+    peer_unit_id = Column(Integer, ForeignKey("work_unit.id"), primary_key=True)
+    created_at = Column(DateTime, nullable=True)

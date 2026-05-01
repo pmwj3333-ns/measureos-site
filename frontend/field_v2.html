@@ -258,13 +258,37 @@
     font-family: inherit;
     cursor: pointer;
   }
+  .mo-autofill-decoy {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .mo-company-field-wrap {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+  }
 
 </style>
 </head>
 <body>
 
 <div id="companyBox" style="display:none; text-align:center; margin-top:40px;">
-  <input type="text" id="companyInput" class="company-input" placeholder="会社IDを入力" autocomplete="organization" />
+  <div class="mo-company-field-wrap">
+    <input type="text" tabindex="-1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+           name="ignore_mo_company_decoy_pick" aria-hidden="true" class="mo-autofill-decoy" />
+    <input type="text" id="companyInput" class="company-input" placeholder="会社IDを入力"
+           name="mo_company_id_input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+           inputmode="verbatim" />
+  </div>
   <div>
     <button type="button" class="company-confirm" onclick="saveCompany()">確定</button>
   </div>
@@ -311,7 +335,14 @@
   <div class="settings-grid">
     <div>
       <label for="cfg-company">会社ID（事務画面と共有）</label>
-      <input type="text" id="cfg-company" autocomplete="organization" placeholder="例: test2" />
+      <div class="mo-company-field-wrap" style="display:block;width:100%;max-width:100%;">
+        <input type="text" tabindex="-1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+               name="ignore_mo_company_decoy_cfg" aria-hidden="true" class="mo-autofill-decoy" />
+        <input type="text" id="cfg-company"
+               name="mo_company_id_input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+               inputmode="verbatim"
+               placeholder="手入力（候補は出ません）" />
+      </div>
     </div>
     <div>
       <label for="cfg-task">作業</label>
@@ -422,8 +453,8 @@ function saveCompany() {
 
 (function resolveFieldV2Company() {
   const params = new URLSearchParams(location.search);
-  let companyId = (params.get("company") || params.get("company_id") || "").trim();
-  if (!companyId) companyId = (localStorage.getItem("company_id") || "").trim();
+  /** URL のみ（localStorage からの自動復元・URL への強制付与はしない） */
+  const companyId = (params.get("company") || params.get("company_id") || "").trim();
 
   if (!companyId) {
     document.body.classList.add("field-company-pick");
@@ -439,11 +470,6 @@ function saveCompany() {
       } catch (_) { /* ok */ }
     }
     window.__FIELD_V2_NEEDS_COMPANY__ = true;
-    return;
-  }
-
-  if (!params.get("company") && !params.get("company_id")) {
-    location.replace("/現場/v2?company=" + encodeURIComponent(companyId));
     return;
   }
 
@@ -477,6 +503,127 @@ let fieldProductCodeByLabel = Object.create(null);
 /** GET /v2/work/list のキャッシュ（過去の予告・実績から候補・コードヒント） */
 let fieldPastWorkListRows = [];
 const MSG_PLANNED_UNSAVED = "予告内容が未保存です。先に「予告を登録」してください。";
+
+/** 数量欄のイベント観測: URL に qty_evt_debug=1、または window.__FIELD_QTY_EVENT_DEBUG === true */
+function fieldQtyEventDebugEnabled() {
+  try {
+    if (window.__FIELD_QTY_EVENT_DEBUG === true) return true;
+    if (window.__FIELD_QTY_EVENT_DEBUG === false) return false;
+  } catch (_) { /* ok */ }
+  try {
+    return new URLSearchParams(location.search).get("qty_evt_debug") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+let _fieldQtyDbgKeydownEnter = 0;
+let _fieldQtyDbgInput = 0;
+let _fieldQtyDbgChange = 0;
+
+function fieldQtyDbgCounts() {
+  return {
+    keydownEnter: _fieldQtyDbgKeydownEnter,
+    input: _fieldQtyDbgInput,
+    change: _fieldQtyDbgChange,
+  };
+}
+
+try {
+  window.__FIELD_QTY_EVT_COUNTS__ = fieldQtyDbgCounts;
+} catch (_) { /* ok */ }
+
+try {
+  window.__MO_LAST_QTY_SET__ = null;
+} catch (_) { /* ok */ }
+
+/** URL に actual_submit_debug=1、または window.__FIELD_ACTUAL_SUBMIT_DEBUG === true */
+function fieldActualSubmitDebugEnabled() {
+  try {
+    if (window.__FIELD_ACTUAL_SUBMIT_DEBUG === true) return true;
+    if (window.__FIELD_ACTUAL_SUBMIT_DEBUG === false) return false;
+  } catch (_) { /* ok */ }
+  try {
+    return new URLSearchParams(location.search).get("actual_submit_debug") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function moAssignQtyValue(qtyEl, stringVal, reason, moOpt) {
+  moOpt = moOpt || {};
+  const clearDirty = moOpt.clearDirty !== false;
+  if (!qtyEl) return;
+  try {
+    let preview = "";
+    try {
+      const s = new Error().stack || "";
+      preview = s.split("\n").slice(2, 6).join(" | ");
+    } catch (_) { /* ok */ }
+    window.__MO_LAST_QTY_SET__ = {
+      reason: reason || "",
+      value: stringVal == null ? "" : String(stringVal),
+      at: new Date().toISOString(),
+      assignStackPreview: preview,
+    };
+  } catch (_) { /* ok */ }
+  qtyEl.value = stringVal != null ? normalizeNumberInput(String(stringVal)) : "";
+  if (clearDirty) delete qtyEl.dataset.moQtyDirty;
+}
+
+/** 実績ホストの数量欄を初期化（protectRestore／フォーカス残値の混入防止） */
+function resetActualQtyInputsInPlace(host) {
+  if (!host) return;
+  host.querySelectorAll("input[data-line-qty]").forEach((el) => {
+    el.value = "";
+    delete el.dataset.moQtyDirty;
+  });
+}
+
+function snapshotProtectedQtyMaps(host) {
+  const byLabel = Object.create(null);
+  const byIdx = [];
+  if (!host) return { byLabel, byIdx };
+  host.querySelectorAll(".multi-row-line").forEach((rowEl, idx) => {
+    const qtyEl = rowEl.querySelector("[data-line-qty]");
+    const labEl = rowEl.querySelector("[data-line-label]");
+    if (!qtyEl) return;
+    const dirty = qtyEl.dataset.moQtyDirty === "1";
+    const foc = document.activeElement === qtyEl;
+    if (!dirty && !foc) return;
+    const raw = String(qtyEl.value ?? "");
+    const lb = labEl ? String(labEl.value || "").trim() : "";
+    if (lb) byLabel[lb] = raw;
+    byIdx[idx] = raw;
+  });
+  return { byLabel, byIdx };
+}
+
+function collectActualQtyDomSnapshot(host) {
+  const rows = [];
+  if (!host) return rows;
+  host.querySelectorAll(".multi-row-line").forEach((rowEl, idx) => {
+    const qtyEl = rowEl.querySelector("[data-line-qty]");
+    const labEl = rowEl.querySelector("[data-line-label]");
+    rows.push({
+      idx,
+      label: labEl ? String(labEl.value || "").trim() : "",
+      qtyDomValue: qtyEl ? String(qtyEl.value ?? "") : "",
+      moQtyDirty: qtyEl ? qtyEl.dataset.moQtyDirty || "" : "",
+    });
+  });
+  return rows;
+}
+
+function article7QtySnapshotForDebug() {
+  return (article7ItemsCache || []).map((it) => ({
+    label: String(it.label || "").trim(),
+    prod_value: it.prod_value != null ? Number(it.prod_value) : null,
+    ship_value: it.ship_value != null ? Number(it.ship_value) : null,
+    value: it.value != null ? Number(it.value) : null,
+    stock_qty: it.stock_qty != null ? Number(it.stock_qty) : null,
+  }));
+}
 
 function persistSharedCompanyId(raw) {
   const v = (raw != null ? String(raw) : "").trim();
@@ -533,12 +680,8 @@ function param(key, fb) {
 }
 
 function getConfig() {
-  const companyInput = document.getElementById("cfg-company").value.trim();
-  const company =
-    companyInput ||
-    param("company_id", null) ||
-    param("company", null) ||
-    (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
+  /** 現場の作業対象会社はクエリのみ（未指定時は空＝会社ID入力画面側） */
+  const company = (param("company_id", null) || param("company", null) || "").trim();
   return {
     company,
     task: document.getElementById("cfg-task").value.trim()
@@ -558,18 +701,9 @@ function saveCfgToLocal() {
 }
 
 function loadCfgFromLocal() {
-  const urlCo = param("company_id", null) || param("company", null);
-  const stored = (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
-  let co;
-  if (urlCo) {
-    co = urlCo;
-  } else if (stored) {
-    co = stored;
-  } else {
-    co = (document.getElementById("cfg-company").value || "").trim();
-  }
-  document.getElementById("cfg-company").value = co;
-  persistSharedCompanyId(co);
+  const urlCo = (param("company_id", null) || param("company", null) || "").trim();
+  document.getElementById("cfg-company").value = urlCo;
+  if (urlCo) persistSharedCompanyId(urlCo);
   document.getElementById("cfg-task").value =
     param("task", localStorage.getItem("mo_v2_task") || "task_01");
   document.getElementById("cfg-process").value =
@@ -577,6 +711,14 @@ function loadCfgFromLocal() {
 }
 
 document.getElementById("cfg-company").addEventListener("change", () => {
+  const v = document.getElementById("cfg-company").value.trim();
+  if (v) {
+    const u = new URL(window.location.href);
+    u.searchParams.set("company", v);
+    u.searchParams.delete("company_id");
+    const q = u.searchParams.toString();
+    history.replaceState(null, "", u.pathname + (q ? "?" + q : "") + u.hash);
+  }
   saveCfgToLocal();
   void refreshArticle7Panels();
   const ov = document.getElementById("overlay");
@@ -613,6 +755,23 @@ function escHtml(s) {
 function dispStr(v) {
   if (v == null || String(v).trim() === "") return "—";
   return String(v);
+}
+
+/** 全角数字 → 半角（数量欄・送信値の共通処理） */
+function normalizeNumberInput(value) {
+  if (value == null || value === "") return value;
+  return String(value).replace(/[０-９]/g, (s) =>
+    String.fromCharCode(s.charCodeAt(0) - 0xfee0),
+  );
+}
+
+/** 送信直前などに DOM の数量欄を半角へそろえる */
+function normalizeQtyInputsInHost(host) {
+  if (!host) return;
+  host.querySelectorAll("[data-line-qty]").forEach((inputEl) => {
+    const v = normalizeNumberInput(inputEl.value);
+    if (v !== inputEl.value) inputEl.value = v;
+  });
 }
 
 function isLogistics() {
@@ -673,7 +832,7 @@ function makeInputLineRow(placeholder, listId, withProductCode) {
        ${hiddenPc}
        <input class="input-text" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />
        <div class="input-row">
-         <input class="input-num" type="number" data-line-qty="" inputmode="decimal" placeholder="数量" min="0" step="any" />
+         <input class="input-num" type="text" data-line-qty="" inputmode="numeric" placeholder="数量" autocomplete="off" autocorrect="off" spellcheck="false" />
          <span class="input-unit line-unit-suffix"></span>
        </div>
      </div>
@@ -691,8 +850,38 @@ function makeInputLineRow(placeholder, listId, withProductCode) {
   labIn.addEventListener("input", onLabOrQty);
   labIn.addEventListener("change", onLabOrQty);
   if (qtyIn) {
-    qtyIn.addEventListener("input", syncDeviationReasonPanel);
-    qtyIn.addEventListener("change", syncDeviationReasonPanel);
+    qtyIn.addEventListener("input", function fieldQtyOnInput() {
+      const v = normalizeNumberInput(qtyIn.value);
+      if (v !== qtyIn.value) {
+        qtyIn.value = v;
+      }
+      qtyIn.dataset.moQtyDirty = "1";
+      if (fieldQtyEventDebugEnabled()) {
+        _fieldQtyDbgInput++;
+        console.log(
+          "[field qty dbg] input #" +
+            _fieldQtyDbgInput +
+            " finalValue=" +
+            JSON.stringify(qtyIn.value),
+          fieldQtyDbgCounts(),
+        );
+      }
+      syncDeviationReasonPanel();
+    });
+    qtyIn.addEventListener("keydown", function fieldQtyPreventSpinKeys(ev) {
+      if (ev.key === "ArrowUp" || ev.key === "ArrowDown") ev.preventDefault();
+    });
+    qtyIn.addEventListener("change", function fieldQtyOnChangeDbgOnly() {
+      if (!fieldQtyEventDebugEnabled()) return;
+      _fieldQtyDbgChange++;
+      console.log(
+        "[field qty dbg] change #" +
+          _fieldQtyDbgChange +
+          " finalValue=" +
+          JSON.stringify(qtyIn.value),
+        fieldQtyDbgCounts(),
+      );
+    });
   }
   return wrap;
 }
@@ -706,7 +895,7 @@ function removeInputLineRow(lineEl) {
     const b = lineEl.querySelector("[data-line-qty]");
     const c = lineEl.querySelector("[data-line-resolved-pc]");
     if (a) a.value = "";
-    if (b) b.value = "";
+    if (b) moAssignQtyValue(b, "", "removeInputLineRow.clearLastRow");
     if (c) c.value = "";
     delete lineEl.dataset.lineId;
     syncDeviationReasonPanel();
@@ -734,10 +923,31 @@ function addActualRow() {
 }
 
 function parseQtyInput(raw) {
-  const t = String(raw ?? "").trim();
+  const t = normalizeNumberInput(String(raw ?? "").trim());
   if (t === "") return null;
   const n = Number(t.replace(",", "."));
   return Number.isFinite(n) ? n : NaN;
+}
+
+/** scanHostLines 後の lines を送信直前にもう一度数値化（全角混入の保険） */
+function normalizeScannedLines(lines) {
+  const arr = lines || [];
+  return arr.map((line) => {
+    const copy = { ...line };
+    if (copy.value != null && copy.value !== "") {
+      const q = parseQtyInput(copy.value);
+      copy.value = q === null ? copy.value : Number.isFinite(q) ? q : NaN;
+    }
+    return copy;
+  });
+}
+
+/** DOM を半角にそろえたうえで scan → 送信直前の lines を返す */
+function scanHostLinesForSubmit(host) {
+  normalizeQtyInputsInHost(host);
+  const result = scanHostLines(host);
+  if (result.error) return result;
+  return { lines: normalizeScannedLines(result.lines) };
 }
 
 function scanHostLines(host) {
@@ -892,17 +1102,37 @@ function plannedFingerprintFromServerPayload(data) {
   return "[]";
 }
 
-function fillRowsHost(host, lines, ph, listId, withProductCode) {
+function fillRowsHost(host, lines, ph, listId, withProductCode, fillOpts) {
+  fillOpts = fillOpts || {};
+  let protByLabel = null;
+  let protByIdx = null;
+  if (fillOpts.protectEditedQty && host) {
+    const snap = snapshotProtectedQtyMaps(host);
+    protByLabel = snap.byLabel;
+    protByIdx = snap.byIdx;
+  }
   host.innerHTML = "";
   const L = lines && lines.length ? lines : [{}];
   const wpc = withProductCode === true;
-  for (const row of L) {
+  for (let idx = 0; idx < L.length; idx++) {
+    const row = L[idx];
     const el = makeInputLineRow(ph, listId, wpc);
     const lab = el.querySelector("[data-line-label]");
     const qty = el.querySelector("[data-line-qty]");
     const pcIn = el.querySelector("[data-line-resolved-pc]");
     if (row.label != null && String(row.label).trim()) lab.value = row.label;
-    if (row.value != null && Number.isFinite(Number(row.value))) qty.value = String(row.value);
+    let qtyFilled = false;
+    const lbNow = row.label != null && String(row.label).trim() ? String(row.label).trim() : "";
+    if (protByLabel && lbNow && Object.prototype.hasOwnProperty.call(protByLabel, lbNow)) {
+      moAssignQtyValue(qty, protByLabel[lbNow], "fillRowsHost.protectedRestore", { clearDirty: false });
+      qtyFilled = true;
+    } else if (protByIdx && Object.prototype.hasOwnProperty.call(protByIdx, idx)) {
+      moAssignQtyValue(qty, protByIdx[idx], "fillRowsHost.protectedRestore", { clearDirty: false });
+      qtyFilled = true;
+    }
+    if (!qtyFilled && row.value != null && Number.isFinite(Number(row.value))) {
+      moAssignQtyValue(qty, String(row.value), "fillRowsHost.server");
+    }
     if (pcIn) {
       if (row.product_code != null && String(row.product_code).trim()) {
         pcIn.value = String(row.product_code).trim();
@@ -936,7 +1166,8 @@ function setActualRowsFromData(data) {
   if (data && Array.isArray(data.actual_lines) && data.actual_lines.length) {
     lines = data.actual_lines;
   }
-  fillRowsHost(host, lines, "候補から選ぶか入力", listId, true);
+  /** 実績は work_unit 単位で初期表示する。dirty／フォーカス中数量の SNAPSHOT 復元は使わない（別担当・別商品で数量だけ残る不具合の原因）。 */
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId, true, { protectEditedQty: false });
   const ta = document.getElementById("deviation-reason");
   if (ta) ta.value = "";
   syncDeviationReasonPanel();
@@ -1007,6 +1238,7 @@ function syncDeviationReasonPanel() {
   const wrap = document.getElementById("deviation-reason-wrap");
   const ta = document.getElementById("deviation-reason");
   if (!wrap || !ta) return;
+  normalizeQtyInputsInHost(actualRowsHost());
   const scanned = scanHostLines(actualRowsHost());
   if (scanned.error) {
     wrap.style.display = "none";
@@ -1025,7 +1257,12 @@ function renderArticle7PanelHtml(items) {
     const label = String(it.label || "").trim() || "（無名）";
     const dueRaw = it.due_date != null ? String(it.due_date).trim() : "";
     let tierLead = "";
-    if (dueRaw && typeof priorityTierFromDueDate === "function") {
+    const plRaw =
+      it.priority_level != null ? String(it.priority_level).trim().toLowerCase() : "";
+    if (plRaw === "high" || plRaw === "mid" || plRaw === "low") {
+      const emoji = plRaw === "high" ? "🔴" : plRaw === "mid" ? "🟡" : "🔵";
+      tierLead = `${emoji}${escHtml(plRaw)} · `;
+    } else if (dueRaw && typeof priorityTierFromDueDate === "function") {
       const tier = priorityTierFromDueDate(dueRaw);
       if (tier) tierLead = `${tier.emoji}${escHtml(tier.label)} · `;
     }
@@ -1055,6 +1292,24 @@ async function refreshArticle7Panels() {
   const plannedEl = document.getElementById("article7-panel-planned");
   const actualEl = document.getElementById("article7-panel-actual");
   if (!plannedEl || !actualEl) return;
+  const ae = document.activeElement;
+  const ah = actualRowsHost();
+  if (
+    ae &&
+    ae.nodeType === 1 &&
+    ae.hasAttribute("data-line-qty") &&
+    ah &&
+    ah.contains(ae)
+  ) {
+    ae.addEventListener(
+      "blur",
+      () => {
+        void refreshArticle7Panels();
+      },
+      { once: true },
+    );
+    return;
+  }
   const cfg = getConfig();
   if (!cfg.company) {
     const empty = '<p class="article7-muted">会社IDを設定すると表示されます。</p>';
@@ -1451,7 +1706,7 @@ async function bootstrapWork() {
   }
 
   if (data.actual_at) {
-    await showPlannedScreenForNextEntry(data);
+    await showActualScreen(data, { readOnly: true });
     return;
   }
   if (data.started_at) {
@@ -1473,20 +1728,6 @@ async function showPlannedScreen(prefill) {
   show("planned");
 }
 
-async function showPlannedScreenForNextEntry(serverPayload) {
-  await loadCompanyInputMode();
-  if (serverPayload) syncInputModeFromPayload(serverPayload);
-  if (serverPayload) applyUnit(serverPayload.unit);
-  setPlannedRowsFromData({ planned_lines: [] });
-  _plannedAllowEmptyAfterSave = false;
-  _forceBlankActualOnce = true;
-  document.getElementById("planned-btn").disabled = false;
-  document.getElementById("planned-btn").textContent = "予告を登録";
-  document.getElementById("planned-start-btn").disabled = false;
-  document.getElementById("planned-start-btn").textContent = "着手して実績報告へ";
-  show("planned");
-}
-
 async function showActualScreen(data, opts) {
   opts = opts || {};
   syncInputModeFromPayload(data);
@@ -1498,6 +1739,9 @@ async function showActualScreen(data, opts) {
   } else {
     stInfo.style.display = "none";
   }
+  if (!opts.readOnly) {
+    resetActualQtyInputsInPlace(actualRowsHost());
+  }
   if (opts.blankActualInputs) {
     setActualRowsFromData({ actual_lines: [] });
     document.getElementById("pattern-a-cb").checked = false;
@@ -1507,8 +1751,13 @@ async function showActualScreen(data, opts) {
     document.getElementById("pattern-a-cb").checked = data.pattern_a === true;
     document.getElementById("pattern-b-cb").checked = data.pattern_b === true;
   }
-  document.getElementById("actual-btn").textContent = "実績を記録する";
-  document.getElementById("actual-btn").disabled = false;
+  const ro = !!opts.readOnly;
+  document.getElementById("actual-btn").textContent = ro ? "記録済み" : "実績を記録する";
+  document.getElementById("actual-btn").disabled = ro;
+  document.getElementById("pattern-a-cb").disabled = ro;
+  document.getElementById("pattern-b-cb").disabled = ro;
+  const reasonEl = document.getElementById("deviation-reason");
+  if (reasonEl) reasonEl.disabled = ro;
   submitting = false;
   await refreshArticle7Panels();
   show("actual");
@@ -1525,7 +1774,7 @@ async function submitPlanned() {
     toast("作業行がありません");
     return;
   }
-  const scanned = scanHostLines(plannedRowsHost());
+  const scanned = scanHostLinesForSubmit(plannedRowsHost());
   if (scanned.error) {
     toast(scanned.error);
     btn.disabled = false;
@@ -1549,7 +1798,7 @@ async function submitPlanned() {
 
 async function submitStartFromPlanned() {
   const sbtn = document.getElementById("planned-start-btn");
-  const scanned = scanHostLines(plannedRowsHost());
+  const scanned = scanHostLinesForSubmit(plannedRowsHost());
   if (scanned.error) {
     toast(scanned.error);
     return;
@@ -1564,15 +1813,25 @@ async function submitStartFromPlanned() {
     return;
   }
 
+  const id = unitId;
+  if (!id) {
+    toast("作業行がありません。ページを再読み込みしてください。");
+    return;
+  }
+
   sbtn.disabled = true;
   sbtn.textContent = "着手中...";
-  const id = unitId;
   try {
-    const st = await api("POST", `/v2/work/${id}/start`, {});
-    lastWorkData = st;
     const blankActual = _forceBlankActualOnce;
     _forceBlankActualOnce = false;
-    await showActualScreen(st, { blankActualInputs: blankActual });
+    const row = await api("POST", `/v2/work/${id}/start`, {});
+    lastWorkData = row;
+    unitId = row.id;
+    applyUnit(row.unit);
+    syncInputModeFromPayload(row);
+    _plannedAllowEmptyAfterSave = false;
+    toast("着手を記録しました");
+    await showActualScreen(row, { blankActualInputs: blankActual });
   } catch (e) {
     toast(e.message || "着手に失敗しました");
   } finally {
@@ -1588,7 +1847,7 @@ async function submitActual() {
   btn.disabled = true;
   btn.textContent = "記録中...";
 
-  const scanned = scanHostLines(actualRowsHost());
+  const scanned = scanHostLinesForSubmit(actualRowsHost());
   if (scanned.error) {
     toast(scanned.error);
     btn.disabled = false;
@@ -1623,12 +1882,44 @@ async function submitActual() {
   };
   if (needDevReason) payload.deviation_reason = reasonVal;
 
+  normalizeQtyInputsInHost(plannedRowsHost());
+  const plannedDomScan = scanHostLines(plannedRowsHost());
+  if (fieldActualSubmitDebugEnabled()) {
+    console.log("[field actual submit dbg]", {
+      actualQtyDom: collectActualQtyDomSnapshot(actualRowsHost()),
+      actual_lines_payload: payload.lines,
+      planned_lines_dom_scan: plannedDomScan.error
+        ? { error: plannedDomScan.error }
+        : plannedDomScan.lines,
+      article7_priority_quantities: article7QtySnapshotForDebug(),
+      last_qty_assignment: window.__MO_LAST_QTY_SET__ || null,
+    });
+  }
+
   try {
     const data = await api("POST", `/v2/work/${unitId}/actual`, payload);
-    lastWorkData = data;
-    unitId = data.id;
     toast("実績を保存しました");
-    await showPlannedScreenForNextEntry(data);
+    const cfg = getConfig();
+    let shell;
+    try {
+      shell = await api("POST", "/v2/work", {
+        company_id: cfg.company,
+        task_id: cfg.task,
+        process_id: cfg.process,
+        user_id: cfg.user,
+      });
+    } catch (e2) {
+      toast(e2.message || "次の入力の準備に失敗しました");
+      lastWorkData = data;
+      unitId = data.id;
+      await showActualScreen(data, { readOnly: true });
+      return;
+    }
+    lastWorkData = shell;
+    unitId = shell.id;
+    syncInputModeFromPayload(shell);
+    applyUnit(shell.unit);
+    await showPlannedScreen(shell);
   } catch (e) {
     toast(e.message || "実績の送信に失敗しました");
   } finally {
@@ -1671,6 +1962,27 @@ function applyEmbeddedFieldUsers() {
     fieldUserUpdateClearBtnVisibility();
     fieldUserUpdateConfirmButtonState();
   });
+  const shell = document.getElementById("field-main-shell");
+  if (shell) {
+    shell.addEventListener("keydown", function fieldQtyEnterBubble(ev) {
+      if (ev.key !== "Enter") return;
+      const t = ev.target;
+      if (!t || t.tagName !== "INPUT") return;
+      if (!t.hasAttribute("data-line-qty")) return;
+      if (fieldQtyEventDebugEnabled()) {
+        _fieldQtyDbgKeydownEnter++;
+        console.log(
+          "[field qty dbg] keydown Enter #" +
+            _fieldQtyDbgKeydownEnter +
+            " finalValue=" +
+            JSON.stringify(t.value),
+          fieldQtyDbgCounts(),
+        );
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+  }
 })();
 </script>
 

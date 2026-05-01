@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 from datetime import date, datetime, timedelta
+from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple
 
 from sqlalchemy.orm import Session
@@ -176,11 +177,18 @@ def article7_context_for_priority_items(
     units = (
         db.query(models.WorkUnit).filter(models.WorkUnit.company_id == cid).all()
     )
+    by_natural: Dict[Tuple[str, str, str, str, date], List[models.WorkUnit]] = defaultdict(list)
+    for u in units:
+        bd = u.business_date
+        if bd is None:
+            continue
+        by_natural[(u.company_id, u.task_id, u.process_id, u.user_id, bd)].append(u)
+    latest_snapshots = [max(lst, key=lambda x: x.id) for lst in by_natural.values()]
 
     for p in priorities:
-        today_sum = _sum_actuals_for_priority(units, p, im, today_dates)
-        recent_only_sum = _sum_actuals_for_priority(units, p, im, recent_dates)
-        window_sum = _sum_actuals_for_priority(units, p, im, window_dates)
+        today_sum = _sum_actuals_for_priority(latest_snapshots, p, im, today_dates)
+        recent_only_sum = _sum_actuals_for_priority(latest_snapshots, p, im, recent_dates)
+        window_sum = _sum_actuals_for_priority(latest_snapshots, p, im, window_dates)
 
         eps = 1e-9
         has_window = window_sum > eps

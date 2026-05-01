@@ -27,6 +27,7 @@ from app.services.status_history import (
     append_work_unit_status_history_if_changed,
     norm_work_unit_status,
 )
+from app.services.work_unit_clone import clone_work_unit_row, strip_derived_columns_for_fact_snapshot
 from app.services.test_clock import reference_utc_now
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -141,8 +142,14 @@ def promote_blue_to_red_after_judgement(
         .filter(models.WorkUnit.company_id == company_id)
         .all()
     )
+    by_key = {}
+    for u in units:
+        key = (u.company_id, u.task_id, u.process_id, u.user_id, u.business_date)
+        by_key.setdefault(key, []).append(u)
+
     n = 0
-    for unit in units:
+    for _key, lst in by_key.items():
+        unit = max(lst, key=lambda x: x.id)
         st = (unit.status or "").strip().lower()
         if st != "blue":
             continue
@@ -150,9 +157,13 @@ def promote_blue_to_red_after_judgement(
             continue
         deadline_jst = compute_red_deadline_jst(unit.business_date, jt, company_id, db)
         if ref_jst >= deadline_jst:
-            before = norm_work_unit_status(unit.status)
-            unit.status = "red"
-            unit.updated_at = datetime.utcnow()
-            append_work_unit_status_history_if_changed(db, unit, before, "system")
+            nu = clone_work_unit_row(unit)
+            strip_derived_columns_for_fact_snapshot(nu)
+            db.add(nu)
+            db.flush()
+            before = norm_work_unit_status(nu.status)
+            nu.status = "red"
+            nu.updated_at = datetime.utcnow()
+            append_work_unit_status_history_if_changed(db, nu, before, "system")
             n += 1
     return n

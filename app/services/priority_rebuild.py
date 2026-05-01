@@ -5,6 +5,7 @@
 - required_qty = max(0, ship_qty - stock_qty)
 - required_qty > 0 の行のみ保存。在庫のみの商品は出荷が無いため対象外。
 - due_date は parse_due_date で YYYY-MM-DD にできない行は保存せずログに出す。
+- 優先度 high/mid/low は GET /v2/priority/items 時に在庫・出荷・納期から算出（article7_priority_phase1）。
 
 削除は当該 company_id かつ status=open のみ（closed は残す。他社・全件削除は行わない）。
 """

@@ -7,7 +7,8 @@
 
 WorkUnit のサマリフラグのうち is_invalid_flow / is_diff_anomaly を更新しつつ、
 WorkAnomaly テーブルに個別の異常種別を記録する。
-is_missing は missing_boundary の過去日バッチと work._recompute_unit_derived で更新する。
+※ work v2（/v2/work）は append-only でこれらサマリを DB に書かず読み取り時算出する。
+本サービスは旧 /作業記録 経路などでの参照用。
 フェーズ1：検知のみ、ブロックなし。work_unit.status は変更しない。
 """
 from datetime import datetime

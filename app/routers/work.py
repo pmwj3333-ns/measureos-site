@@ -1,9 +1,11 @@
+import copy
 import hashlib
 import json
 import logging
 import math
 import uuid
 from datetime import datetime, date as date_type, time
+from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, inspect, text
@@ -17,7 +19,6 @@ from app.services.business_date import (
     next_business_day_detailed,
 )
 from app.services.field_users import classify_leader
-from app.services.missing_boundary import recompute_is_missing_for_past_business_dates
 from app.services.test_clock import reference_utc_now
 from app.services.work_unit_guard import is_closed, raise_if_closed
 from app.services.status_history import (
@@ -37,6 +38,7 @@ from app.services.product_master import (
     enrich_actual_lines_product_codes,
     ensure_product_master_labels,
 )
+from app.services.work_unit_clone import clone_work_unit_row, strip_derived_columns_for_fact_snapshot
 
 router = APIRouter(tags=["作業記録"])
 logger = logging.getLogger(__name__)
@@ -45,12 +47,6 @@ logger = logging.getLogger(__name__)
 def _touch_updated(unit: models.WorkUnit) -> None:
     """一覧の並び（updated_at desc）用。保存直前に呼ぶ。"""
     unit.updated_at = datetime.utcnow()
-
-
-def _flush_then_recompute_past_missing(db: Session, company_id: str) -> int:
-    """Session は autoflush=False のため、過去営業日の再計算クエリの前に未反映の変更を DB に同期する。"""
-    db.flush()
-    return recompute_is_missing_for_past_business_dates(company_id, db)
 
 
 # ─── ヘルパー ────────────────────────────────────────────────
@@ -395,6 +391,7 @@ def _apply_minimal_judgement(
     *,
     db: Optional[Session] = None,
     force_status: Optional[str] = None,
+    record_history: bool = True,
 ) -> None:
     """
     第5条フェーズ1（最小構成）: system_pattern / status（終了以外）を書く責務はこの関数のみ。
@@ -553,7 +550,7 @@ def _apply_minimal_judgement(
             unit.status,
         )
     finally:
-        if db is not None:
+        if db is not None and record_history:
             append_work_unit_status_history_if_changed(db, unit, status_before, trigger)
 
 
@@ -648,11 +645,12 @@ def _update_flags(unit: models.WorkUnit, settings: models.CompanySettings) -> No
 def _sync_status_blue_from_derived_flags(
     unit: models.WorkUnit,
     db: Session,
+    *,
+    record_history: bool = True,
 ) -> None:
     """
     is_missing / is_invalid_flow / is_diff_anomaly / is_unregistered_user と status を整合させる。
-    _apply_minimal_judgement のみでは normal のまま残り得るが、派生フラグが異常なら blue にする。
-    一覧取得・保存・テスト再判定はすべて _recompute_unit_derived 経由でここを通す。
+    メモリ上の shadow に対してのみ使う場合は record_history=False（読み取り時評価用）。
     """
     st = (unit.status or "").strip().lower()
     if st in ("closed", "red", "blue"):
@@ -668,7 +666,8 @@ def _sync_status_blue_from_derived_flags(
         return
     before = norm_work_unit_status(unit.status)
     unit.status = "blue"
-    append_work_unit_status_history_if_changed(db, unit, before, "system")
+    if record_history:
+        append_work_unit_status_history_if_changed(db, unit, before, "system")
 
 
 def _sync_anomaly_started_at(unit: models.WorkUnit) -> None:
@@ -705,33 +704,55 @@ def _maybe_set_anomaly_started_at(unit: models.WorkUnit) -> None:
         unit.anomaly_started_at = datetime.utcnow()
 
 
-def _recompute_unit_derived(
-    unit: models.WorkUnit, settings: models.CompanySettings, db: Session
-) -> None:
-    """保存直後: 班長判定 → _apply_minimal_judgement → 補助フラグのみ。"""
-    cur = (unit.status or "").strip().lower()
-    if cur in ("closed", "red"):
-        logger.info(
-            "[measureos.judge] recompute_skip unit_id=%s reason=terminal_status=%r",
-            getattr(unit, "id", None),
-            cur or None,
+def _compute_derived_shadow(
+    unit: models.WorkUnit,
+    settings: models.CompanySettings,
+    db: Session,
+) -> models.WorkUnit:
+    """
+    DB を更新せずレスポンス用に派生値を計算したメモリ上の WorkUnit。
+    DB に保存された closed / red は終端事実として維持し、それ以外は現時点での評価で判定する。
+    """
+    shadow = clone_work_unit_row(unit)
+    st0 = norm_work_unit_status(unit.status)
+    rh = False
+
+    _apply_user_classification(shadow, settings)
+
+    if st0 == "closed":
+        _apply_minimal_judgement(
+            shadow, settings, db=db, force_status="closed", record_history=rh
         )
-        return
-    logger.info(
-        "[measureos.judge] recompute_enter unit_id=%s company_id=%r",
-        getattr(unit, "id", None),
-        getattr(unit, "company_id", None),
-    )
-    _apply_user_classification(unit, settings)
-    _apply_minimal_judgement(unit, settings, db=db)
-    _update_is_missing_summary(unit, settings, db)
-    _update_flags(unit, settings)
-    _sync_status_blue_from_derived_flags(unit, db)
-    _sync_anomaly_started_at(unit)
+        shadow.is_missing = (
+            shadow.planned_value is None
+            or shadow.actual_value is None
+            or shadow.started_at is None
+        )
+        _update_flags(shadow, settings)
+        return shadow
+
+    if st0 == "red":
+        _apply_minimal_judgement(
+            shadow, settings, db=db, force_status="red", record_history=rh
+        )
+        shadow.is_missing = (
+            shadow.planned_value is None
+            or shadow.actual_value is None
+            or shadow.started_at is None
+        )
+        _update_flags(shadow, settings)
+        return shadow
+
+    shadow.status = "normal"
+    _apply_minimal_judgement(shadow, settings, db=db, record_history=rh)
+    _update_is_missing_summary(shadow, settings, db)
+    _update_flags(shadow, settings)
+    _sync_status_blue_from_derived_flags(shadow, db, record_history=rh)
+    return shadow
 
 
-def _status_from_db(unit: models.WorkUnit) -> str:
-    s = (unit.status or "").strip().lower()
+def _normalized_response_status(shadow: models.WorkUnit) -> str:
+    s = (shadow.status or "").strip().lower()
     if s in ("closed", "red", "blue"):
         return s
     return "normal"
@@ -742,17 +763,15 @@ def _unit_to_out(
     settings: models.CompanySettings,
     db: Session,
     prev_unit: Optional[models.WorkUnit] = None,
+    *,
+    office_chain_hint: Optional[str] = None,
 ) -> dict:
-    if _backfill_stored_planned_line_ids(unit):
-        _touch_updated(unit)
-    if prev_unit is not None and _backfill_stored_planned_line_ids(prev_unit):
-        _touch_updated(prev_unit)
-    m = bool(unit.is_missing)
+    shadow = _compute_derived_shadow(unit, settings, db)
     im = _norm_input_mode(settings)
     plines = _planned_lines_for_response(unit, im)
     alines = _actual_lines_for_response(unit, im)
     prev_plines = _planned_lines_for_response(prev_unit, im) if prev_unit else []
-    st_out = _status_from_db(unit)
+    st_out = _normalized_response_status(shadow)
     jt = settings.judgement_time or time(13, 0)
     judgement_red_deadline_at = None
     if st_out == "blue" and is_phase2_enabled(settings):
@@ -791,18 +810,18 @@ def _unit_to_out(
         "pattern_a":          unit.pattern_a,
         "pattern_b":          unit.pattern_b,
         "user_pattern":       getattr(unit, "user_pattern", None) or None,
-        "system_pattern":     getattr(unit, "system_pattern", None) or "",
+        "system_pattern":     getattr(shadow, "system_pattern", None) or "",
         "status":             st_out,
         "judgement_red_deadline_at": judgement_red_deadline_at,
         "diff_value":         unit.diff_value,
-        "is_missing":         m,
-        "is_invalid_flow":    bool(getattr(unit, "is_invalid_flow", False)),
-        "is_diff_anomaly":    bool(getattr(unit, "is_diff_anomaly", False)),
+        "is_missing":         bool(shadow.is_missing),
+        "is_invalid_flow":    bool(getattr(shadow, "is_invalid_flow", False)),
+        "is_diff_anomaly":    bool(getattr(shadow, "is_diff_anomaly", False)),
         "anomaly_started_at": unit.anomaly_started_at.isoformat()
         if getattr(unit, "anomaly_started_at", None)
         else None,
-        "is_unregistered_user": bool(unit.is_unregistered_user),
-        "user_source":        unit.user_source or "master",
+        "is_unregistered_user": bool(shadow.is_unregistered_user),
+        "user_source":        shadow.user_source or "master",
         "is_deviation":       bool(getattr(unit, "is_deviation", False)),
         "is_article7_deviation": bool(getattr(unit, "is_article7_deviation", False)),
         "deviation_reason":   deviation_reason_out,
@@ -812,6 +831,7 @@ def _unit_to_out(
         "prev_planned_item_name": prev_unit.planned_item_name if prev_unit else None,
         "prev_planned_lines": prev_plines,
         "unit":               settings.unit or "個",
+        "office_chain_hint": (office_chain_hint if office_chain_hint is not None else ""),
     }
 
 
@@ -836,6 +856,144 @@ def _find_prev_unit(company_id, task_id, process_id, user_id,
     ).order_by(models.WorkUnit.business_date.desc()).first()
 
 
+def _natural_key_tuple(u: models.WorkUnit) -> Tuple[str, str, str, str, date_type]:
+    return (
+        u.company_id,
+        u.task_id,
+        u.process_id,
+        u.user_id,
+        u.business_date,
+    )
+
+
+def _office_chain_subject_key(
+    unit: models.WorkUnit,
+    settings: models.CompanySettings,
+) -> Tuple[Tuple[str, str], ...]:
+    """
+    office_chain_hint の履歴単位（同一担当・同日でも商品が違えば別）。
+    planned / actual の行から (label, product_code) を集めてソートしたタプル。
+    """
+    im = _norm_input_mode(settings)
+    pairs_set: Set[Tuple[str, str]] = set()
+    for lines in (
+        _planned_lines_for_response(unit, im),
+        _actual_lines_for_response(unit, im),
+    ):
+        for it in lines or []:
+            if not isinstance(it, dict):
+                continue
+            lb = str(it.get("label") or it.get("item_name") or "").strip()
+            pc = str(it.get("product_code") or "").strip()
+            if not lb and not pc:
+                continue
+            pairs_set.add((lb, pc))
+    if pairs_set:
+        return tuple(sorted(pairs_set))
+    if im == "logistics":
+        lab = (
+            _opt_str(unit.planned_work_label)
+            or _opt_str(unit.planned_work_type)
+            or _opt_str(unit.actual_work_label)
+            or _opt_str(unit.actual_work_type)
+            or ""
+        ).strip()
+    else:
+        lab = (
+            _opt_str(unit.planned_item_name)
+            or _opt_str(unit.actual_item_name)
+            or ""
+        ).strip()
+    if lab:
+        return ((lab, ""),)
+    return (("__empty__", str(int(unit.id))),)
+
+
+def _office_chain_hint_from_effective_statuses(statuses: List[str]) -> str:
+    """同一キー内スナップショットを時系列順とみなしたときの履歴ヒント（effective status で判定）。"""
+    if not statuses:
+        return ""
+    seen_abnormal = False
+    for raw in statuses:
+        st = norm_work_unit_status(raw)
+        if st in ("blue", "red"):
+            seen_abnormal = True
+        elif st == "normal" and seen_abnormal:
+            return "後続正常入力あり"
+    if seen_abnormal:
+        return "未対応"
+    return ""
+
+
+def _office_hint_for_unit(
+    db: Session,
+    settings: models.CompanySettings,
+    unit: models.WorkUnit,
+) -> str:
+    """同一 natural_key かつ同一商品単位のスナップショットだけを時系列に並べてヒントを付与する。"""
+    nk = _natural_key_tuple(unit)
+    sk = _office_chain_subject_key(unit, settings)
+    rows = (
+        db.query(models.WorkUnit)
+        .filter(
+            models.WorkUnit.company_id == nk[0],
+            models.WorkUnit.task_id == nk[1],
+            models.WorkUnit.process_id == nk[2],
+            models.WorkUnit.user_id == nk[3],
+            models.WorkUnit.business_date == nk[4],
+        )
+        .order_by(models.WorkUnit.id.asc())
+        .all()
+    )
+    chain = [u for u in rows if _office_chain_subject_key(u, settings) == sk]
+    eff = [
+        _normalized_response_status(_compute_derived_shadow(u, settings, db))
+        for u in chain
+    ]
+    return _office_chain_hint_from_effective_statuses(eff)
+
+
+def _build_office_chain_hint_map(
+    units: List[models.WorkUnit],
+    settings: models.CompanySettings,
+    db: Session,
+) -> Dict[int, str]:
+    groups: Dict[
+        Tuple[Tuple[str, str, str, str, date_type], Tuple[Tuple[str, str], ...]],
+        List[models.WorkUnit],
+    ] = defaultdict(list)
+    for u in units:
+        key = (_natural_key_tuple(u), _office_chain_subject_key(u, settings))
+        groups[key].append(u)
+    hint_by_id: Dict[int, str] = {}
+    for lst in groups.values():
+        lst_sorted = sorted(lst, key=lambda x: x.id)
+        eff = [
+            _normalized_response_status(_compute_derived_shadow(u, settings, db))
+            for u in lst_sorted
+        ]
+        hint = _office_chain_hint_from_effective_statuses(eff)
+        for u in lst_sorted:
+            hint_by_id[u.id] = hint
+    return hint_by_id
+
+
+def _unit_to_out_with_hint(
+    unit: models.WorkUnit,
+    settings: models.CompanySettings,
+    db: Session,
+    prev_unit: Optional[models.WorkUnit] = None,
+) -> dict:
+    hint = _office_hint_for_unit(db, settings, unit)
+    return _unit_to_out(
+        unit,
+        settings,
+        db,
+        prev_unit,
+        office_chain_hint=hint,
+    )
+
+
 # ─── エンドポイント ──────────────────────────────────────────
 
 @router.get("/work/next-business-date", summary="次の営業日を返す（行は作らない）")
@@ -850,8 +1008,11 @@ def get_next_business_date_only(
     return {"business_date": str(nxt)}
 
 
-@router.post("/work", summary="今日の作業記録を取得または作成する")
-def get_or_create_work(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)):
+@router.post(
+    "/work",
+    summary="今日の作業記録を新規作成する（壳・append-only）",
+)
+def create_work_shell(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)):
     logger.warning(
         "[measureos.work.hook] POST /work company_id=%r task_id=%r process_id=%r user_id=%r business_date=%r",
         body.company_id,
@@ -878,28 +1039,21 @@ def get_or_create_work(body: schemas.WorkUnitQuery, db: Session = Depends(get_db
         biz_debug["api"] = "POST /work"
         biz_source = "post_work_auto"
 
-    unit = db.query(models.WorkUnit).filter_by(
-        company_id=body.company_id, task_id=body.task_id,
-        process_id=body.process_id, user_id=body.user_id,
+    # append-only / v2: 同一 (company_id, task_id, process_id, user_id, business_date) に
+    # 複数行を許す。現場が壳を開くたびに必ず新規 INSERT（最新行の再利用・closed によるブロックなし）。
+    unit = models.WorkUnit(
+        company_id=body.company_id,
+        task_id=body.task_id,
+        process_id=body.process_id,
+        user_id=body.user_id,
         business_date=biz_date,
-    ).first()
+    )
+    unit.business_date_source = biz_source
+    unit.business_date_debug_json = json.dumps(biz_debug, ensure_ascii=False)
+    unit.created_at = datetime.utcnow()
+    db.add(unit)
+    db.flush()
 
-    if unit is None:
-        unit = models.WorkUnit(
-            company_id=body.company_id, task_id=body.task_id,
-            process_id=body.process_id, user_id=body.user_id,
-            business_date=biz_date,
-        )
-        unit.business_date_source = biz_source
-        unit.business_date_debug_json = json.dumps(biz_debug, ensure_ascii=False)
-        unit.created_at = datetime.utcnow()
-        db.add(unit)
-        db.flush()
-    else:
-        raise_if_closed(unit)
-
-    _flush_then_recompute_past_missing(db, body.company_id)
-    _recompute_unit_derived(unit, settings, db)
     _audit_x_save(unit, settings, "POST /work", "pre_commit")
     _touch_updated(unit)
     db.commit()
@@ -916,7 +1070,7 @@ def get_or_create_work(body: schemas.WorkUnitQuery, db: Session = Depends(get_db
 
     prev_unit = _find_prev_unit(body.company_id, body.task_id, body.process_id,
                                 body.user_id, biz_date, db)
-    return _unit_to_out(unit, settings, db, prev_unit)
+    return _unit_to_out_with_hint(unit, settings, db, prev_unit)
 
 
 @router.post("/work/next-day", summary="次の営業日を開始する（着手含む）")
@@ -926,11 +1080,21 @@ def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
     next_date, next_dbg = next_business_day_detailed(current_date, body.company_id, db)
     next_dbg["api"] = "POST /work/next-day"
 
-    unit = db.query(models.WorkUnit).filter_by(
-        company_id=body.company_id, task_id=body.task_id,
-        process_id=body.process_id, user_id=body.user_id,
-        business_date=next_date,
-    ).first()
+    unit = (
+        db.query(models.WorkUnit)
+        .filter_by(
+            company_id=body.company_id,
+            task_id=body.task_id,
+            process_id=body.process_id,
+            user_id=body.user_id,
+            business_date=next_date,
+        )
+        .order_by(models.WorkUnit.id.desc())
+        .first()
+    )
+
+    if unit is not None and is_closed(unit):
+        unit = None
 
     if unit is None:
         unit = models.WorkUnit(
@@ -943,18 +1107,14 @@ def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
         unit.created_at = datetime.utcnow()
         db.add(unit)
         db.flush()
-    else:
-        raise_if_closed(unit)
 
-    _flush_then_recompute_past_missing(db, body.company_id)
-    _recompute_unit_derived(unit, settings, db)
     _touch_updated(unit)
     db.commit()
     db.refresh(unit)
 
     prev_unit = _find_prev_unit(body.company_id, body.task_id, body.process_id,
                                 body.user_id, next_date, db)
-    return _unit_to_out(unit, settings, db, prev_unit)
+    return _unit_to_out_with_hint(unit, settings, db, prev_unit)
 
 
 @router.get(
@@ -986,45 +1146,123 @@ def get_work_unit_status_history(unit_id: int, db: Session = Depends(get_db)):
     return out
 
 
-@router.post("/work/{unit_id}/close", summary="【事務】作業記録を承認・完了（status=closed）")
+@router.post(
+    "/work/{unit_id}/close",
+    summary="【事務】同一キーの青・赤をまとめて承認・完了（closed スナップショット INSERT）",
+)
 def approve_close_work(unit_id: int, db: Session = Depends(get_db)):
-    unit = db.get(models.WorkUnit, unit_id)
-    if not unit:
+    src = db.get(models.WorkUnit, unit_id)
+    if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
-    settings = _get_or_create_settings(unit.company_id, db)
-    if is_closed(unit):
+    settings = _get_or_create_settings(src.company_id, db)
+    if is_closed(src):
         prev_unit = _find_prev_unit(
-            unit.company_id, unit.task_id, unit.process_id,
-            unit.user_id, unit.business_date, db,
+            src.company_id,
+            src.task_id,
+            src.process_id,
+            src.user_id,
+            src.business_date,
+            db,
         )
-        return _unit_to_out(unit, settings, db, prev_unit)
-    _apply_minimal_judgement(unit, settings, db=db, force_status="closed")
-    _flush_then_recompute_past_missing(db, unit.company_id)
-    _touch_updated(unit)
+        return _unit_to_out_with_hint(src, settings, db, prev_unit)
+
+    peers = (
+        db.query(models.WorkUnit)
+        .filter(
+            models.WorkUnit.company_id == src.company_id,
+            models.WorkUnit.task_id == src.task_id,
+            models.WorkUnit.process_id == src.process_id,
+            models.WorkUnit.user_id == src.user_id,
+            models.WorkUnit.business_date == src.business_date,
+        )
+        .order_by(models.WorkUnit.id.asc())
+        .all()
+    )
+
+    closed_peer_ids: List[int] = []
+    nu_primary: Optional[models.WorkUnit] = None
+    nu_last: Optional[models.WorkUnit] = None
+
+    for peer in peers:
+        if is_closed(peer):
+            continue
+        shadow = _compute_derived_shadow(peer, settings, db)
+        eff = _normalized_response_status(shadow)
+        if eff not in ("blue", "red"):
+            continue
+        nu = clone_work_unit_row(peer)
+        strip_derived_columns_for_fact_snapshot(nu)
+        _apply_user_classification(nu, settings)
+        db.add(nu)
+        db.flush()
+        _apply_minimal_judgement(nu, settings, db=db, force_status="closed")
+        _touch_updated(nu)
+        closed_peer_ids.append(peer.id)
+        nu_last = nu
+        if peer.id == src.id:
+            nu_primary = nu
+
+    if not closed_peer_ids:
+        sh = _compute_derived_shadow(src, settings, db)
+        if _normalized_response_status(sh) not in ("blue", "red"):
+            raise HTTPException(
+                status_code=422,
+                detail="完了対象の青・赤レコードがありません",
+            )
+        nu = clone_work_unit_row(src)
+        strip_derived_columns_for_fact_snapshot(nu)
+        _apply_user_classification(nu, settings)
+        db.add(nu)
+        db.flush()
+        _apply_minimal_judgement(nu, settings, db=db, force_status="closed")
+        _touch_updated(nu)
+        closed_peer_ids.append(src.id)
+        nu_primary = nu
+        nu_last = nu
+
+    now = datetime.utcnow()
+    Sup = models.OfficeClosedWorkUnitSuppress
+    for pid in closed_peer_ids:
+        if db.get(Sup, pid) is None:
+            db.add(Sup(peer_unit_id=pid, created_at=now))
+
     db.commit()
-    db.refresh(unit)
-    prev_unit = _find_prev_unit(unit.company_id, unit.task_id, unit.process_id,
-                                unit.user_id, unit.business_date, db)
-    return _unit_to_out(unit, settings, db, prev_unit)
+
+    nu_ret = nu_primary or nu_last
+    if nu_ret is None:
+        raise HTTPException(status_code=500, detail="完了処理の内部エラーです")
+    db.refresh(nu_ret)
+    prev_unit = _find_prev_unit(
+        nu_ret.company_id,
+        nu_ret.task_id,
+        nu_ret.process_id,
+        nu_ret.user_id,
+        nu_ret.business_date,
+        db,
+    )
+    return _unit_to_out_with_hint(nu_ret, settings, db, prev_unit)
 
 
 @router.post("/work/{unit_id}/start", summary="着手を記録する")
 def mark_started(unit_id: int, db: Session = Depends(get_db)):
-    unit = db.get(models.WorkUnit, unit_id)
-    if not unit:
+    src = db.get(models.WorkUnit, unit_id)
+    if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
-    raise_if_closed(unit)
-    settings = _get_or_create_settings(unit.company_id, db)
-    if unit.started_at is None:
-        unit.started_at = datetime.utcnow()
-    _flush_then_recompute_past_missing(db, unit.company_id)
-    _recompute_unit_derived(unit, settings, db)
-    _touch_updated(unit)
+    raise_if_closed(src)
+    settings = _get_or_create_settings(src.company_id, db)
+    nu = clone_work_unit_row(src)
+    strip_derived_columns_for_fact_snapshot(nu)
+    _apply_user_classification(nu, settings)
+    db.add(nu)
+    db.flush()
+    if nu.started_at is None:
+        nu.started_at = datetime.utcnow()
+    _touch_updated(nu)
     db.commit()
-    db.refresh(unit)
-    prev_unit = _find_prev_unit(unit.company_id, unit.task_id, unit.process_id,
-                                unit.user_id, unit.business_date, db)
-    return _unit_to_out(unit, settings, db, prev_unit)
+    db.refresh(nu)
+    prev_unit = _find_prev_unit(src.company_id, src.task_id, src.process_id,
+                                src.user_id, src.business_date, db)
+    return _unit_to_out_with_hint(nu, settings, db, prev_unit)
 
 
 @router.post("/work/{unit_id}/actual", summary="実績を記録する")
@@ -1036,15 +1274,15 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
         sorted(patch_preview.keys()),
         "lines" in patch_preview,
     )
-    unit = db.get(models.WorkUnit, unit_id)
-    if not unit:
+    src = db.get(models.WorkUnit, unit_id)
+    if not src:
         logger.warning(
             "[measureos.work.hook] POST /work/%s/actual — no row (404)",
             unit_id,
         )
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
-    raise_if_closed(unit)
-    settings = _get_or_create_settings(unit.company_id, db)
+    raise_if_closed(src)
+    settings = _get_or_create_settings(src.company_id, db)
     im = _norm_input_mode(settings)
     patch = body.model_dump(exclude_unset=True)
 
@@ -1058,9 +1296,9 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
         if err:
             raise HTTPException(status_code=422, detail=err)
         if parsed_lines:
-            ensure_product_master_labels(unit.company_id, parsed_lines, db)
+            ensure_product_master_labels(src.company_id, parsed_lines, db)
             db.flush()
-            enrich_actual_lines_product_codes(unit.company_id, parsed_lines, db)
+            enrich_actual_lines_product_codes(src.company_id, parsed_lines, db)
         lines_for_dev = list(parsed_lines) if parsed_lines else []
     else:
         an = _opt_str(body.actual_item_name)
@@ -1072,12 +1310,12 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
         else:
             lines_for_dev = []
         if lines_for_dev:
-            ensure_product_master_labels(unit.company_id, lines_for_dev, db)
+            ensure_product_master_labels(src.company_id, lines_for_dev, db)
             db.flush()
-            enrich_actual_lines_product_codes(unit.company_id, lines_for_dev, db)
+            enrich_actual_lines_product_codes(src.company_id, lines_for_dev, db)
 
     # 第7条逸脱: product_code 優先・両方コード無しのときのみ label。数量・順序は見ない。
-    is_dev = is_actual_deviation_from_article7(unit.company_id, lines_for_dev, db)
+    is_dev = is_actual_deviation_from_article7(src.company_id, lines_for_dev, db)
     if is_dev:
         dr = getattr(body, "deviation_reason", None)
         reason_ok = str(dr).strip() if dr is not None else ""
@@ -1090,96 +1328,106 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
     else:
         deviation_reason_saved = None
 
+    nu = clone_work_unit_row(src)
+    strip_derived_columns_for_fact_snapshot(nu)
+    _apply_user_classification(nu, settings)
+    db.add(nu)
+    db.flush()
+
     if "lines" in patch:
         lines = parsed_lines if parsed_lines is not None else []
-        unit.actual_lines_json = _lines_json_dumps(lines) if lines else None
+        nu.actual_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
-            unit.actual_value = sum(x["value"] for x in lines)
+            nu.actual_value = sum(x["value"] for x in lines)
             if im == "logistics":
-                unit.actual_work_label = _join_line_labels(lines)
-                unit.actual_work_type = None
-                unit.actual_item_name = None
+                nu.actual_work_label = _join_line_labels(lines)
+                nu.actual_work_type = None
+                nu.actual_item_name = None
             else:
-                unit.actual_item_name = _join_line_labels(lines)
-                unit.actual_work_label = None
-                unit.actual_work_type = None
+                nu.actual_item_name = _join_line_labels(lines)
+                nu.actual_work_label = None
+                nu.actual_work_type = None
         else:
-            unit.actual_value = None
-            unit.actual_lines_json = None
-            unit.actual_item_name = None
-            unit.actual_work_label = None
-            unit.actual_work_type = None
+            nu.actual_value = None
+            nu.actual_lines_json = None
+            nu.actual_item_name = None
+            nu.actual_work_label = None
+            nu.actual_work_type = None
     else:
-        unit.actual_lines_json = None
-        unit.actual_value = body.actual_value
-        unit.actual_work_type = _opt_str(body.actual_work_type)
-        unit.actual_work_label = _opt_str(body.actual_work_label)
-        unit.actual_item_name = _opt_str(body.actual_item_name)
+        nu.actual_lines_json = None
+        nu.actual_value = body.actual_value
+        nu.actual_work_type = _opt_str(body.actual_work_type)
+        nu.actual_work_label = _opt_str(body.actual_work_label)
+        nu.actual_item_name = _opt_str(body.actual_item_name)
 
     if is_dev:
-        unit.is_article7_deviation = True
-        unit.is_deviation = True
-        unit.deviation_reason = deviation_reason_saved
+        nu.is_article7_deviation = True
+        nu.is_deviation = True
+        nu.deviation_reason = deviation_reason_saved
     else:
-        unit.is_article7_deviation = False
-        unit.is_deviation = False
-        unit.deviation_reason = None
+        nu.is_article7_deviation = False
+        nu.is_deviation = False
+        nu.deviation_reason = None
 
-    unit.actual_at = datetime.utcnow()
+    nu.actual_at = datetime.utcnow()
 
     if "pattern_a" in patch:
-        unit.pattern_a = patch["pattern_a"]
+        nu.pattern_a = patch["pattern_a"]
     if "pattern_b" in patch:
-        unit.pattern_b = patch["pattern_b"]
+        nu.pattern_b = patch["pattern_b"]
 
     # 現場申告（B のみ）。system_pattern とは独立。B 未チェックでクリア
     if "pattern_b" in patch:
-        unit.user_pattern = "B" if patch.get("pattern_b") else None
+        nu.user_pattern = "B" if patch.get("pattern_b") else None
     elif "user_pattern" in patch:
         _up = patch.get("user_pattern")
-        unit.user_pattern = "B" if (_up is not None and str(_up).strip().upper() == "B") else None
+        nu.user_pattern = "B" if (_up is not None and str(_up).strip().upper() == "B") else None
 
-    if unit.planned_value is not None and unit.actual_value is not None:
-        unit.diff_value = unit.actual_value - unit.planned_value
+    if nu.planned_value is not None and nu.actual_value is not None:
+        nu.diff_value = nu.actual_value - nu.planned_value
 
-    _flush_then_recompute_past_missing(db, unit.company_id)
-    _recompute_unit_derived(unit, settings, db)
-    _audit_x_save(unit, settings, f"POST /work/{unit_id}/actual", "pre_commit")
-    _touch_updated(unit)
+    _audit_x_save(nu, settings, f"POST /work/{unit_id}/actual", "pre_commit")
+    _touch_updated(nu)
     db.commit()
-    db.refresh(unit)
-    _audit_x_save(unit, settings, f"POST /work/{unit_id}/actual", "post_commit")
+    db.refresh(nu)
+    _audit_x_save(nu, settings, f"POST /work/{unit_id}/actual", "post_commit")
 
     logger.warning(
         "[measureos.work.hook] POST /work/%s/actual committed company_id=%r actual_at=%r actual_value=%r lines_json_set=%s",
         unit_id,
-        unit.company_id,
-        unit.actual_at.isoformat() if unit.actual_at else None,
-        unit.actual_value,
-        bool(unit.actual_lines_json and str(unit.actual_lines_json).strip()),
+        nu.company_id,
+        nu.actual_at.isoformat() if nu.actual_at else None,
+        nu.actual_value,
+        bool(nu.actual_lines_json and str(nu.actual_lines_json).strip()),
     )
 
-    prev_unit = _find_prev_unit(unit.company_id, unit.task_id, unit.process_id,
-                                unit.user_id, unit.business_date, db)
-    out = _unit_to_out(unit, settings, db, prev_unit)
-    out["next_business_date"] = str(next_business_day(unit.business_date, unit.company_id, db))
+    prev_unit = _find_prev_unit(nu.company_id, nu.task_id, nu.process_id,
+                                nu.user_id, nu.business_date, db)
+    out = _unit_to_out_with_hint(nu, settings, db, prev_unit)
+    out["next_business_date"] = str(next_business_day(nu.business_date, nu.company_id, db))
     return out
 
 
 @router.post("/work/{unit_id}/planned", summary="予告を記録する")
 def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(get_db)):
-    unit = db.get(models.WorkUnit, unit_id)
-    if not unit:
+    src = db.get(models.WorkUnit, unit_id)
+    if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
-    raise_if_closed(unit)
-    settings = _get_or_create_settings(unit.company_id, db)
+    raise_if_closed(src)
+    settings = _get_or_create_settings(src.company_id, db)
     im = _norm_input_mode(settings)
     patch = body.model_dump(exclude_unset=True)
 
+    nu = clone_work_unit_row(src)
+    strip_derived_columns_for_fact_snapshot(nu)
+    _apply_user_classification(nu, settings)
+    db.add(nu)
+    db.flush()
+
     if "lines" in patch:
-        _backfill_stored_planned_line_ids(unit)
+        _backfill_stored_planned_line_ids(nu)
         raw_lines = body.lines if body.lines is not None else []
-        old_parsed = _parse_lines_json(unit.planned_lines_json)
+        old_parsed = _parse_lines_json(nu.planned_lines_json)
         lines, err = _strict_lines_from_body(
             list(raw_lines),
             include_due_date=True,
@@ -1189,42 +1437,40 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
         if err:
             raise HTTPException(status_code=422, detail=err)
         _merge_due_from_previous(lines, old_parsed)
-        unit.planned_lines_json = _lines_json_dumps(lines) if lines else None
+        nu.planned_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
-            unit.planned_value = sum(x["value"] for x in lines)
+            nu.planned_value = sum(x["value"] for x in lines)
             if im == "logistics":
-                unit.planned_work_label = _join_line_labels(lines)
-                unit.planned_work_type = None
-                unit.planned_item_name = None
+                nu.planned_work_label = _join_line_labels(lines)
+                nu.planned_work_type = None
+                nu.planned_item_name = None
             else:
-                unit.planned_item_name = _join_line_labels(lines)
-                unit.planned_work_label = None
-                unit.planned_work_type = None
+                nu.planned_item_name = _join_line_labels(lines)
+                nu.planned_work_label = None
+                nu.planned_work_type = None
         else:
-            unit.planned_value = None
-            unit.planned_lines_json = None
-            unit.planned_item_name = None
-            unit.planned_work_label = None
-            unit.planned_work_type = None
+            nu.planned_value = None
+            nu.planned_lines_json = None
+            nu.planned_item_name = None
+            nu.planned_work_label = None
+            nu.planned_work_type = None
     else:
-        unit.planned_lines_json = None
-        unit.planned_value = body.planned_value
-        unit.planned_work_type = _opt_str(body.planned_work_type)
-        unit.planned_work_label = _opt_str(body.planned_work_label)
-        unit.planned_item_name = _opt_str(body.planned_item_name)
+        nu.planned_lines_json = None
+        nu.planned_value = body.planned_value
+        nu.planned_work_type = _opt_str(body.planned_work_type)
+        nu.planned_work_label = _opt_str(body.planned_work_label)
+        nu.planned_item_name = _opt_str(body.planned_item_name)
 
-    if unit.planned_value is not None and unit.actual_value is not None:
-        unit.diff_value = unit.actual_value - unit.planned_value
+    if nu.planned_value is not None and nu.actual_value is not None:
+        nu.diff_value = nu.actual_value - nu.planned_value
 
-    _flush_then_recompute_past_missing(db, unit.company_id)
-    _recompute_unit_derived(unit, settings, db)
-    _touch_updated(unit)
+    _touch_updated(nu)
     db.commit()
-    db.refresh(unit)
+    db.refresh(nu)
 
-    prev_unit = _find_prev_unit(unit.company_id, unit.task_id, unit.process_id,
-                                unit.user_id, unit.business_date, db)
-    return _unit_to_out(unit, settings, db, prev_unit)
+    prev_unit = _find_prev_unit(nu.company_id, nu.task_id, nu.process_id,
+                                nu.user_id, nu.business_date, db)
+    return _unit_to_out_with_hint(nu, settings, db, prev_unit)
 
 
 @router.post(
@@ -1236,20 +1482,24 @@ def merge_planned_due(
     body: schemas.PlannedDueMergeIn,
     db: Session = Depends(get_db),
 ):
-    unit = db.get(models.WorkUnit, unit_id)
-    if not unit:
+    src = db.get(models.WorkUnit, unit_id)
+    if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
-    raise_if_closed(unit)
-    settings = _get_or_create_settings(unit.company_id, db)
-    _backfill_stored_planned_line_ids(unit)
-    base = _parse_lines_json(getattr(unit, "planned_lines_json", None))
-    if not base:
+    raise_if_closed(src)
+    settings = _get_or_create_settings(src.company_id, db)
+
+    rows = _parse_lines_json(getattr(src, "planned_lines_json", None))
+    if not rows:
         raise HTTPException(status_code=400, detail="予告行がありません")
+    base = copy.deepcopy(rows)
+    _assign_missing_line_ids_mutate(base)
+
     if not body.entries:
         prev_unit = _find_prev_unit(
-            unit.company_id, unit.task_id, unit.process_id, unit.user_id, unit.business_date, db
+            src.company_id, src.task_id, src.process_id, src.user_id, src.business_date, db
         )
-        return _unit_to_out(unit, settings, db, prev_unit)
+        return _unit_to_out_with_hint(src, settings, db, prev_unit)
+
     for entry in body.entries:
         lid = (entry.line_id or "").strip()
         if not lid:
@@ -1277,16 +1527,20 @@ def merge_planned_due(
                     detail="due_date は YYYY-MM-DD で指定してください",
                 )
             matched["due_date"] = nd
-    unit.planned_lines_json = _lines_json_dumps(base)
-    _flush_then_recompute_past_missing(db, unit.company_id)
-    _recompute_unit_derived(unit, settings, db)
-    _touch_updated(unit)
+
+    nu = clone_work_unit_row(src)
+    strip_derived_columns_for_fact_snapshot(nu)
+    _apply_user_classification(nu, settings)
+    nu.planned_lines_json = _lines_json_dumps(base)
+    db.add(nu)
+    db.flush()
+    _touch_updated(nu)
     db.commit()
-    db.refresh(unit)
+    db.refresh(nu)
     prev_unit = _find_prev_unit(
-        unit.company_id, unit.task_id, unit.process_id, unit.user_id, unit.business_date, db
+        nu.company_id, nu.task_id, nu.process_id, nu.user_id, nu.business_date, db
     )
-    return _unit_to_out(unit, settings, db, prev_unit)
+    return _unit_to_out_with_hint(nu, settings, db, prev_unit)
 
 
 @router.post(
@@ -1298,22 +1552,19 @@ def recalc_missing_boundary(
     db: Session = Depends(get_db),
 ):
     """
-    本番では cron 等から定期実行する想定の本線エンドポイント。
-    company_id 省略時は全企業。営業日が現在より前の行の is_missing を更新する（closed/red は status は変えない）。
+    append-only 方針のため無効化。派生フラグは読み取り時に算出する。
     """
-    if company_id and str(company_id).strip():
-        cid = str(company_id).strip()
-        _get_or_create_settings(cid, db)
-        n = recompute_is_missing_for_past_business_dates(cid, db)
-        db.commit()
-        return {"ok": True, "company_id": cid, "units_scanned": n}
-
-    rows = db.query(models.CompanySettings.company_id).all()
-    total = 0
-    for (cid,) in rows:
-        total += recompute_is_missing_for_past_business_dates(cid, db)
-    db.commit()
-    return {"ok": True, "company_id": None, "units_scanned": total}
+    logger.info(
+        "[measureos.work.recalc_missing_boundary] skipped append_only company_id=%r",
+        company_id,
+    )
+    return {
+        "ok": True,
+        "skipped": True,
+        "reason": "append_only_derived_at_read",
+        "company_id": (str(company_id).strip() if company_id and str(company_id).strip() else None),
+        "units_scanned": 0,
+    }
 
 
 @router.post(
@@ -1350,12 +1601,12 @@ def debug_set_business_date(
     db: Session = Depends(get_db),
 ):
     """
-    未入力・営業日跨ぎのテスト用。変更後に is_missing 再計算（当社・他行含む）を実行する。
+    未入力・営業日跨ぎのテスト用。business_date のみ別スナップショットとして INSERT する。
     """
-    unit = db.get(models.WorkUnit, body.id)
-    if not unit:
+    src = db.get(models.WorkUnit, body.id)
+    if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
-    raise_if_closed(unit)
+    raise_if_closed(src)
     try:
         new_d = date_type.fromisoformat(body.business_date.strip())
     except ValueError:
@@ -1364,53 +1615,37 @@ def debug_set_business_date(
             detail="business_date は YYYY-MM-DD 形式で指定してください",
         )
 
-    dup = (
-        db.query(models.WorkUnit)
-        .filter(
-            models.WorkUnit.company_id == unit.company_id,
-            models.WorkUnit.task_id == unit.task_id,
-            models.WorkUnit.process_id == unit.process_id,
-            models.WorkUnit.user_id == unit.user_id,
-            models.WorkUnit.business_date == new_d,
-            models.WorkUnit.id != unit.id,
-        )
-        .first()
-    )
-    if dup:
-        raise HTTPException(
-            status_code=409,
-            detail="同一キーでその営業日の別レコードが既にあります（debug）",
-        )
+    settings = _get_or_create_settings(src.company_id, db)
 
-    unit.business_date = new_d
-    settings = _get_or_create_settings(unit.company_id, db)
-    current_biz = calc_business_date(reference_utc_now(), settings, db)
-    if unit.business_date >= current_biz:
-        unit.is_missing = False
+    nu = clone_work_unit_row(src)
+    strip_derived_columns_for_fact_snapshot(nu)
+    _apply_user_classification(nu, settings)
+    nu.business_date = new_d
+    db.add(nu)
+    db.flush()
 
-    _flush_then_recompute_past_missing(db, unit.company_id)
-
-    st = (unit.status or "normal").strip().lower()
-    if st not in ("closed", "red"):
-        _recompute_unit_derived(unit, settings, db)
-    _touch_updated(unit)
+    _touch_updated(nu)
     db.commit()
-    db.refresh(unit)
+    db.refresh(nu)
 
     prev_unit = _find_prev_unit(
-        unit.company_id,
-        unit.task_id,
-        unit.process_id,
-        unit.user_id,
-        unit.business_date,
+        nu.company_id,
+        nu.task_id,
+        nu.process_id,
+        nu.user_id,
+        nu.business_date,
         db,
     )
-    return _unit_to_out(unit, settings, db, prev_unit)
+    return _unit_to_out_with_hint(nu, settings, db, prev_unit)
 
 
 @router.get("/work/list", summary="作業記録の一覧を取得する")
 def list_work(
     company_id: str,
+    hide_office_closed_sources: bool = Query(
+        False,
+        description="true のとき、事務完了済みとして記録された peer の work_unit を一覧から除外（debug は省略）",
+    ),
     trace_unit_id: Optional[int] = Query(
         None,
         description="デバッグ: この id の unit をコミット後に DB 再読込し、一覧レスポンスと併せて追跡ログする",
@@ -1418,59 +1653,6 @@ def list_work(
     db: Session = Depends(get_db),
 ):
     settings = _get_or_create_settings(company_id, db)
-    wet = settings.work_end_time or time(17, 0)
-
-    # 表示は200件だが、updated_at が古い行はページ外になりがち。時刻依存の青は全行へ反映する。
-    all_company_units = (
-        db.query(models.WorkUnit)
-        .filter_by(company_id=company_id)
-        .all()
-    )
-    recompute_count = 0
-    for u in all_company_units:
-        st0 = (u.status or "").strip().lower()
-        if st0 in ("closed", "red"):
-            continue
-        before_status = u.status
-        _recompute_unit_derived(u, settings, db)
-        after_status = u.status
-        hp = _has_planned_nonzero(u, settings)
-        hs = u.started_at is not None
-        ha = _has_actual_signal(u, settings)
-        ha_meaningful = _has_meaningful_actual(u, settings)
-        incomplete_b = incomplete_implies_status_blue(
-            has_planned_nonzero=hp,
-            has_meaningful_actual=ha_meaningful,
-            business_date=u.business_date,
-            company_id=u.company_id,
-            settings=settings,
-            db=db,
-        )
-        now_j = reference_now_jst()
-        boundary_j = next_work_end_boundary_jst(u.business_date, wet, u.company_id, db)
-        inst = inspect(u)
-        unit_modified = bool(getattr(inst, "modified", False))
-        log_suffix = " TRACE_TARGET" if trace_unit_id is not None and u.id == trace_unit_id else ""
-        logger.info(
-            "[measureos.work.list_recompute] company_id=%r unit_id=%s business_date=%s "
-            "before_status=%r after_status=%r hp=%s hs=%s ha=%s ha_meaningful=%s "
-            "now_jst=%s next_work_end_boundary_jst=%s incomplete_blue=%s unit_modified=%s%s",
-            company_id,
-            u.id,
-            u.business_date,
-            before_status,
-            after_status,
-            hp,
-            hs,
-            ha,
-            ha_meaningful,
-            now_j.isoformat(),
-            boundary_j.isoformat(),
-            incomplete_b,
-            unit_modified,
-            log_suffix,
-        )
-        recompute_count += 1
 
     promote_blue_to_red_after_judgement(company_id, db)
 
@@ -1480,31 +1662,38 @@ def list_work(
         db.commit()
         commit_called = True
     logger.info(
-        "[measureos.work.list_recompute_done] company_id=%r all_units=%s recomputed_non_terminal=%s "
-        "session_dirty_before_commit=%s commit_called=%s",
+        "[measureos.work.list_promote_done] company_id=%r session_dirty_before_commit=%s commit_called=%s",
         company_id,
-        len(all_company_units),
-        recompute_count,
         dirty_n,
         commit_called,
     )
-    if recompute_count > 0 and dirty_n == 0:
-        logger.warning(
-            "[measureos.work.list_recompute_done] company_id=%r recomputed=%s but session_dirty=0 "
-            "(期待: 属性更新があれば dirty になる)",
-            company_id,
-            recompute_count,
-        )
 
     sort_key = func.coalesce(models.WorkUnit.updated_at, models.WorkUnit.created_at)
+    base_q = db.query(models.WorkUnit).filter(models.WorkUnit.company_id == company_id)
+    if hide_office_closed_sources:
+        suppressed_sq = db.query(models.OfficeClosedWorkUnitSuppress.peer_unit_id)
+        base_q = base_q.filter(~models.WorkUnit.id.in_(suppressed_sq))
     units = (
-        db.query(models.WorkUnit)
-        .filter_by(company_id=company_id)
-        .order_by(sort_key.desc().nulls_last(), models.WorkUnit.id.desc())
+        base_q.order_by(sort_key.desc().nulls_last(), models.WorkUnit.id.desc())
         .limit(200)
         .all()
     )
-    out = [_unit_to_out(u, settings, db) for u in units]
+    all_company_units = (
+        db.query(models.WorkUnit)
+        .filter_by(company_id=company_id)
+        .all()
+    )
+    hint_map = _build_office_chain_hint_map(all_company_units, settings, db)
+    out = [
+        _unit_to_out(
+            u,
+            settings,
+            db,
+            None,
+            office_chain_hint=hint_map.get(u.id, ""),
+        )
+        for u in units
+    ]
     if trace_unit_id is not None:
         tr = (
             db.query(models.WorkUnit)

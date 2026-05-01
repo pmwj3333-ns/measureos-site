@@ -18,11 +18,8 @@ router = APIRouter(prefix="/作業記録", tags=["作業記録"])
 # ─────────────────────────────────────────
 
 def _recompute_work_status(unit: models.WorkUnit, settings: models.CompanySettings, db: Session) -> None:
-    """work ルータと同じ班長判定・status（当面 v2 の入力後に本線へ揃える）。"""
-    from app.routers.work import _flush_then_recompute_past_missing, _recompute_unit_derived
-
-    _flush_then_recompute_past_missing(db, unit.company_id)
-    _recompute_unit_derived(unit, settings, db)
+    """append-only: work v2 と同様に DB の派生フラグは更新しない。"""
+    return
 
 
 def _get_settings(company_id: str, db: Session) -> models.CompanySettings:
