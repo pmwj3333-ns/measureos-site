@@ -97,29 +97,6 @@
   .prio-breakdown div { margin-bottom: 2px; }
   .prio-due--urgent { color: #ff3b30; font-weight: 600; }
 
-  .prio-actual-hint {
-    font-size: 0.84rem;
-    font-weight: 600;
-    color: #3a3a3c;
-    margin-bottom: 10px;
-    padding: 9px 11px;
-    background: rgba(255, 255, 255, 0.65);
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-  }
-  .prio-notices {
-    margin-bottom: 12px;
-  }
-  .prio-notice-line {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #c2410c;
-    line-height: 1.4;
-    margin-bottom: 8px;
-    letter-spacing: 0.01em;
-  }
-  .prio-notice-line:last-child { margin-bottom: 0; }
-
   .action-pill {
     display: inline-block;
     font-size: 0.88rem;
@@ -171,8 +148,7 @@
     <div class="updated-at" id="updated-at" hidden></div>
   </div>
   <p class="sub">
-    第7条は事務の道標として据え置き、第5条の実績はここに<strong>状況として</strong>載せるだけです（数量の自動更新やブロックはしません）。
-    優先度（high / mid / low）は<strong>在庫・出荷・納期からサーバが自動算出</strong>します（赤・黄・青）。
+    優先度（high / mid / low）は<strong>在庫・出荷・納期からサーバが自動算出</strong>します（赤・黄・青）。この画面は<strong>何をいつまでに作るか</strong>の判断専用です。
     <code>GET /v2/priority/items</code>
   </p>
   <div class="bar">
@@ -273,8 +249,6 @@
       if (!Number.isFinite(prodNum)) prodNum = 0;
       var stockNum = Number(stock);
       if (!Number.isFinite(stockNum)) stockNum = 0;
-      var noticesRaw = it.article7_notices;
-      var notices = Array.isArray(noticesRaw) ? noticesRaw : [];
       out.push({
         tier: tier,
         name: String(it.label || "").trim() || "（無名）",
@@ -284,8 +258,6 @@
         prodNum: prodNum,
         unit: u,
         due: String(due).trim(),
-        article7_actual_hint: it.article7_actual_hint || "",
-        article7_notices: notices,
       });
     }
     return out;
@@ -362,22 +334,6 @@
         dueInner +
         "</div>" +
         "</div>";
-      if (it.article7_actual_hint) {
-        html +=
-          '<div class="prio-actual-hint">' +
-          esc(String(it.article7_actual_hint)) +
-          "</div>";
-      }
-      if (it.article7_notices && it.article7_notices.length) {
-        html += '<div class="prio-notices">';
-        for (var ni = 0; ni < it.article7_notices.length; ni++) {
-          html +=
-            '<div class="prio-notice-line">⚠ ' +
-            esc(String(it.article7_notices[ni])) +
-            "</div>";
-        }
-        html += "</div>";
-      }
       html +=
         '<div class="action-pill">▶ 製造する：' +
         esc(String(it.prod_value)) +

@@ -73,6 +73,7 @@ class WorkUnit(Base):
     actual_lines_json = Column(String, nullable=True)
     actual_value    = Column(Float, nullable=True)
     actual_at       = Column(DateTime, nullable=True)
+    actual_memo     = Column(String, nullable=True)
     diff_value      = Column(Float, nullable=True)
 
     pattern_a       = Column(Boolean, nullable=True)
@@ -94,6 +95,11 @@ class WorkUnit(Base):
     is_deviation = Column(Boolean, nullable=True, default=False)
     is_article7_deviation = Column(Boolean, nullable=True, default=False)
     deviation_reason = Column(String, nullable=True)
+
+    # 事務の反映判断（異常判定・status とは独立。append-only のまま履歴として残す）
+    reflection_status = Column(String, nullable=False, default="pending")
+    reflection_reject_reason_code = Column(String, nullable=True)
+    reflection_reject_reason_detail = Column(String, nullable=True)
 
 
 class ProductMaster(Base):
@@ -186,7 +192,7 @@ class WorkUnitStatusHistory(Base):
 
 
 class OfficeClosedWorkUnitSuppress(Base):
-    """事務が POST /work/{id}/close で処理した anomaly head（peer）。レコードは残すが事務一覧では除外する。"""
+    """事務が POST /work/{id}/close で1件閉じた元 head。レコードは残すが事務一覧（hide_office_closed_sources）では除外する。"""
 
     __tablename__ = "office_closed_work_unit_suppress"
 

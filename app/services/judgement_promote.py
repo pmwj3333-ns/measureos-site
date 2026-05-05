@@ -27,7 +27,11 @@ from app.services.status_history import (
     append_work_unit_status_history_if_changed,
     norm_work_unit_status,
 )
-from app.services.work_unit_clone import clone_work_unit_row, strip_derived_columns_for_fact_snapshot
+from app.services.work_unit_clone import (
+    clone_work_unit_row,
+    strip_derived_columns_for_fact_snapshot,
+    sync_planned_at_with_planned_facts,
+)
 from app.services.test_clock import reference_utc_now
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -161,6 +165,7 @@ def promote_blue_to_red_after_judgement(
             strip_derived_columns_for_fact_snapshot(nu)
             db.add(nu)
             db.flush()
+            sync_planned_at_with_planned_facts(nu)
             before = norm_work_unit_status(nu.status)
             nu.status = "red"
             nu.updated_at = datetime.utcnow()

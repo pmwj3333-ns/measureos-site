@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.database import get_db
-from app.schemas import ProductMasterEnsureIn, ProductMasterOut, ProductMasterPatchIn
+from app.schemas import (
+    ProductMasterCreateIn,
+    ProductMasterEnsureIn,
+    ProductMasterOut,
+    ProductMasterPatchIn,
+)
 
 router = APIRouter(prefix="/v2/product-master", tags=["v2-商品マスタ"])
 
@@ -38,6 +43,40 @@ def list_product_master(
         q = q.filter(models.ProductMaster.is_active.is_(True))
     rows = q.order_by(models.ProductMaster.label.asc(), models.ProductMaster.id.asc()).all()
     return [_row_to_out(r) for r in rows]
+
+
+@router.post("", summary="商品マスタ新規作成（label のみ・同一会社で label 重複は 422）")
+def create_product_master(body: ProductMasterCreateIn, db: Session = Depends(get_db)):
+    cid = (body.company_id or "").strip()
+    lb = (body.label or "").strip()
+    if not cid:
+        raise HTTPException(status_code=422, detail="company_id が空です")
+    if not lb:
+        raise HTTPException(status_code=422, detail="label が空です")
+    clash = (
+        db.query(models.ProductMaster)
+        .filter(models.ProductMaster.company_id == cid)
+        .filter(models.ProductMaster.label == lb)
+        .first()
+    )
+    if clash:
+        raise HTTPException(
+            status_code=422,
+            detail="同じ会社に既にその商品名（label）があります",
+        )
+    now = datetime.utcnow()
+    row = models.ProductMaster(
+        company_id=cid,
+        label=lb,
+        product_code=None,
+        is_active=True,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _row_to_out(row)
 
 
 @router.post("/ensure", summary="ラベルが無ければマスタに1件作成（product_code は null）")

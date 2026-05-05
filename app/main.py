@@ -96,6 +96,32 @@ def _sqlite_migrate():
                         "UPDATE work_unit SET is_article7_deviation = 1 WHERE is_deviation = 1"
                     )
                 )
+            if "reflection_status" not in wu:
+                conn.execute(
+                    text(
+                        "ALTER TABLE work_unit ADD COLUMN reflection_status VARCHAR DEFAULT 'pending'"
+                    )
+                )
+            if "reflection_reject_reason_code" not in wu:
+                conn.execute(
+                    text(
+                        "ALTER TABLE work_unit ADD COLUMN reflection_reject_reason_code VARCHAR"
+                    )
+                )
+            if "reflection_reject_reason_detail" not in wu:
+                conn.execute(
+                    text(
+                        "ALTER TABLE work_unit ADD COLUMN reflection_reject_reason_detail VARCHAR"
+                    )
+                )
+            if "actual_memo" not in wu:
+                conn.execute(text("ALTER TABLE work_unit ADD COLUMN actual_memo VARCHAR"))
+            conn.execute(
+                text(
+                    "UPDATE work_unit SET reflection_status = 'pending' "
+                    "WHERE reflection_status IS NULL OR TRIM(reflection_status) = ''"
+                )
+            )
             if "planned_lines_json" not in wu:
                 conn.execute(
                     text("ALTER TABLE work_unit ADD COLUMN planned_lines_json VARCHAR")

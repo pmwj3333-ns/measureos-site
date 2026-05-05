@@ -20,7 +20,10 @@ from app.schemas import (
     PriorityRebuildOut,
 )
 from app.services.article7_priority_phase1 import compute_article7_priority_phase1
-from app.services.priority_article7_context import article7_context_for_priority_items
+from app.services.priority_article7_context import (
+    article5_progress_for_priority_items,
+    article7_context_for_priority_items,
+)
 from app.services.priority_rebuild import rebuild_priority_items_for_company
 
 router = APIRouter(prefix="/v2/priority", tags=["v2-第7条"])
@@ -66,34 +69,45 @@ def _norm_due_date(raw: Optional[str]) -> Optional[str]:
 def _rows_to_out(
     rows: List[models.PriorityItem],
     ctx: Optional[Dict[int, Tuple[Optional[str], List[str]]]] = None,
+    article5_prog: Optional[Dict[int, Tuple[float, float]]] = None,
 ) -> List[PriorityItemOut]:
     ctx = ctx or {}
     items: List[PriorityItemOut] = []
     for r in rows:
         hint, notices = ctx.get(int(r.id), (None, []))
         pl, pscore = _priority_tuple_for_row(r)
-        items.append(
-            PriorityItemOut(
-                id=r.id,
-                product_code=getattr(r, "product_code", None) or "",
-                label=r.label or "",
-                ship_value=float(r.ship_value),
-                stock_qty=float(getattr(r, "stock_qty", None) or 0),
-                prod_value=float(r.prod_value),
-                due_date=r.due_date,
-                status=(getattr(r, "status", None) or "open").strip() or "open",
-                priority_level=str(pl),
-                priority_score=float(pscore),
-                article7_actual_hint=hint,
-                article7_notices=list(notices),
-            )
+        kw = dict(
+            id=r.id,
+            product_code=getattr(r, "product_code", None) or "",
+            label=r.label or "",
+            ship_value=float(r.ship_value),
+            stock_qty=float(getattr(r, "stock_qty", None) or 0),
+            prod_value=float(r.prod_value),
+            due_date=r.due_date,
+            status=(getattr(r, "status", None) or "open").strip() or "open",
+            priority_level=str(pl),
+            priority_score=float(pscore),
+            article7_actual_hint=hint,
+            article7_notices=list(notices),
         )
+        if article5_prog is not None:
+            ac, rem = article5_prog.get(int(r.id), (0.0, 0.0))
+            kw["article5_completed_qty"] = float(ac)
+            kw["article5_remaining_qty"] = float(rem)
+        items.append(PriorityItemOut(**kw))
     return items
 
 
 @router.get("/items", summary="第7条・優先指示一覧（会社単位・open のみ）")
 def list_priority_items(
     company_id: str = Query(..., description="company_id"),
+    article5_progress: bool = Query(
+        False,
+        description=(
+            "true のとき各項目に article5_completed_qty / article5_remaining_qty を付与（現場向け）。"
+            "false のときは null のまま。"
+        ),
+    ),
     db: Session = Depends(get_db),
 ):
     cid = (company_id or "").strip()
@@ -109,7 +123,12 @@ def list_priority_items(
 
     rows_sorted = sorted(rows, key=_priority_sort_key)
     ctx = article7_context_for_priority_items(cid, rows_sorted, db)
-    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx))
+    prog = (
+        article5_progress_for_priority_items(cid, rows_sorted, db)
+        if article5_progress
+        else None
+    )
+    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx, prog))
 
 
 @router.post(

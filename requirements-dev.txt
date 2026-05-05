@@ -1,0 +1,3 @@
+# 開発・CI 用（pytest で office_v2 集約テストなど）
+pytest>=7.4.0
+httpx>=0.24.0

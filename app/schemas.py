@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 
 
 # ─── 会社設定 ───────────────────────────────────────────────
@@ -107,6 +107,8 @@ class ActualIn(BaseModel):
     user_pattern: Optional[str] = None
     # 第7条逸脱（予定外ラベル）のときのみ必須。逸脱でないときは送らずサーバがクリアする。
     deviation_reason: Optional[str] = None
+    # 現場・実績時のみ任意（誤入力説明・補足）
+    actual_memo: Optional[str] = None
 
 
 class PlannedIn(BaseModel):
@@ -174,6 +176,15 @@ class PriorityItemOut(BaseModel):
     # Package A: 第5条（WorkUnit 実績）から付与する表示のみ。第7条の数量は変更しない。
     article7_actual_hint: Optional[str] = None
     article7_notices: List[str] = Field(default_factory=list)
+    # GET ?article5_progress=1 のときのみ。現場第5条画面の進捗表示用（優先順位一覧では未使用）。
+    article5_completed_qty: Optional[float] = Field(
+        None,
+        description="第5条・actual_at あり実績を商品一致で集計した累計数量（参考・第7条は更新しない）。",
+    )
+    article5_remaining_qty: Optional[float] = Field(
+        None,
+        description="max(0, prod_value - article5_completed_qty)。",
+    )
 
 
 class PriorityItemsOut(BaseModel):
@@ -228,6 +239,13 @@ class ProductMasterEnsureIn(BaseModel):
     label: str
 
 
+class ProductMasterCreateIn(BaseModel):
+    """POST /v2/product-master（重複 label は 422。ensure は GET 相当の冪等作成）。"""
+
+    company_id: str
+    label: str
+
+
 class ProductMasterPatchIn(BaseModel):
     product_code: Optional[str] = None
     label: Optional[str] = None
@@ -266,6 +284,19 @@ class WorkUnitStatusHistoryItem(BaseModel):
     trigger_type: Optional[str] = None
 
 
+class OfficeReflectionPatch(BaseModel):
+    """事務画面・反映判断のみ更新（異常判定・status は変更しない）。"""
+
+    reflection_status: Literal["pending", "accepted", "rejected"]
+    reject_reason_code: Optional[str] = Field(
+        None,
+        description="rejected 時のみ。input_error | outside_instruction | other",
+    )
+    reject_reason_detail: Optional[str] = Field(
+        None, description="その他理由や補足（other 選択時は推奨）"
+    )
+
+
 class WorkUnitOut(BaseModel):
     id:                  int
     company_id:          str
@@ -288,6 +319,7 @@ class WorkUnitOut(BaseModel):
     actual_lines:        Optional[List[WorkLineOut]] = None
     actual_value:        Optional[float]
     actual_at:           Optional[str]
+    actual_memo:         Optional[str] = None
     pattern_a:           Optional[bool] = None
     pattern_b:           Optional[bool] = None
     user_pattern:        Optional[str] = None  # 現場申告 B のみ（未申告は null）。system_pattern とは独立
@@ -311,4 +343,10 @@ class WorkUnitOut(BaseModel):
     is_deviation:        bool = False
     is_article7_deviation: bool = False
     deviation_reason:    Optional[str] = None
+    reflection_status: str = "pending"
+    reflection_reject_reason_code: Optional[str] = None
+    reflection_reject_reason_detail: Optional[str] = None
     office_chain_hint:   str = ""
+    is_actual_revision: bool = False
+    actual_revision_detail_line: Optional[str] = None
+    actual_revision_notice_strong: bool = False

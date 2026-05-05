@@ -56,7 +56,17 @@
   <div class="bar">
     <div>
       <label for="company">company_id</label>
-      <input type="text" id="company" placeholder="例: demo_co" style="width:220px" />
+      <input
+        type="text"
+        id="company"
+        name="pm_company_key"
+        placeholder="例: demo_co"
+        style="width:220px"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
     </div>
     <div>
       <label for="show-inactive">表示</label>
@@ -67,6 +77,14 @@
     <button type="button" id="btn-load">読み込み</button>
   </div>
   <p id="msg" class="hint"></p>
+
+  <div class="bar" style="margin-top:8px; padding-top:12px; border-top:1px solid #e5e5ea;">
+    <div style="flex:1; min-width:200px; max-width:420px;">
+      <label for="new-label">新規商品名（label）</label>
+      <input type="text" id="new-label" placeholder="例: 商品C" style="width:100%" autocomplete="off" />
+    </div>
+    <button type="button" id="btn-add">追加</button>
+  </div>
 
   <div style="overflow-x:auto;">
     <table id="tbl">
@@ -85,7 +103,7 @@
     </table>
   </div>
 
-  <p class="hint">API: <code>GET /v2/product-master?company_id=…</code> · <code>PATCH /v2/product-master/{id}</code></p>
+  <p class="hint">API: <code>GET /v2/product-master?company_id=…</code> · <code>POST /v2/product-master</code>（新規） · <code>PATCH /v2/product-master/{id}</code></p>
 
 <script>
 (function () {
@@ -110,7 +128,33 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.detail || res.statusText || String(res.status));
+      throw new Error(detailToMessage(data.detail) || res.statusText || String(res.status));
+    }
+    return data;
+  }
+
+  function detailToMessage(detail) {
+    if (detail == null) return "";
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      try {
+        return detail.map((x) => (x && x.msg) || JSON.stringify(x)).join("；");
+      } catch (_) {
+        return String(detail);
+      }
+    }
+    return String(detail);
+  }
+
+  async function createRow(companyId, label) {
+    const res = await fetch("/v2/product-master", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company_id: companyId, label: label }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(detailToMessage(data.detail) || res.statusText || String(res.status));
     }
     return data;
   }
@@ -222,6 +266,31 @@
   }
 
   $("btn-load").addEventListener("click", load);
+  $("btn-add").addEventListener("click", async () => {
+    const cid = $("company").value.trim();
+    const lb = $("new-label").value.trim();
+    if (!cid) {
+      setMsg("company_id を入力してください", "err");
+      return;
+    }
+    if (!lb) {
+      setMsg("商品名（label）を入力してください", "err");
+      return;
+    }
+    const btn = $("btn-add");
+    btn.disabled = true;
+    setMsg("");
+    try {
+      await createRow(cid, lb);
+      $("new-label").value = "";
+      setMsg("追加しました。一覧を更新します。", "ok");
+      await load();
+    } catch (e) {
+      setMsg(String(e.message || e), "err");
+    } finally {
+      btn.disabled = false;
+    }
+  });
   const params = new URLSearchParams(location.search);
   const qc = params.get("company_id") || params.get("company");
   if (qc) $("company").value = qc.trim();

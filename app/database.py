@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
@@ -6,7 +7,16 @@ from sqlalchemy.orm import DeclarativeBase, Session as SASession, sessionmaker
 
 # 起動時のカレントディレクトリに依存させない（別の measure_os.db を見て「一向に変わらない」原因になる）
 _DB_FILE = (Path(__file__).resolve().parent.parent / "measure_os.db").resolve()
-DATABASE_URL = f"sqlite:///{_DB_FILE.as_posix()}"
+_sql_override = os.environ.get("MEASUREOS_SQLITE_URL", "").strip()
+if _sql_override:
+    # pytest など: sqlite:///… のフル URL、またはファイルパスをそのまま指定
+    DATABASE_URL = (
+        _sql_override
+        if _sql_override.startswith("sqlite:")
+        else f"sqlite:///{Path(_sql_override).expanduser().resolve().as_posix()}"
+    )
+else:
+    DATABASE_URL = f"sqlite:///{_DB_FILE.as_posix()}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

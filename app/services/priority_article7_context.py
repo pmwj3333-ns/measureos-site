@@ -1,6 +1,6 @@
-"""第7条一覧向け: 第5条（WorkUnit 実績）から注意・実績ヒントを付与する。
+"""第7条一覧向け: 第5条（WorkUnit 実績）から注意・ヒント・（現場向け）進捗数量を付与する。
 
-第7条（PriorityItem）の数量・行自体は一切更新しない。表示用メタデータのみ。
+第7条（PriorityItem）の数量・status・行自体は一切更新しない。表示用メタデータのみ。
 """
 
 from __future__ import annotations
@@ -123,6 +123,63 @@ def _fmt_qty(x: float) -> str:
     if abs(x - round(x)) < 1e-9:
         return str(int(round(x)))
     return str(round(x, 2))
+
+
+def _sum_actuals_all_finalized(
+    units: List[models.WorkUnit],
+    p: models.PriorityItem,
+    im: str,
+) -> float:
+    """actual_at がある行のみ、ライン単位で PriorityItem に属する数量をすべて合算する。"""
+    total = 0.0
+    for u in units:
+        if getattr(u, "actual_at", None) is None:
+            continue
+        for line in _actual_lines_resolved(u, im):
+            if not _line_belongs_to_priority(line, p):
+                continue
+            try:
+                v = float(line.get("value", 0))
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(v) and v > 0:
+                total += v
+    return total
+
+
+def article5_progress_for_priority_items(
+    company_id: str,
+    priorities: List[models.PriorityItem],
+    db: Session,
+) -> Dict[int, Tuple[float, float]]:
+    """
+    priority.id -> (completed_qty, remaining_qty)。
+    remaining_qty = max(0, prod_value - completed_qty)。PriorityItem は更新しない。
+    """
+    cid = (company_id or "").strip()
+    out: Dict[int, Tuple[float, float]] = {}
+    if not cid or not priorities:
+        return out
+
+    settings = _settings_ephemeral(cid, db)
+    im = _norm_input_mode(settings)
+
+    units = (
+        db.query(models.WorkUnit)
+        .filter(models.WorkUnit.company_id == cid)
+        .filter(models.WorkUnit.actual_at.isnot(None))
+        .all()
+    )
+
+    for p in priorities:
+        completed = _sum_actuals_all_finalized(units, p, im)
+        prod = float(p.prod_value) if p.prod_value is not None else 0.0
+        if not math.isfinite(prod) or prod < 0:
+            prod = 0.0
+        remaining = max(0.0, prod - completed)
+        out[int(p.id)] = (completed, remaining)
+
+    return out
 
 
 def _sum_actuals_for_priority(

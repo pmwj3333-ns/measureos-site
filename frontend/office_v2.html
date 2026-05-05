@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>MEASURE OS — 事務（未対応確認・完了）</title>
+<title>MEASURE OS — 事務（実績・訂正）</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -24,7 +24,7 @@
   header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; }
   .main {
     display: grid;
-    grid-template-columns: 1fr min(400px, 40vw);
+    grid-template-columns: 1fr min(380px, 38vw);
     gap: 0;
     min-height: calc(100vh - 72px);
   }
@@ -36,16 +36,10 @@
     border-right: 1px solid #dde2e8;
     background: #fff;
   }
-  @media (max-width: 1000px) {
-    .panel { border-right: none; border-bottom: 1px solid #dde2e8; }
-  }
   .detail-panel {
     background: #fafbfc;
     padding: 16px 20px 32px;
     border-left: 1px solid #e8ecf0;
-  }
-  @media (max-width: 1000px) {
-    .detail-panel { border-left: none; }
   }
   .bar {
     display: flex;
@@ -74,24 +68,44 @@
   }
   .btn-load { background: #1e3a5f; color: #fff; }
   .btn-load:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-close {
-    background: #2d6a4f;
+  .btn-office-ack-close {
+    background: #166534;
     color: #fff;
-    margin-top: 12px;
     width: 100%;
+    margin-bottom: 12px;
+    padding: 10px 14px;
   }
-  .btn-close:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-office-ack-close:disabled { opacity: 0.5; cursor: not-allowed; }
+  .detail-actions[hidden] { display: none !important; }
   .hint { font-size: 0.72rem; color: #6b7280; margin-top: 8px; }
   .err { color: #b42318; font-size: 0.85rem; margin-top: 8px; }
   .ok { color: #1d6f42; font-size: 0.85rem; margin-top: 8px; }
+  /* 訂正あり（実績見出しのみ・通常報告のバッジは無し） */
+  .office-section-revision-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    vertical-align: middle;
+  }
+  .office-section-revision-badge[hidden] { display: none !important; }
   .wrap-table { overflow-x: auto; border: 1px solid #dde2e8; border-radius: 8px; }
+  .wrap-scroll {
+    max-height: min(420px, 55vh);
+    overflow: auto;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.76rem;
   }
   th, td {
-    padding: 8px 8px;
+    padding: 8px;
     text-align: left;
     border-bottom: 1px solid #eef1f4;
     vertical-align: top;
@@ -102,17 +116,6 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  td.cell-compact {
-    max-width: 10.5em;
-    white-space: normal;
-    word-break: break-word;
-    line-height: 1.35;
-  }
-  td.cell-anomaly {
-    max-width: 9em;
-    white-space: normal;
-    line-height: 1.35;
-  }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: #f7f9fc; }
   tbody tr.selected {
@@ -120,8 +123,18 @@
     outline: 2px solid #4c8bf5;
     outline-offset: -2px;
   }
+  .cell-flow { max-width: 14em; line-height: 1.35; word-break: break-word; }
+  /* 訂正は一覧セルで強調（画面内のみ・バッジとは別チャネル） */
+  .cell-revision {
+    font-size: 0.78rem;
+    color: #7f1d1d;
+    font-weight: 700;
+    max-width: 18em;
+    line-height: 1.35;
+  }
   .status-blue { color: #1565c0; font-weight: 600; }
   .status-red { color: #c62828; font-weight: 600; }
+  .status-muted { color: #6b7280; font-weight: 600; }
   .unreg-tag {
     display: inline-block;
     margin-left: 4px;
@@ -134,6 +147,14 @@
     vertical-align: middle;
   }
   .mono { font-family: ui-monospace, monospace; font-size: 0.74rem; }
+  .office-section-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin: 18px 0 10px;
+    letter-spacing: 0.02em;
+  }
+  .office-section-title:first-of-type { margin-top: 6px; }
   .detail-title {
     font-size: 0.8rem;
     font-weight: 700;
@@ -159,48 +180,18 @@
     line-height: 1.5;
   }
   .lines-detail-list li { margin: 2px 0; }
-  .agg-note {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.72rem;
-    color: #636366;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-  .office-section-title {
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: #1e3a5f;
-    margin: 18px 0 10px;
-    letter-spacing: 0.02em;
-  }
-  .office-section-title:first-of-type {
-    margin-top: 6px;
-  }
-  .office-recent-hint {
-    font-size: 0.72rem;
-    color: #6b7280;
-    margin: -4px 0 10px;
-    line-height: 1.45;
-  }
-  .status-normal { color: #1f2937; font-weight: 600; }
-  .status-closed { color: #6b7280; font-weight: 600; }
-  .wrap-table.office-recent-scroll {
-    max-height: min(520px, 62vh);
-    overflow-x: auto;
-    overflow-y: auto;
-  }
 </style>
 </head>
 <body>
 <header>
-  <h1>事務 — 未対応確認（完了）</h1>
+  <h1>事務 — 実績・訂正</h1>
   <p>
-    <strong>上段：未対応（青・赤）</strong>　<strong>下段：実績確定の履歴のみ</strong>（青・赤は上段のみ）を同一画面で確認します。
-    <span id="office-header-phase-hint"><strong>未対応（青・赤）</strong>を表示します。読み込み時にフェーズ設定を反映します。</span>
-    未対応は<strong>同一異常を集約</strong>。下段は<strong>未対応の青・赤は含めず</strong>、<strong>実績確定（actual_at あり）</strong>かつ<strong>完了またはそれ以外の確定分（normal / closed）</strong>だけを<strong>同一内容で集約</strong>し、優先順で約20件まで表示します（debug は常に全履歴）。
-    <strong>完了（closed）</strong>も下段で確認できます。
-    完了後は <strong>状態を戻せません</strong>（現場・事務の更新は 409）。
+    <span id="office-header-phase-hint"></span>
+    現場の入力は止めません。<strong>同一キー・同一商品の最新実績が正（在庫反映）</strong>で、過去行は履歴として残ります。
+    通知は<strong>訂正</strong>に限定します（一覧の赤字列・詳細・実績見出しのバッジ）。通常報告は一覧で確認するだけです（メール・音・ブラウザ通知はありません）。
+    <a href="/debug/v2" style="color:#fff;">debug</a>
+    · <a href="/priority/v2" style="color:#fff;">優先度（第7条）</a>
+    · <a href="/product/master/v2" style="color:#fff;">商品マスタ</a>
   </p>
 </header>
 
@@ -216,57 +207,49 @@
       </div>
     </div>
     <p class="hint" id="office-hint-api">
-      API: <span class="mono">GET /v2/work/list</span>
-      を<strong>2回</strong>（未対応用は <span class="mono">hide_office_closed_sources=true</span>、最近の報告用は<strong>全件</strong>）読み込みます。
-      <a href="/debug/v2">debug v2</a> は全履歴のままです。
-      <a href="/priority/v2">優先度一覧（第7条）</a> · <a href="/product/master/v2">商品マスタ</a>
+      API: <span class="mono">GET /v2/work/list</span> を2回取得（一覧Aは要注意用・一覧Bは全件）。
+      <strong>訂正</strong>は API の <span class="mono">actual_revision_detail_line</span> が空でないときのみ表示（一覧・詳細・見出しの「訂正あり」。<span class="mono">is_actual_revision</span> は UI では参照しません）。
+      通常の実績・青／赤の追加はバッジしません。
     </p>
     <p id="msg" class="err" hidden></p>
     <p id="ok" class="ok" hidden></p>
 
-    <h2 class="office-section-title">未対応（青・赤）</h2>
-    <div class="wrap-table">
+    <h2 class="office-section-title">要注意（青・赤）</h2>
+    <p class="hint">判定ロジックはサーバのままです（一覧では要点のみ）。</p>
+    <div class="wrap-table wrap-scroll">
       <table>
         <thead>
           <tr>
             <th>営業日</th>
             <th>班長</th>
-            <th>商品</th>
-            <th>予告数</th>
-            <th>実績数</th>
-            <th>異常内容</th>
-            <th>履歴補足</th>
+            <th>予告→実績（概要）</th>
+            <th>要点</th>
             <th>状態</th>
           </tr>
         </thead>
         <tbody id="tbody-anomaly">
-          <tr><td colspan="8" class="detail-empty">会社ID を入力して読み込み</td></tr>
+          <tr><td colspan="5" class="detail-empty">会社ID を入力して読み込み</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h2 class="office-section-title office-section-title-recent">最近の現場報告（確定履歴）</h2>
-    <p class="hint office-recent-hint">
-      <strong>未対応（青・赤）は表示しません</strong>（上段のみ）。下段は<strong>実績確定（actual_at あり）</strong>かつ<strong>状態が normal または closed</strong>の行だけです。予告のみ・着手のみ・実績未入力は除外します。
-      同一内容は<strong>集約</strong>し、優先順で並べ<strong>最新約20件</strong>に絞ります（closed は必要最小限）。
-      全履歴は <a href="/debug/v2">debug</a> で確認してください。
-    </p>
-    <div class="wrap-table office-recent-scroll">
+    <h2 class="office-section-title">
+      実績（最新のみ）
+      <span id="office-badge-revision-latest" class="office-section-revision-badge" hidden>訂正あり</span>
+    </h2>
+    <p class="hint">同一班長・営業日・工程などの単位で、<strong>商品ごとの最新実績</strong>だけを表示します（別商品は別行）。</p>
+    <div class="wrap-table wrap-scroll">
       <table>
         <thead>
           <tr>
             <th>営業日</th>
             <th>班長</th>
-            <th>商品</th>
-            <th>予告数</th>
-            <th>実績数</th>
-            <th>異常内容</th>
-            <th>履歴補足</th>
-            <th>状態</th>
+            <th>予告→実績</th>
+            <th>訂正</th>
           </tr>
         </thead>
-        <tbody id="tbody-recent">
-          <tr><td colspan="8" class="detail-empty">読み込みで表示</td></tr>
+        <tbody id="tbody-latest">
+          <tr><td colspan="4" class="detail-empty">読み込みで表示</td></tr>
         </tbody>
       </table>
     </div>
@@ -276,66 +259,69 @@
     <div class="detail-title">詳細</div>
     <div id="detail-empty" class="detail-empty">一覧から行を選択してください。</div>
     <div id="detail-body" hidden>
+      <div id="detail-actions" class="detail-actions" hidden>
+        <button type="button" class="btn-office-ack-close" id="btn-office-attention-close">
+          確認済みにする
+        </button>
+      </div>
       <dl class="dl" id="detail-dl"></dl>
-      <button type="button" class="btn-close" id="btn-close" disabled>完了にする（closed）</button>
-      <p id="close-msg" class="err" hidden></p>
     </div>
   </aside>
 </div>
 
 <script src="/static/format-jst-datetime.js"></script>
 <script>
+/*
+ * ─── 手動 QA（実績「最新のみ」・product_key 単位）────────────────────────────
+ * 自動テスト: リポジトリ直下で  pip install -r requirements-dev.txt  のうえ
+ *            pytest tests/test_office_v2_latest_actual.py -v
+ *
+ * ① 同一商品の上書き
+ *    - 現場で同一会社・同一 task/process・田中四 で壳を開き、商品A 10 で実績登録。
+ *    - office_v2 で「実績（最新のみ）」に商品A 10 が1行だけあることを確認。
+ *    - 同条件でもう一度壳から実績、商品A 20 で登録。
+ *    - 一覧は商品A 20 のみ（10 の行は消える）。訂正列に「商品A：10 → 20（訂正）」。
+ *    - 詳細は最新スナップショット（20）の WorkUnit。
+ *
+ * ② 別商品の保持
+ *    - 続けて田中四・同じ task/process で商品B 10 を実績登録。
+ *    - 一覧に「商品A 20」「商品B 10」の2行（別 product_key で別行・片方が natural key だけで消えないこと）。
+ *
+ * ③ 訂正なし
+ *    - 田中三・商品C 20 を登録後、同条件でもう一度商品C 20 を登録。
+ *    - 一覧は商品C 20 が1行のみ、訂正列は空／「—」。
+ *
+ * ④ 同一商品の再登場（A→B→A）
+ *    - 田中四で商品A 10 → 続けて商品B 10 → 続けて商品A 20。
+ *    - 一覧は2行（商品A 20・商品B 10）。A の初回10は一覧から消える。
+ *    - 訂正は商品A のみ「商品A：10 → 20（訂正）」。商品B の行には訂正が付かない。
+ *
+ * 参考: collectLatestActualRows は natural_key × product_key で最新を保持する。
+ *       status が blue/red の実績行は実績一覧に含めず、要注意のみに表示する（バグ再発防止）。
+ *
+ * ─── 画面内通知（訂正のみ）──────────────────────────────────────────────────
+ * · 通常報告（正常／青／赤）: バッジなし。一覧のみ。
+ * · 訂正: actual_revision_detail_line が空でないとき、一覧「訂正」列・詳細・見出し「訂正あり」（is_actual_revision は見ない）。
+ */
 (function () {
   const $ = (id) => document.getElementById(id);
   const tbodyAnomaly = $("tbody-anomaly");
-  const tbodyRecent = $("tbody-recent");
+  const tbodyLatest = $("tbody-latest");
   const companyEl = $("company");
-  /** 現場 v2・事務 v2 で共有（field_v2 と同一キー） */
   const LS_SHARED_COMPANY_ID = "company_id";
+
+  let rows = [];
+  let rowsAll = [];
+  let filteredAttn = [];
+  let filteredLatest = [];
+  let selected = null;
+  let selectedSection = null;
+  let phase2Enabled = false;
 
   function persistSharedCompanyFromOffice() {
     const v = companyEl.value.trim();
     if (v) localStorage.setItem(LS_SHARED_COMPANY_ID, v);
     else localStorage.removeItem(LS_SHARED_COMPANY_ID);
-  }
-
-  const btnLoad = $("btn-load");
-  const btnClose = $("btn-close");
-  const detailEmpty = $("detail-empty");
-  const detailBody = $("detail-body");
-  const detailDl = $("detail-dl");
-  const msg = $("msg");
-  const ok = $("ok");
-  const closeMsg = $("close-msg");
-
-  const TABLE_COLS = 8;
-  const TABLE_COLS_RECENT = 8;
-  const NAME_PREVIEW_MAX = 2;
-  /** 下段「最近の報告」の表示上限（フロントのみ・debug は無制限） */
-  const RECENT_DISPLAY_LIMIT = 20;
-  /** 同一覧に載せる closed の上限（「必要最小限」） */
-  const RECENT_MAX_CLOSED_SLOTS = 5;
-
-  let rows = [];
-  /** hide=false の全件（下段の集約・同一キー判定の全文脈用） */
-  let rowsAll = [];
-  let filtered = [];
-  let filteredRecent = [];
-  let selected = null;
-  /** "anomaly" | "recent" — 完了ボタンは未対応一覧のみ */
-  let selectedSection = null;
-  /** サーバのフェーズ2（新規赤化）。一覧は常に青・赤。ヒント文言のみに使用。 */
-  let phase2Enabled = false;
-  /** renderRecentTable が計算（load の OK メッセージ用） */
-  let recentOfficeStats = {
-    sourceFiltered: 0,
-    aggregated: 0,
-    displayed: 0,
-  };
-
-  function param(name) {
-    const q = new URLSearchParams(window.location.search);
-    return (q.get(name) || "").trim();
   }
 
   function esc(s) {
@@ -345,21 +331,11 @@
       .replace(/>/g, "&gt;");
   }
 
-  /**
-   * 商品名・ラベルを常に1つの文字列として扱う。
-   * label が配列（1文字ずつ）で来た場合に String() や join(" ") で崩れないよう、配列は空文字で連結する。
-   */
-  function coerceProductLabel(raw) {
-    if (raw == null) return "";
-    if (Array.isArray(raw)) {
-      return raw
-        .map((x) => (x == null ? "" : String(x).trim()))
-        .join("");
-    }
-    if (typeof raw === "number" && Number.isFinite(raw)) {
-      return String(raw);
-    }
-    return String(raw).trim();
+  function escAttr(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
   }
 
   function fmt(v) {
@@ -367,7 +343,32 @@
     return esc(v);
   }
 
-  /** 一覧の班長列: work_unit.user_id。名前:工程 形式なら名前のみ */
+  /** API の actual_revision_detail_line（\\n 区切り）をそのまま表示用 HTML に（エスケープ後に <br/>） */
+  function revisionDetailToHtml(raw) {
+    if (raw == null || String(raw).trim() === "") return "—";
+    const parts = String(raw)
+      .split(/\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => esc(line));
+    return parts.length ? parts.join("<br/>") : "—";
+  }
+
+  /** 訂正の表示・バッジ判定はこれのみ（is_actual_revision はサーバ内部フラグとして無視） */
+  function hasActualRevisionDetailLine(row) {
+    if (!row) return false;
+    const raw = row.actual_revision_detail_line;
+    return raw != null && String(raw).trim() !== "";
+  }
+
+  function coerceProductLabel(raw) {
+    if (raw == null) return "";
+    if (Array.isArray(raw))
+      return raw.map((x) => (x == null ? "" : String(x).trim())).join("");
+    if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
+    return String(raw).trim();
+  }
+
   function formatLeaderDisplay(userId) {
     if (userId == null || String(userId).trim() === "") return "—";
     let s = String(userId).trim();
@@ -380,34 +381,6 @@
     return s ? esc(s) : "—";
   }
 
-  const DATETIME_KEYS = new Set([
-    "planned_at",
-    "started_at",
-    "actual_at",
-    "created_at",
-  ]);
-
-  const DETAIL_LABEL_JA = {
-    id: "ID",
-    is_unregistered_user: "未登録ユーザー",
-    user_source: "班長照合",
-    planned_at: "予告時刻",
-    started_at: "着手時刻",
-    actual_at: "実績時刻",
-    created_at: "登録時刻",
-    user_pattern: "現場選択",
-    system_pattern: "システム判定",
-    input_source: "入力経路",
-    office_chain_hint: "同一キー履歴",
-  };
-
-  function lineDisplayName(line) {
-    if (!line || typeof line !== "object") return "";
-    const a = line.label != null ? coerceProductLabel(line.label) : "";
-    const b = line.item_name != null ? coerceProductLabel(line.item_name) : "";
-    return (a || b || "").trim();
-  }
-
   function parseLinesJsonMaybe(raw) {
     if (typeof raw !== "string" || !raw.trim()) return null;
     try {
@@ -418,46 +391,62 @@
     }
   }
 
-  function normalizedLines(row, kind) {
+  function rawLineLabelForDisplay(L) {
+    if (!L || typeof L !== "object") return "";
+    const pick = (raw) => {
+      if (raw == null) return "";
+      if (Array.isArray(raw))
+        return raw.map((x) => (x == null ? "" : String(x))).join("");
+      return String(raw);
+    };
+    const a = pick(L.label);
+    if (a !== "") return a;
+    return pick(L.item_name);
+  }
+
+  /** product_code があればそれ、なければラベルの空白正規化（現場・訂正ロジックと揃える） */
+  function normOfficeWs(s) {
+    return String(s || "").replace(/\s+/g, "");
+  }
+
+  function officeProductKeyFromLine(L) {
+    if (!L || typeof L !== "object") return "__none__";
+    const pc = String(L.product_code || "").trim();
+    if (pc) return pc;
+    const lab = rawLineLabelForDisplay(L);
+    return normOfficeWs(lab) || "__none__";
+  }
+
+  /** 当該 work 行に現れる実績 product_key の集合 */
+  function actualProductKeysForRow(r) {
+    const keys = new Set();
+    const arr = resolveLinesArrayForDisplay(r, "actual");
+    for (const L of arr) {
+      if (!L || typeof L !== "object") continue;
+      const v = L.value;
+      if (v == null || !Number.isFinite(Number(v))) continue;
+      keys.add(officeProductKeyFromLine(L));
+    }
+    if (!keys.size) {
+      const av = r.actual_value;
+      const name = legacyRawActualLabel(r);
+      if (name && av != null && Number.isFinite(Number(av)))
+        keys.add(normOfficeWs(name) || "__none__");
+    }
+    return keys;
+  }
+
+  function resolveLinesArrayForDisplay(row, kind) {
     const key = kind === "planned" ? "planned_lines" : "actual_lines";
     let arr = row[key];
     if (!Array.isArray(arr) || !arr.length) {
-      const rawKey = kind === "planned" ? "planned_lines_json" : "actual_lines_json";
-      const parsed = row[rawKey] != null ? parseLinesJsonMaybe(String(row[rawKey])) : null;
+      const rawKey =
+        kind === "planned" ? "planned_lines_json" : "actual_lines_json";
+      const parsed =
+        row[rawKey] != null ? parseLinesJsonMaybe(String(row[rawKey])) : null;
       if (parsed) arr = parsed;
     }
-    const out = [];
-    if (Array.isArray(arr)) {
-      for (const L of arr) {
-        if (!L || typeof L !== "object") continue;
-        const name = lineDisplayName(L);
-        const v = L.value;
-        if (v == null || !Number.isFinite(Number(v))) continue;
-        const row = { name: name || "（無名）", value: Number(v) };
-        if (L.due_date != null && String(L.due_date).trim())
-          row.due_date = String(L.due_date).trim();
-        out.push(row);
-      }
-    }
-    if (out.length) return out;
-    if (kind === "planned") {
-      const pv = row.planned_value;
-      const name =
-        lineDisplayName({ label: row.planned_item_name }) ||
-        lineDisplayName({ label: row.planned_work_label }) ||
-        lineDisplayName({ label: row.planned_work_type });
-      if (name && pv != null && Number.isFinite(Number(pv)))
-        return [{ name, value: Number(pv) }];
-    } else {
-      const av = row.actual_value;
-      const name =
-        lineDisplayName({ label: row.actual_item_name }) ||
-        lineDisplayName({ label: row.actual_work_label }) ||
-        lineDisplayName({ label: row.actual_work_type });
-      if (name && av != null && Number.isFinite(Number(av)))
-        return [{ name, value: Number(av) }];
-    }
-    return [];
+    return Array.isArray(arr) ? arr : [];
   }
 
   function qtyWithUnit(n, unit) {
@@ -466,121 +455,136 @@
     return String(Number(n)) + u;
   }
 
-  /** 行ごとの数量を商品名で合算（同名複数行対応） */
-  function qtyByProductName(lines) {
-    const m = new Map();
-    for (const L of lines) {
-      const k = L.name && L.name !== "（無名）" ? L.name : null;
-      if (!k) continue;
-      const v = Number(L.value);
-      if (!Number.isFinite(v)) continue;
-      m.set(k, (m.get(k) || 0) + v);
+  function rawDisplayLineStringsFromArray(arr) {
+    const out = [];
+    if (!Array.isArray(arr)) return out;
+    for (const L of arr) {
+      if (!L || typeof L !== "object") continue;
+      const labelRaw = rawLineLabelForDisplay(L);
+      const v = L.value;
+      if (v == null || !Number.isFinite(Number(v))) continue;
+      const name = labelRaw !== "" ? labelRaw : "（無名）";
+      out.push(esc(name) + " " + qtyWithUnit(Number(v), L.unit));
     }
-    return m;
+    return out;
   }
 
-  function fmtQtyOrDash(n) {
-    if (n == null || !Number.isFinite(Number(n))) return "—";
-    return String(Number(n));
+  function legacyRawPlannedLabel(row) {
+    const pick = (raw) => {
+      if (raw == null) return "";
+      if (Array.isArray(raw))
+        return raw.map((x) => (x == null ? "" : String(x))).join("");
+      return String(raw);
+    };
+    for (const f of [
+      row.planned_item_name,
+      row.planned_work_label,
+      row.planned_work_type,
+    ]) {
+      const s = pick(f);
+      if (s !== "") return s;
+    }
+    return "";
   }
 
-  /**
-   * 一覧「商品」: 「506（10 → 5）」形式。予告→実績の数量変化を併記。最大2件＋他N件。
-   */
-  function shortProductFlowSummary(r) {
-    const pl = normalizedLines(r, "planned");
-    const al = normalizedLines(r, "actual");
-    const pm = qtyByProductName(pl);
-    const am = qtyByProductName(al);
-    const order = [];
-    const seen = new Set();
-    for (const L of pl) {
-      const k = L.name && L.name !== "（無名）" ? L.name : null;
-      if (k && !seen.has(k)) {
-        seen.add(k);
-        order.push(k);
+  function legacyRawActualLabel(row) {
+    const pick = (raw) => {
+      if (raw == null) return "";
+      if (Array.isArray(raw))
+        return raw.map((x) => (x == null ? "" : String(x))).join("");
+      return String(raw);
+    };
+    for (const f of [
+      row.actual_item_name,
+      row.actual_work_label,
+      row.actual_work_type,
+    ]) {
+      const s = pick(f);
+      if (s !== "") return s;
+    }
+    return "";
+  }
+
+  const NAME_PREVIEW_MAX = 2;
+
+  function actualDisplayPartsFilteredByProductKey(r, unitLabel, productKey) {
+    const arr = resolveLinesArrayForDisplay(r, "actual");
+    let sum = 0;
+    let dispName = "";
+    for (const L of arr) {
+      if (!L || typeof L !== "object") continue;
+      if (officeProductKeyFromLine(L) !== productKey) continue;
+      const v = L.value;
+      if (v == null || !Number.isFinite(Number(v))) continue;
+      sum += Number(v);
+      if (!dispName) {
+        const lb = rawLineLabelForDisplay(L);
+        dispName = lb !== "" ? lb : "（無名）";
       }
     }
-    for (const L of al) {
-      const k = L.name && L.name !== "（無名）" ? L.name : null;
-      if (k && !seen.has(k)) {
-        seen.add(k);
-        order.push(k);
-      }
-    }
-    if (!order.length) {
-      const legacyName =
-        lineDisplayName({ label: r.planned_item_name }) ||
-        lineDisplayName({ label: r.planned_work_label }) ||
-        lineDisplayName({ label: r.actual_item_name }) ||
-        lineDisplayName({ label: r.actual_work_label });
-      if (legacyName) {
-        const pv = r.planned_value;
-        const av = r.actual_value;
-        return (
-          esc(legacyName) +
-          "（" +
-          fmtQtyOrDash(pv) +
-          " → " +
-          fmtQtyOrDash(av) +
-          "）"
-        );
-      }
-      return "—";
-    }
-    const parts = order.map((name) => {
-      const p = pm.has(name) ? pm.get(name) : null;
-      const a = am.has(name) ? am.get(name) : null;
-      return (
-        esc(name) +
-        "（" +
-        fmtQtyOrDash(p) +
-        " → " +
-        fmtQtyOrDash(a) +
-        "）"
-      );
-    });
-    const head = parts.slice(0, NAME_PREVIEW_MAX);
-    const rest = parts.length - NAME_PREVIEW_MAX;
-    const out = head.slice();
-    if (rest > 0) out.push("他" + rest + "件");
-    return out.join(" / ");
+    if (sum > 0 && dispName)
+      return [esc(dispName) + " " + qtyWithUnit(sum, unitLabel)];
+    const av = r.actual_value;
+    const name = legacyRawActualLabel(r);
+    const pk = normOfficeWs(name) || "__none__";
+    if (pk === productKey && av != null && Number.isFinite(Number(av)))
+      return [esc(name || "（無名）") + " " + qtyWithUnit(Number(av), unitLabel)];
+    return [];
   }
 
-  /** system_pattern に B*（数値乖離）が含まれるか */
-  function hasNumericDeviationPattern(raw) {
-    if (raw == null || String(raw).trim() === "") return false;
-    return String(raw)
-      .split(/[,;，]/)
-      .map((s) => s.trim())
-      .some((s) => s.toUpperCase().indexOf("B") === 0);
+  /** productKey が指定されれば実績側はその商品のみ（同一キー内の別商品は別行で残す） */
+  function shortProductFlowSummary(r, unitLabel, productKey) {
+    let plannedParts = rawDisplayLineStringsFromArray(
+      resolveLinesArrayForDisplay(r, "planned"),
+    );
+    let actualParts =
+      productKey != null && String(productKey).length
+        ? actualDisplayPartsFilteredByProductKey(r, unitLabel, String(productKey))
+        : rawDisplayLineStringsFromArray(resolveLinesArrayForDisplay(r, "actual"));
+
+    if (!plannedParts.length) {
+      const name = legacyRawPlannedLabel(r);
+      const pv = r.planned_value;
+      if (name && pv != null && Number.isFinite(Number(pv)))
+        plannedParts = [esc(name) + " " + qtyWithUnit(Number(pv), unitLabel)];
+    }
+    if (!actualParts.length && !(productKey != null && String(productKey).length)) {
+      const name = legacyRawActualLabel(r);
+      const av = r.actual_value;
+      if (name && av != null && Number.isFinite(Number(av)))
+        actualParts = [esc(name) + " " + qtyWithUnit(Number(av), unitLabel)];
+    }
+
+    function joinSide(parts) {
+      if (!parts.length) return "—";
+      const head = parts.slice(0, NAME_PREVIEW_MAX);
+      const rest = parts.length - NAME_PREVIEW_MAX;
+      let s = head.join(", ");
+      if (rest > 0) s += ", 他" + rest + "件";
+      return s;
+    }
+
+    const plannedStr = joinSide(plannedParts);
+    const actualStr = joinSide(actualParts);
+    if (plannedStr === "—" && actualStr === "—") return "—";
+    return "予告：" + plannedStr + "<br>実績：" + actualStr;
   }
 
-  /**
-   * 異常内容: 日本語ラベル。B* のときは合計の予告数→実績数を補足（例: 数値乖離（10 → 5））
-   */
-  function formatAnomalyCellJa(r) {
-    const unreg = r.is_unregistered_user === true;
-    const base = formatSystemPatternJa(r.system_pattern);
-    let out = base;
-    if (unreg) {
-      out = base === "—" ? "未登録ユーザー" : "未登録ユーザー・" + base;
-    }
-    if (r.is_article7_deviation === true || r.is_deviation === true) {
-      out = out === "—" ? "第7条逸脱" : out + "・第7条逸脱";
-    }
-    if (out === "—") return "—";
-    if (r.is_article7_deviation === true || r.is_deviation === true) return out;
-    if (!hasNumericDeviationPattern(r.system_pattern)) return out;
+  function plannedActualArrowSummary(r, unitLabel) {
     const pv = r.planned_value;
     const av = r.actual_value;
-    const pStr = fmtQtyOrDash(pv);
-    const aStr = fmtQtyOrDash(av);
-    if (pStr === "—" && aStr === "—") return out;
-    return out + "（" + pStr + " → " + aStr + "）";
+    const pu =
+      pv != null && Number.isFinite(Number(pv))
+        ? String(Number(pv)) + (unitLabel || "個")
+        : "—";
+    const au =
+      av != null && Number.isFinite(Number(av))
+        ? String(Number(av)) + (unitLabel || "個")
+        : "—";
+    if (pu === "—" && au === "—") return shortProductFlowSummary(r, unitLabel);
+    return pu + " → " + au;
   }
 
-  /** system_pattern → 手順不備・数値乖離 */
   function formatSystemPatternJa(raw) {
     if (raw == null || String(raw).trim() === "") return "—";
     const segs = String(raw)
@@ -603,327 +607,177 @@
     return labels.length ? labels.join("・") : esc(String(raw));
   }
 
-  /** user_pattern（A/B）→ 日本語 */
-  function formatUserPatternJa(raw) {
-    if (raw == null || String(raw).trim() === "") return "—";
-    const parts = String(raw)
-      .split(/[,，]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (!parts.length) return "—";
-    const map = { A: "手順不備", B: "結果不備" };
-    const out = parts.map((p) => map[p] || p);
-    return out.join("・");
+  function formatAnomalyBrief(r) {
+    const unreg = r.is_unregistered_user === true;
+    const base = formatSystemPatternJa(r.system_pattern);
+    let out = base;
+    if (unreg) out = base === "—" ? "未登録ユーザー" : "未登録ユーザー・" + base;
+    if (r.is_article7_deviation === true || r.is_deviation === true)
+      out = out === "—" ? "第7条逸脱" : out + "・第7条逸脱";
+    return out === "—" ? "要注意" : out;
   }
 
   function statusLabelJa(st) {
     const s = (st || "").toString().trim().toLowerCase();
-    if (s === "blue") return "未対応（青）";
-    if (s === "red") return "未対応（赤）";
+    if (s === "blue") return "青";
+    if (s === "red") return "赤";
     if (s === "closed") return "完了";
     if (s === "normal") return "通常";
     return st ? esc(st) : "—";
   }
 
-  /** 事務一覧の集約キー用（planned / actual の行ごと label・product_code・value） */
-  function extractLineSignaturesForAgg(row) {
-    const parts = [];
-    function pull(kind) {
-      const key = kind === "p" ? "planned_lines" : "actual_lines";
-      let arr = row[key];
-      if (!Array.isArray(arr) || !arr.length) {
-        const rawKey =
-          kind === "p" ? "planned_lines_json" : "actual_lines_json";
-        const parsed =
-          row[rawKey] != null ? parseLinesJsonMaybe(String(row[rawKey])) : null;
-        if (parsed) arr = parsed;
-      }
-      if (!Array.isArray(arr)) return;
-      for (const L of arr) {
-        if (!L || typeof L !== "object") continue;
-        const label = lineDisplayName(L).trim();
-        const pc =
-          L.product_code != null ? String(L.product_code).trim() : "";
-        const v = L.value;
-        const vn =
-          v != null && Number.isFinite(Number(v)) ? Number(v) : null;
-        parts.push({
-          k: kind,
-          label: label || "",
-          pc,
-          v: vn,
-        });
-      }
-    }
-    pull("p");
-    pull("a");
-    parts.sort((x, y) => {
-      const sx =
-        x.k +
-        "\t" +
-        x.label +
-        "\t" +
-        x.pc +
-        "\t" +
-        (x.v === null ? "" : String(x.v));
-      const sy =
-        y.k +
-        "\t" +
-        y.label +
-        "\t" +
-        y.pc +
-        "\t" +
-        (y.v === null ? "" : String(y.v));
-      return sx.localeCompare(sy);
-    });
-    return JSON.stringify(parts);
+  function statusClass(st) {
+    const s = (st || "").toLowerCase();
+    if (s === "blue") return "status-blue";
+    if (s === "red") return "status-red";
+    return "status-muted";
   }
 
-  function officeAggAnomalyFingerprint(r) {
-    return [
-      String(r.system_pattern || ""),
-      r.is_unregistered_user === true ? "1" : "0",
-      r.is_article7_deviation === true ? "1" : "0",
-      r.is_deviation === true ? "1" : "0",
-      String(r.planned_value ?? ""),
-      String(r.actual_value ?? ""),
-      String(r.diff_value ?? ""),
-      r.is_missing === true ? "1" : "0",
-      r.is_invalid_flow === true ? "1" : "0",
-      r.is_diff_anomaly === true ? "1" : "0",
-      formatAnomalyCellJa(r),
-    ].join("|");
-  }
-
-  function officeAggregateKey(r) {
-    const st = (r.status || "").toLowerCase();
+  function naturalKey(r) {
     return [
       r.company_id,
       r.task_id,
       r.process_id,
       r.user_id,
       r.business_date,
-      extractLineSignaturesForAgg(r),
-      officeAggAnomalyFingerprint(r),
-      st,
-      String(r.office_chain_hint || "").trim(),
     ].join("\x1e");
   }
 
-  /** append-only で増えた同一異常を事務一覧では1行に（完了 POST は代表 id で従来どおり同一キーまとめ closed） */
-  function buildOfficeAggregatedRows(anomalyRows) {
-    const groups = new Map();
-    for (const r of anomalyRows) {
-      const k = officeAggregateKey(r);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(r);
+  function hasActualRow(r) {
+    if (!r.actual_at || String(r.actual_at).trim() === "") return false;
+    const arr = resolveLinesArrayForDisplay(r, "actual");
+    if (arr.length) {
+      return arr.some(
+        (L) =>
+          L &&
+          L.value != null &&
+          Number.isFinite(Number(L.value)),
+      );
     }
+    return r.actual_value != null && Number.isFinite(Number(r.actual_value));
+  }
+
+  /** 実績「最新のみ」に載せる行: 実績あり・かつ要注意（青・赤）は除外（上段のみ） */
+  function rowEligibleForLatestActualSection(r) {
+    if (!hasActualRow(r)) return false;
+    const st = String(r.status || "").trim().toLowerCase();
+    return st === "normal" || st === "closed";
+  }
+
+  function passesOfficeAnomalyDisplay(r) {
+    const st = (r.status || "").toLowerCase();
+    if (st !== "blue" && st !== "red") return false;
+    if (st === "red") return true;
+    if (r.is_unregistered_user === true) return true;
+    if (r.is_article7_deviation === true || r.is_deviation === true) return true;
+    if (r.is_diff_anomaly === true) return true;
+    if (r.is_invalid_flow === true) return true;
+    if (r.is_missing === true) return true;
+    if (String(r.system_pattern || "").trim()) return true;
+    return false;
+  }
+
+  /** 右側詳細の「7条逸脱理由」行を出すか（一覧には出さない） */
+  function showDeviationReasonInDetail(r) {
+    if (!r) return false;
+    if (r.is_article7_deviation === true || r.is_deviation === true) return true;
+    return String(r.system_pattern || "").indexOf("7条逸脱") !== -1;
+  }
+
+  function collectOfficeAnomalySortedRows(sourceRows) {
     const out = [];
-    for (const members of groups.values()) {
-      members.sort((a, b) => (a.id || 0) - (b.id || 0));
-      const rep = members[members.length - 1];
-      const agg = Object.assign({}, rep);
-      agg._officeAggCount = members.length;
-      agg._officeAggMemberIds = members.map((x) => x.id);
-      agg._officeAggRepresentativeId = rep.id;
-      out.push(agg);
+    for (const row of sourceRows || []) {
+      if (!row) continue;
+      const st = (row.status || "").toLowerCase();
+      if (st === "closed") continue;
+      if (st !== "blue" && st !== "red") continue;
+      if (st === "blue" && !passesOfficeAnomalyDisplay(row)) continue;
+      out.push(row);
     }
     out.sort((a, b) => {
-      const da = String(a.business_date || "");
       const db = String(b.business_date || "");
-      if (da !== db) return db.localeCompare(da);
-      return (b.id || 0) - (a.id || 0);
+      const da = String(a.business_date || "");
+      if (db !== da) return db.localeCompare(da);
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
     });
     return out;
   }
 
-  function naturalKeyStr(r) {
-    return [
-      r.company_id,
-      r.task_id,
-      r.process_id,
-      r.user_id,
-      r.business_date,
-    ].join("|");
-  }
-
-  function closedOccurredBeforeSameKey(sortedAsc, row) {
-    const nk = naturalKeyStr(row);
-    const rid = Number(row.id) || 0;
-    return sortedAsc.some(
-      (x) =>
-        naturalKeyStr(x) === nk &&
-        (Number(x.id) || 0) < rid &&
-        (x.status || "").toLowerCase() === "closed",
-    );
-  }
-
-  function rowSortTimeMs(r) {
-    const raw =
-      r.updated_at ||
-      r.actual_at ||
-      r.planned_at ||
-      r.created_at ||
-      "";
-    const t = Date.parse(raw);
-    return Number.isFinite(t) ? t : 0;
-  }
-
-  function hasActualAt(r) {
-    const v = r.actual_at;
-    if (v == null) return false;
-    return String(v).trim() !== "";
-  }
-
-  /** ノイズとなる完全空行に近いレコードを除外（営業日・班長が無いものは事務判断に不向き） */
-  function hasOfficeRecentMinimalIdentity(r) {
-    const bd = r.business_date != null && String(r.business_date).trim() !== "";
-    const uid = r.user_id != null && String(r.user_id).trim() !== "";
-    return bd && uid;
-  }
-
-  /** 下段ソース: actual_at あり（実績確定）かつ normal / closed のみ（途中ログは履歴に含めない） */
-  function passesOfficeRecentSourceFilter(r) {
-    const st = (r.status || "").toLowerCase().trim();
-    if (st !== "normal" && st !== "closed") return false;
-    if (!hasActualAt(r)) return false;
-    return hasOfficeRecentMinimalIdentity(r);
-  }
-
-  /** 集約後の二重確認（代表行も必ず実績確定・normal|closed） */
-  function passesOfficeRecentAggregatedRow(r) {
-    const st = (r.status || "").toLowerCase().trim();
-    return hasActualAt(r) && (st === "normal" || st === "closed");
-  }
-
-  /** ① 内部優先（_officeRecentPostClose）② normal ③ closed ④ その他 — 青・赤は下段ソースから除外済み */
-  function recentOfficeDisplayRank(r) {
-    if (r._officeRecentPostClose) return 0;
-    const st = (r.status || "").toLowerCase();
-    if (st === "normal") return 1;
-    if (st === "closed") return 2;
-    return 3;
-  }
-
-  function compareOfficeRecentDisplayRows(a, b) {
-    const ra = recentOfficeDisplayRank(a);
-    const rb = recentOfficeDisplayRank(b);
-    if (ra !== rb) return ra - rb;
-    const tb = rowSortTimeMs(b);
-    const ta = rowSortTimeMs(a);
-    if (tb !== ta) return tb - ta;
-    return (Number(b.id) || 0) - (Number(a.id) || 0);
-  }
-
-  /** 下段・履歴補足。「後続正常入力あり」のときのみ（それ以外は —）。 */
-  function recentOfficeChainHintChangeOnly(r) {
-    const raw =
-      r.office_chain_hint != null ? String(r.office_chain_hint).trim() : "";
-    return raw === "後続正常入力あり" ? raw : "";
-  }
-
-  /** 下段一覧・状態列。「通常」は出さず、closed は「完了」。 */
-  function recentTableStatusLabel(stRaw) {
-    const s = (stRaw || "").toLowerCase().trim();
-    if (s === "closed") return statusLabelJa("closed");
-    if (s === "normal") return "";
-    return statusLabelJa(stRaw);
-  }
-
-  function recentTableStatusClass(stRaw) {
-    const s = (stRaw || "").toLowerCase().trim();
-    if (s === "normal") return "";
-    return statusClassForRecent(stRaw);
-  }
-
-  /** 下段詳細・状態。「完了」文言は出さない（closed はクラスで区別）。 */
-  function recentDetailStatusLabel(stRaw) {
-    const s = (stRaw || "").toLowerCase().trim();
-    if (s === "normal" || s === "closed") return "";
-    return statusLabelJa(stRaw);
-  }
-
   /**
-   * 件数上限のうち closed は最大 RECENT_MAX_CLOSED_SLOTS まで（スキップ分は次の優先行で埋める）
+   * 実績「最新のみ」を商品単位で保持する。
+   * 複合キー: naturalKey × product_key（後勝ちは同一商品のより新しい work_unit id のみ）。
+   * status が blue/red の行は上段「要注意」のみとし、ここには含めない。
    */
-  function sliceOfficeRecentDisplay(sortedAgg, limit, maxClosed) {
-    const out = [];
-    let closedUsed = 0;
-    for (const r of sortedAgg) {
-      if (out.length >= limit) break;
-      const st = (r.status || "").toLowerCase();
-      if (st === "closed") {
-        if (closedUsed >= maxClosed) continue;
-        closedUsed++;
+  function collectLatestActualRows(sourceRows) {
+    const byComposite = new Map();
+    const candidates = (sourceRows || []).filter((r) =>
+      rowEligibleForLatestActualSection(r),
+    );
+    candidates.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+    for (const r of candidates) {
+      const nk = naturalKey(r);
+      for (const pk of actualProductKeysForRow(r)) {
+        const ck = nk + "\x1e" + pk;
+        const prev = byComposite.get(ck);
+        if (!prev || Number(r.id) > Number(prev.row.id))
+          byComposite.set(ck, { row: r, productKey: pk });
       }
-      out.push(r);
     }
-    return out;
+    const slices = [...byComposite.values()];
+    slices.sort((a, b) => {
+      const db = String(b.row.business_date || "");
+      const da = String(a.row.business_date || "");
+      if (db !== da) return db.localeCompare(da);
+      return (Number(b.row.id) || 0) - (Number(a.row.id) || 0);
+    });
+    return slices.map((v) => ({
+      officeLatestKey:
+        String(v.row.id) + "\x1f" + encodeURIComponent(v.productKey),
+      officeUnitRow: v.row,
+      officeProductKey: v.productKey,
+    }));
   }
 
-  /** 最近の報告: 全 status を同一キーで officeAggregateKey 集約（代表は最新 id） */
-  function buildRecentAggregatedRows(rowsForAgg, sortedAscForClosure) {
-    const sortedAsc =
-      sortedAscForClosure ||
-      [...rowsForAgg].sort(
-        (a, b) => (Number(a.id) || 0) - (Number(b.id) || 0),
-      );
-    const groups = new Map();
-    for (const r of rowsForAgg) {
-      const k = officeAggregateKey(r);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(r);
+  function normalizedLines(row, kind, unit) {
+    const key = kind === "planned" ? "planned_lines" : "actual_lines";
+    let arr = row[key];
+    if (!Array.isArray(arr) || !arr.length) {
+      const rawKey = kind === "planned" ? "planned_lines_json" : "actual_lines_json";
+      const parsed = row[rawKey] != null ? parseLinesJsonMaybe(String(row[rawKey])) : null;
+      if (parsed) arr = parsed;
     }
     const out = [];
-    for (const members of groups.values()) {
-      members.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
-      const rep = members[members.length - 1];
-      const agg = Object.assign({}, rep);
-      agg._officeAggCount = members.length;
-      agg._officeAggMemberIds = members.map((x) => x.id);
-      agg._officeAggRepresentativeId = rep.id;
-      const st = (rep.status || "").toLowerCase();
-      agg._officeRecentPostClose =
-        st === "normal" && closedOccurredBeforeSameKey(sortedAsc, rep);
-      out.push(agg);
+    if (Array.isArray(arr)) {
+      for (const L of arr) {
+        if (!L || typeof L !== "object") continue;
+        const labelRaw = rawLineLabelForDisplay(L);
+        const name = labelRaw !== "" ? labelRaw : "（無名）";
+        const v = L.value;
+        if (v == null || !Number.isFinite(Number(v))) continue;
+        const o = { name, value: Number(v) };
+        if (L.due_date != null && String(L.due_date).trim())
+          o.due_date = String(L.due_date).trim();
+        out.push(o);
+      }
     }
-    return out;
-  }
-
-  function statusClassForRecent(stRaw) {
-    const st = (stRaw || "").toLowerCase();
-    if (st === "blue") return "status-blue";
-    if (st === "red") return "status-red";
-    if (st === "closed") return "status-closed";
-    if (st === "normal") return "status-normal";
-    return "";
-  }
-
-  function fmtDetailValue(key, r) {
-    const v = r[key];
-    if (DATETIME_KEYS.has(key)) return esc(formatJST(v));
-    if (key === "user_pattern") return formatUserPatternJa(v);
-    if (key === "system_pattern") return formatAnomalyCellJa(r);
-    if (key === "is_unregistered_user")
-      return v === true ? "はい（班長マスタに無い user_id）" : "いいえ";
-    if (key === "user_source") {
-      const s = v != null ? String(v).trim() : "";
-      if (s === "manual") return "マスタ外入力";
-      if (s === "master") return "マスタ一致";
-      return fmt(v);
+    if (out.length) return out;
+    if (kind === "planned") {
+      const pv = row.planned_value;
+      const name =
+        legacyRawPlannedLabel(row);
+      if (name && pv != null && Number.isFinite(Number(pv)))
+        return [{ name, value: Number(pv) }];
+    } else {
+      const av = row.actual_value;
+      const name = legacyRawActualLabel(row);
+      if (name && av != null && Number.isFinite(Number(av)))
+        return [{ name, value: Number(av) }];
     }
-    return fmt(v);
-  }
-
-  /** 商品コードっぽい名前（数字のみ）には「商品」を付けて詳細で判別しやすくする */
-  function displayProductLabelForDetail(name) {
-    const n = coerceProductLabel(name);
-    if (!n || n === "（無名）") return "（無名）";
-    if (/^[\d.]+$/.test(n)) return "商品" + n;
-    return n;
+    return [];
   }
 
   function linesBlockHtml(lines, unit) {
+    const u = unit || "個";
     if (!lines.length)
       return '<span style="color:#6b7280">—</span>';
     return (
@@ -932,74 +786,45 @@
         .map(
           (L) =>
             "<li>" +
-            esc(displayProductLabelForDetail(L.name) + " " + qtyWithUnit(L.value, unit)) +
+            esc(L.name) +
+            " " +
+            qtyWithUnit(L.value, u) +
             (L.due_date
               ? " <span style=\"color:#6b7280\">due " + esc(String(L.due_date)) + "</span>"
               : "") +
-            "</li>"
+            "</li>",
         )
         .join("") +
       "</ul>"
     );
   }
 
-  function applyCompanyIdFromUrlOrStorage() {
-    const urlCo = param("company") || param("company_id");
-    if (urlCo) {
-      localStorage.setItem(LS_SHARED_COMPANY_ID, urlCo);
-      companyEl.value = urlCo;
-      return;
-    }
-    const stored = (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
-    if (stored) companyEl.value = stored;
-  }
-
-  function isAnomalyStatus(st) {
-    const s = (st || "").toString().trim().toLowerCase();
-    return s === "blue" || s === "red";
-  }
-
-  function showErr(t) {
-    msg.hidden = !t;
-    msg.textContent = t || "";
-    ok.hidden = true;
-  }
-  function showOk(t) {
-    ok.hidden = !t;
-    ok.textContent = t || "";
-    if (t) msg.hidden = true;
-  }
-
-  function renderTable() {
-    const anomalies = rows.filter((r) => isAnomalyStatus(r.status));
-    filtered = buildOfficeAggregatedRows(anomalies);
+  function renderAttentionTable() {
+    filteredAttn = collectOfficeAnomalySortedRows(rows);
+    const COLS = 5;
     if (!rows.length) {
       tbodyAnomaly.innerHTML =
-        '<tr><td colspan="' + TABLE_COLS + '" class="detail-empty">データなし</td></tr>';
+        '<tr><td colspan="' + COLS + '" class="detail-empty">データなし</td></tr>';
       return;
     }
-    if (!filtered.length) {
-      const emptyHint =
-        "未対応（青・赤）の行がありません（この会社は確定履歴のみの可能性があります）";
+    if (!filteredAttn.length) {
       tbodyAnomaly.innerHTML =
-        '<tr><td colspan="' + TABLE_COLS + '" class="detail-empty">' + esc(emptyHint) + "</td></tr>";
+        '<tr><td colspan="' + COLS + '" class="detail-empty">要注意行なし</td></tr>';
       return;
     }
-    tbodyAnomaly.innerHTML = filtered
+    const unit = (filteredAttn[0] && filteredAttn[0].unit) || "個";
+    tbodyAnomaly.innerHTML = filteredAttn
       .map((r) => {
         const sel =
-          selected &&
-          selectedSection === "anomaly" &&
-          selected.id === r.id;
+          selected && selectedSection === "attention" && selected.id === r.id;
         const st = (r.status || "").toLowerCase();
-        const stClass = st === "blue" ? "status-blue" : st === "red" ? "status-red" : "";
         return (
           '<tr class="' +
           (sel ? "selected " : "") +
-          '" data-id="' +
+          '" data-section="attention" data-id="' +
           r.id +
           '">' +
-          "<td class=\"mono\">" +
+          '<td class="mono">' +
           fmt(r.business_date) +
           "</td>" +
           "<td>" +
@@ -1008,28 +833,14 @@
             ? ' <span class="unreg-tag" title="班長マスタに無い user_id">未登録</span>'
             : "") +
           "</td>" +
-          '<td class="cell-compact">' +
-          shortProductFlowSummary(r) +
+          '<td class="cell-flow">' +
+          plannedActualArrowSummary(r, unit) +
           "</td>" +
-          "<td>" +
-          fmt(r.planned_value) +
-          "</td>" +
-          "<td>" +
-          fmt(r.actual_value) +
-          "</td>" +
-          '<td class="cell-anomaly">' +
-          formatAnomalyCellJa(r) +
-          "</td>" +
-          '<td class="cell-compact">' +
-          fmt(r.office_chain_hint) +
-          (r._officeAggCount > 1
-            ? '<span class="agg-note">同一履歴 ' +
-              r._officeAggCount +
-              "件</span>"
-            : "") +
+          '<td class="cell-flow">' +
+          esc(formatAnomalyBrief(r)) +
           "</td>" +
           '<td class="' +
-          stClass +
+          statusClass(r.status) +
           '">' +
           statusLabelJa(r.status) +
           "</td>" +
@@ -1039,247 +850,264 @@
       .join("");
   }
 
-  function renderRecentTable() {
-    recentOfficeStats = { sourceFiltered: 0, aggregated: 0, displayed: 0 };
+  function syncRevisionHeadingBadge() {
+    const revBadge = $("office-badge-revision-latest");
+    if (!revBadge) return;
+    const any = filteredLatest.some(
+      (s) => s && s.officeUnitRow && hasActualRevisionDetailLine(s.officeUnitRow),
+    );
+    revBadge.hidden = !any;
+  }
+
+  function renderLatestTable() {
+    filteredLatest = collectLatestActualRows(rowsAll);
+    const COLS = 4;
     if (!rowsAll.length) {
-      tbodyRecent.innerHTML =
-        '<tr><td colspan="' +
-        TABLE_COLS_RECENT +
-        '" class="detail-empty">データなし</td></tr>';
+      tbodyLatest.innerHTML =
+        '<tr><td colspan="' + COLS + '" class="detail-empty">データなし</td></tr>';
+      syncRevisionHeadingBadge();
       return;
     }
-
-    const sortedAscFull = [...rowsAll].sort(
-      (a, b) => (Number(a.id) || 0) - (Number(b.id) || 0),
-    );
-    const sourceFiltered = rowsAll.filter((r) =>
-      passesOfficeRecentSourceFilter(r),
-    );
-    recentOfficeStats.sourceFiltered = sourceFiltered.length;
-
-    const aggregated = buildRecentAggregatedRows(
-      sourceFiltered,
-      sortedAscFull,
-    ).filter((r) => passesOfficeRecentAggregatedRow(r));
-    recentOfficeStats.aggregated = aggregated.length;
-
-    const ranked = aggregated.slice().sort(compareOfficeRecentDisplayRows);
-    filteredRecent = sliceOfficeRecentDisplay(
-      ranked,
-      RECENT_DISPLAY_LIMIT,
-      RECENT_MAX_CLOSED_SLOTS,
-    );
-    recentOfficeStats.displayed = filteredRecent.length;
-
-    if (!filteredRecent.length) {
-      tbodyRecent.innerHTML =
-        '<tr><td colspan="' +
-        TABLE_COLS_RECENT +
-        '" class="detail-empty">' +
-        esc(
-          "該当する報告がありません（下段は実績確定 actual_at ありの確定履歴のみ／debug で全履歴）",
-        ) +
-        "</td></tr>";
+    if (!filteredLatest.length) {
+      tbodyLatest.innerHTML =
+        '<tr><td colspan="' + COLS + '" class="detail-empty">実績行なし</td></tr>';
+      syncRevisionHeadingBadge();
       return;
     }
-
-    tbodyRecent.innerHTML = filteredRecent
-      .map((r) => {
+    tbodyLatest.innerHTML = filteredLatest
+      .map((slice) => {
+        const r = slice.officeUnitRow;
         const sel =
           selected &&
-          selectedSection === "recent" &&
-          selected.id === r.id;
+          selectedSection === "latest" &&
+          selected.officeLatestKey === slice.officeLatestKey;
+        const unit = r.unit || "個";
+        const rev = hasActualRevisionDetailLine(r)
+          ? revisionDetailToHtml(r.actual_revision_detail_line)
+          : "—";
+        const lk = escAttr(slice.officeLatestKey);
         return (
           '<tr class="' +
           (sel ? "selected " : "") +
-          '" data-id="' +
-          r.id +
+          '" data-section="latest" data-latest-key="' +
+          lk +
           '">' +
-          "<td class=\"mono\">" +
+          '<td class="mono">' +
           fmt(r.business_date) +
           "</td>" +
           "<td>" +
           formatLeaderDisplay(r.user_id) +
           (r.is_unregistered_user === true
-            ? ' <span class="unreg-tag" title="班長マスタに無い user_id">未登録</span>'
+            ? ' <span class="unreg-tag">未登録</span>'
             : "") +
           "</td>" +
-          '<td class="cell-compact">' +
-          shortProductFlowSummary(r) +
+          '<td class="cell-flow">' +
+          shortProductFlowSummary(r, unit, slice.officeProductKey) +
           "</td>" +
-          "<td>" +
-          fmt(r.planned_value) +
-          "</td>" +
-          "<td>" +
-          fmt(r.actual_value) +
-          "</td>" +
-          '<td class="cell-anomaly">' +
-          formatAnomalyCellJa(r) +
-          "</td>" +
-          '<td class="cell-compact">' +
-          fmt(recentOfficeChainHintChangeOnly(r)) +
-          "</td>" +
-          '<td class="' +
-          recentTableStatusClass(r.status) +
-          '">' +
-          fmt(recentTableStatusLabel(r.status)) +
+          '<td class="cell-revision">' +
+          rev +
           "</td>" +
           "</tr>"
         );
       })
       .join("");
+    syncRevisionHeadingBadge();
   }
 
   function selectById(id, section) {
-    let sec = section;
-    if (!sec) {
-      if (filtered.some((x) => x.id === id)) sec = "anomaly";
-      else if (filteredRecent.some((x) => x.id === id)) sec = "recent";
-      else sec = "anomaly";
+    selectedSection = section;
+    if (section === "attention") {
+      selected = filteredAttn.find((r) => r.id === id) || null;
+    } else {
+      selected =
+        filteredLatest.find((slice) => slice.officeLatestKey === id) || null;
     }
-    selectedSection = sec;
-    const list = sec === "anomaly" ? filtered : filteredRecent;
-    selected = list.find((r) => r.id === id) || null;
 
-    tbodyAnomaly.querySelectorAll("tr[data-id]").forEach((tr) => {
+    document.querySelectorAll("#tbody-anomaly tr[data-id]").forEach((tr) => {
       const nid = Number(tr.getAttribute("data-id"));
       const match =
         selected &&
-        selectedSection === "anomaly" &&
+        selectedSection === "attention" &&
         nid === selected.id;
       tr.classList.toggle("selected", !!match);
     });
-    tbodyRecent.querySelectorAll("tr[data-id]").forEach((tr) => {
-      const nid = Number(tr.getAttribute("data-id"));
+    document.querySelectorAll("#tbody-latest tr[data-latest-key]").forEach((tr) => {
+      const lk = tr.getAttribute("data-latest-key");
       const match =
         selected &&
-        selectedSection === "recent" &&
-        nid === selected.id;
+        selectedSection === "latest" &&
+        selected.officeLatestKey === lk;
       tr.classList.toggle("selected", !!match);
     });
     renderDetail();
   }
 
   function renderDetail() {
-    closeMsg.hidden = true;
-    closeMsg.textContent = "";
+    const detailEmpty = $("detail-empty");
+    const detailBody = $("detail-body");
+    const detailDl = $("detail-dl");
     if (!selected) {
       detailEmpty.hidden = false;
       detailBody.hidden = true;
-      btnClose.disabled = true;
       selectedSection = null;
+      const da = $("detail-actions");
+      if (da) da.hidden = true;
       return;
     }
     detailEmpty.hidden = true;
     detailBody.hidden = false;
-    const r = selected;
-    const st = (r.status || "").toLowerCase();
+    const r =
+      selectedSection === "latest" && selected.officeUnitRow
+        ? selected.officeUnitRow
+        : selected;
     const unit = r.unit || "個";
-    const plannedLines = normalizedLines(r, "planned");
-    const actualLines = normalizedLines(r, "actual");
+    const plannedLines = normalizedLines(r, "planned", unit);
+    const actualLines = normalizedLines(r, "actual", unit);
 
-    const metaKeys = [
-      "id",
-      "is_unregistered_user",
-      "user_source",
-      "planned_at",
-      "started_at",
-      "actual_at",
-      "created_at",
-      "user_pattern",
-      "system_pattern",
-      "input_source",
-    ];
-
-    let html = metaKeys
-      .map((k) => {
-        const label = DETAIL_LABEL_JA[k] || k;
-        return (
-          "<dt>" +
-          esc(label) +
-          "</dt><dd>" +
-          (k === "system_pattern" || k === "user_pattern"
-            ? fmtDetailValue(k, r)
-            : k === "id"
-              ? '<span class="mono">' + esc(String(r.id)) + "</span>"
-              : "<span class=\"mono\">" + fmtDetailValue(k, r) + "</span>") +
-          "</dd>"
-        );
-      })
-      .join("");
-
-    const recentSel = selectedSection === "recent";
+    let html = "";
     html +=
-      "<dt>" +
-      esc("状態") +
-      "</dt><dd>" +
-      '<span class="' +
-      (recentSel ? recentTableStatusClass(r.status) : statusClassForRecent(r.status)) +
-      '">' +
-      (recentSel
-        ? fmt(recentDetailStatusLabel(r.status))
-        : statusLabelJa(r.status)) +
+      "<dt>ID</dt><dd><span class=\"mono\">" +
+      esc(String(r.id)) +
+      "</span></dd>";
+    html +=
+      "<dt>営業日</dt><dd><span class=\"mono\">" +
+      fmt(r.business_date) +
+      "</span></dd>";
+    html +=
+      "<dt>班長</dt><dd>" +
+      formatLeaderDisplay(r.user_id) +
+      "</dd>";
+    html +=
+      "<dt>予告時刻</dt><dd><span class=\"mono\">" +
+      esc(formatJST(r.planned_at)) +
+      "</span></dd>";
+    html +=
+      "<dt>着手</dt><dd><span class=\"mono\">" +
+      esc(formatJST(r.started_at)) +
+      "</span></dd>";
+    html +=
+      "<dt>実績時刻</dt><dd><span class=\"mono\">" +
+      esc(formatJST(r.actual_at)) +
       "</span></dd>";
 
-    const ochRaw =
-      r.office_chain_hint != null ? String(r.office_chain_hint).trim() : "";
-    const ochForDetail = recentSel ? recentOfficeChainHintChangeOnly(r) : ochRaw;
-    if (ochForDetail) {
+    html +=
+      "<dt>状態（参考）</dt><dd><span class=\"" +
+      statusClass(r.status) +
+      "\">" +
+      statusLabelJa(r.status) +
+      "</span></dd>";
+
+    if (showDeviationReasonInDetail(r)) {
+      const dr = r.deviation_reason != null ? String(r.deviation_reason).trim() : "";
       html +=
-        "<dt>" +
-        esc(DETAIL_LABEL_JA.office_chain_hint) +
-        "</dt><dd>" +
-        esc(ochForDetail) +
+        "<dt>7条逸脱理由</dt><dd>" +
+        (dr
+          ? esc(dr).replace(/\n/g, "<br/>")
+          : "—") +
         "</dd>";
     }
 
-    if (r._officeAggCount > 1 && selectedSection !== "recent") {
-      html +=
-        "<dt>" +
-        esc("同一履歴（append-only）") +
-        "</dt><dd>" +
-        esc(String(r._officeAggCount)) +
-        ' 件　<span class="mono">' +
-        r._officeAggMemberIds.map((id) => esc(String(id))).join(", ") +
-        "</span></dd>";
-    }
+    const memo = r.actual_memo != null && String(r.actual_memo).trim();
+    html +=
+      "<dt>一言メモ</dt><dd>" +
+      (memo ? esc(String(r.actual_memo)).replace(/\n/g, "<br/>") : "—") +
+      "</dd>";
 
-    if (r.is_article7_deviation === true || r.is_deviation === true) {
-      const dr =
-        r.deviation_reason != null && String(r.deviation_reason).trim()
-          ? String(r.deviation_reason).trim()
-          : "";
-      html +=
-        "<dt>" +
-        esc("第7条逸脱") +
-        "</dt><dd>" +
-        esc("あり") +
-        "</dd>" +
-        "<dt>" +
-        esc("逸脱の理由（現場の記録）") +
-        "</dt><dd>" +
-        (dr ? esc(dr).replace(/\n/g, "<br/>") : "—") +
-        "</dd>";
-    }
+    const rev = hasActualRevisionDetailLine(r)
+      ? revisionDetailToHtml(r.actual_revision_detail_line)
+      : null;
+    html +=
+      "<dt>訂正</dt><dd>" +
+      (rev || "—") +
+      "</dd>";
 
     html +=
-      "<dt>" +
-      esc("予告内容") +
-      "</dt><dd>" +
+      "<dt>予告内容</dt><dd>" +
       linesBlockHtml(plannedLines, unit) +
-      "</dd>" +
-      "<dt>" +
-      esc("実績内容") +
-      "</dt><dd>" +
+      "</dd>";
+    html +=
+      "<dt>実績内容</dt><dd>" +
       linesBlockHtml(actualLines, unit) +
       "</dd>";
 
     detailDl.innerHTML = html;
 
-    const canClose =
-      selectedSection === "anomaly" && (st === "blue" || st === "red");
-    btnClose.disabled = !canClose;
-    btnClose.dataset.unitId = String(r.id);
+    const actionsEl = $("detail-actions");
+    const ackBtn = $("btn-office-attention-close");
+    if (actionsEl && ackBtn) {
+      const st = String(r.status || "").toLowerCase();
+      const showAck =
+        selectedSection === "attention" && (st === "blue" || st === "red");
+      actionsEl.hidden = !showAck;
+      ackBtn.disabled = false;
+    }
+  }
+
+  async function submitAttentionAcknowledged() {
+    if (!selected || selectedSection !== "attention") return;
+    const st = String(selected.status || "").toLowerCase();
+    if (st !== "blue" && st !== "red") return;
+    const unitId = Number(selected.id);
+    if (!Number.isFinite(unitId) || unitId <= 0) return;
+    const ackBtn = $("btn-office-attention-close");
+    if (!ackBtn) return;
+    ackBtn.disabled = true;
+    try {
+      const res = await fetch(
+        "/v2/work/" + encodeURIComponent(String(unitId)) + "/close",
+        { method: "POST", headers: { Accept: "application/json" } },
+      );
+      const text = await res.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch (_) {
+        data = null;
+      }
+      if (!res.ok) {
+        let msg =
+          (data && (data.detail || data.message)) ||
+          text ||
+          "確認済み処理に失敗しました";
+        if (Array.isArray(data && data.detail)) {
+          msg = data.detail
+            .map((x) => (x && (x.msg || x.message)) || JSON.stringify(x))
+            .join("；");
+        } else if (data && data.detail && typeof data.detail !== "string") {
+          msg = JSON.stringify(data.detail);
+        }
+        showErr(typeof msg === "string" ? msg : JSON.stringify(msg));
+        showOk("");
+        return;
+      }
+      showErr("");
+      selected = null;
+      selectedSection = null;
+      await load();
+    } catch (e) {
+      showErr(String(e));
+      showOk("");
+    } finally {
+      if (ackBtn) ackBtn.disabled = false;
+    }
+  }
+
+  function param(name) {
+    const q = new URLSearchParams(window.location.search);
+    return (q.get(name) || "").trim();
+  }
+
+  function showErr(t) {
+    const msg = $("msg");
+    msg.hidden = !t;
+    msg.textContent = t || "";
+    $("ok").hidden = true;
+  }
+  function showOk(t) {
+    const ok = $("ok");
+    ok.hidden = !t;
+    ok.textContent = t || "";
+    if (t) $("msg").hidden = true;
   }
 
   async function load() {
@@ -1290,17 +1118,18 @@
       showErr("会社ID を入力してください");
       rows = [];
       rowsAll = [];
-      filtered = [];
-      filteredRecent = [];
+      filteredAttn = [];
+      filteredLatest = [];
       selected = null;
-      selectedSection = null;
-      renderTable();
-      renderRecentTable();
+      renderAttentionTable();
+      renderLatestTable();
       renderDetail();
       return;
     }
     persistSharedCompanyFromOffice();
     history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
+
+    const btnLoad = $("btn-load");
     btnLoad.disabled = true;
     try {
       phase2Enabled = false;
@@ -1310,188 +1139,125 @@
           const cj = await cr.json();
           phase2Enabled = cj.phase2_enabled === true;
         }
-      } catch (_) {
-        /* 取得失敗時はフェーズ1扱い */
-      }
+      } catch (_) {}
+
       const headHint = $("office-header-phase-hint");
       if (headHint) {
         headHint.innerHTML = phase2Enabled
-          ? "<strong>上段：未対応（青・赤）</strong>を表示します（フェーズ2オン時は新規に赤へ昇格し得ます）。<strong>下段：確定履歴</strong>で実績確定済みの報告も確認できます。"
-          : "<strong>上段：未対応（青・赤）</strong>を表示します。フェーズ2オフのため<strong>新規の赤は発生しません</strong>が、<strong>既存の赤</strong>はここから完了できます。<strong>下段：確定履歴</strong>で実績確定済みの報告も確認できます。";
-      }
-      const apiHint = $("office-hint-api");
-      if (apiHint) {
-        apiHint.innerHTML = phase2Enabled
-          ? 'API: <span class="mono">GET /v2/work/list</span> を<strong>2回</strong>取得（未対応は <span class="mono">hide_office_closed_sources=true</span>、最近の報告は<strong>全件</strong>）。画面で<strong>同一内容は集約</strong>。<a href="/debug/v2">debug</a> は全履歴。'
-          : '同上。フェーズ2オフ時はサーバが<strong>新規赤化</strong>しません（既存の赤はそのまま）。<a href="/debug/v2">debug</a> は全履歴。';
+          ? "<strong>フェーズ2オン</strong>　"
+          : "<strong>フェーズ2オフ</strong>　";
       }
 
-      const urlBase =
-        "/v2/work/list?company_id=" + encodeURIComponent(cid);
+      const urlBase = "/v2/work/list?company_id=" + encodeURIComponent(cid);
       const [resAnom, resAll] = await Promise.all([
         fetch(urlBase + "&hide_office_closed_sources=true"),
         fetch(urlBase),
       ]);
-      const textAnom = await resAnom.text();
-      const textAll = await resAll.text();
 
+      const textAnom = await resAnom.text();
       let dataAnom = null;
       try {
         dataAnom = textAnom ? JSON.parse(textAnom) : null;
       } catch (_) {
-        showErr("未対応一覧の応答が JSON ではありません");
+        showErr("一覧の応答が JSON ではありません");
         rows = [];
         rowsAll = [];
-        selected = null;
-        selectedSection = null;
-        renderTable();
-        renderRecentTable();
+        renderAttentionTable();
+        renderLatestTable();
         renderDetail();
         return;
       }
       if (!resAnom.ok) {
-        showErr(
-          (dataAnom && dataAnom.detail) || "エラー " + resAnom.status,
-        );
+        showErr((dataAnom && dataAnom.detail) || "エラー " + resAnom.status);
         rows = [];
         rowsAll = [];
-        selected = null;
-        selectedSection = null;
-        renderTable();
-        renderRecentTable();
+        renderAttentionTable();
+        renderLatestTable();
         renderDetail();
         return;
       }
       if (!Array.isArray(dataAnom)) {
-        showErr("未対応一覧が配列ではありません");
+        showErr("一覧が配列ではありません");
         rows = [];
         rowsAll = [];
-        selected = null;
-        selectedSection = null;
-        renderTable();
-        renderRecentTable();
+        renderAttentionTable();
+        renderLatestTable();
         renderDetail();
         return;
       }
 
       let dataAll = [];
+      const textAll = await resAll.text();
       if (resAll.ok && textAll) {
         try {
           const p = JSON.parse(textAll);
           if (Array.isArray(p)) dataAll = p;
-        } catch (_) {
-          /* 最近の報告のみ欠損 */
-        }
+        } catch (_) {}
       }
 
       rows = dataAnom;
       rowsAll = dataAll;
       selected = null;
       selectedSection = null;
-      renderTable();
-      renderRecentTable();
+
+      renderAttentionTable();
+      renderLatestTable();
       renderDetail();
-      const rawAnom = rows.filter((r) => isAnomalyStatus(r.status));
+
       showOk(
-        "未対応: 取得 " +
-          rows.length +
-          " 件・青赤 " +
-          rawAnom.length +
-          " → 集約 " +
-          filtered.length +
-          " 件／最近の報告: 取得 " +
-          rowsAll.length +
-          " → 対象 " +
-          recentOfficeStats.sourceFiltered +
-          " → 集約 " +
-          recentOfficeStats.aggregated +
-          " → 表示 " +
-          recentOfficeStats.displayed +
-          "（上限 " +
-          RECENT_DISPLAY_LIMIT +
-          "・closed 最大 " +
-          RECENT_MAX_CLOSED_SLOTS +
-          "／debug は全履歴）",
+        "読み込み済み（要注意 " +
+          filteredAttn.length +
+          "／最新実績キー " +
+          filteredLatest.length +
+          "）",
       );
     } catch (e) {
       showErr(String(e));
       rows = [];
       rowsAll = [];
-      filtered = [];
-      filteredRecent = [];
-      selected = null;
-      selectedSection = null;
-      renderTable();
-      renderRecentTable();
+      renderAttentionTable();
+      renderLatestTable();
       renderDetail();
     } finally {
-      btnLoad.disabled = false;
+      $("btn-load").disabled = false;
     }
   }
 
-  async function closeUnit() {
-    const id = btnClose.dataset.unitId;
-    if (!id) return;
-    closeMsg.hidden = true;
-    btnClose.disabled = true;
-    try {
-      const res = await fetch("/v2/work/" + encodeURIComponent(id) + "/close", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (_) {
-        closeMsg.hidden = false;
-        closeMsg.textContent = "応答が JSON ではありません";
-        btnClose.disabled = false;
-        return;
-      }
-      if (!res.ok) {
-        closeMsg.hidden = false;
-        closeMsg.textContent = data.detail || "エラー " + res.status;
-        btnClose.disabled = false;
-        return;
-      }
-      showOk("完了しました（unit_id=" + id + "）。一覧を更新しました。");
-      selected = null;
-      selectedSection = null;
-      await load();
-    } catch (e) {
-      closeMsg.hidden = false;
-      closeMsg.textContent = String(e);
-      btnClose.disabled = false;
-    }
-  }
-
-  tbodyAnomaly.addEventListener("click", (ev) => {
+  $("tbody-anomaly").addEventListener("click", (ev) => {
     const tr = ev.target.closest("tr[data-id]");
     if (!tr) return;
     const id = Number(tr.getAttribute("data-id"));
     if (Number.isNaN(id)) return;
-    selectById(id, "anomaly");
+    selectById(id, "attention");
   });
 
-  tbodyRecent.addEventListener("click", (ev) => {
-    const tr = ev.target.closest("tr[data-id]");
+  $("tbody-latest").addEventListener("click", (ev) => {
+    const tr = ev.target.closest("tr[data-latest-key]");
     if (!tr) return;
-    const id = Number(tr.getAttribute("data-id"));
-    if (Number.isNaN(id)) return;
-    selectById(id, "recent");
+    const key = tr.getAttribute("data-latest-key");
+    if (key == null || key === "") return;
+    selectById(key, "latest");
   });
 
   $("btn-load").addEventListener("click", load);
-  btnClose.addEventListener("click", closeUnit);
+  $("btn-office-attention-close").addEventListener("click", () => {
+    void submitAttentionAcknowledged();
+  });
   companyEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") load();
   });
   companyEl.addEventListener("change", persistSharedCompanyFromOffice);
   companyEl.addEventListener("blur", persistSharedCompanyFromOffice);
 
-  applyCompanyIdFromUrlOrStorage();
+  const urlCo = param("company") || param("company_id");
+  if (urlCo) {
+    localStorage.setItem(LS_SHARED_COMPANY_ID, urlCo);
+    companyEl.value = urlCo;
+  } else {
+    const stored = (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
+    if (stored) companyEl.value = stored;
+  }
+
   if (companyEl.value.trim()) load();
 })();
 </script>
