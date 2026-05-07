@@ -183,7 +183,7 @@ class PriorityItemOut(BaseModel):
     )
     article5_remaining_qty: Optional[float] = Field(
         None,
-        description="max(0, prod_value - article5_completed_qty)。",
+        description="prod_value - article5_completed_qty（超過時は負。作成済み ✔ は残り<=0 で判定）。",
     )
 
 

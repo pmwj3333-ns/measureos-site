@@ -1438,21 +1438,34 @@ function renderArticle7PanelHtml(items) {
 
     const completedRaw =
       it.article5_completed_qty != null ? Number(it.article5_completed_qty) : NaN;
-    const remainingRaw =
+    const remainingFromApi =
       it.article5_remaining_qty != null ? Number(it.article5_remaining_qty) : NaN;
+    const completedNum = Number.isFinite(completedRaw) ? completedRaw : NaN;
+    let remainingNum = Number.isFinite(remainingFromApi) ? remainingFromApi : NaN;
+    if (
+      !Number.isFinite(remainingNum) &&
+      Number.isFinite(prodRaw) &&
+      Number.isFinite(completedNum)
+    ) {
+      remainingNum = prodRaw - completedNum;
+    }
     const hasArticle5Progress =
-      Number.isFinite(completedRaw) && Number.isFinite(remainingRaw);
+      Number.isFinite(completedNum) || Number.isFinite(remainingNum);
     const progressParts = [];
+    const remEps = 1e-6;
     if (hasArticle5Progress) {
-      if (completedRaw > 1e-9) {
+      if (Number.isFinite(completedNum) && completedNum > remEps) {
         progressParts.push(
-          `<div class="article7-muted">作成済み：${escHtml(formatArticle5ProgressQty(completedRaw))} ${escHtml(unitVal)}</div>`,
+          `<div class="article7-muted">作成済み：${escHtml(formatArticle5ProgressQty(completedNum))} ${escHtml(unitVal)}</div>`,
         );
       }
-      progressParts.push(
-        `<div class="article7-muted">残り：${escHtml(formatArticle5ProgressQty(remainingRaw))} ${escHtml(unitVal)}</div>`,
-      );
-      if (completedRaw > 1e-9 && remainingRaw <= 1e-6) {
+      if (Number.isFinite(remainingNum)) {
+        progressParts.push(
+          `<div class="article7-muted">残り：${escHtml(formatArticle5ProgressQty(remainingNum))} ${escHtml(unitVal)}</div>`,
+        );
+      }
+      // T35: 残り > 0 では ✔ を出さない（completed > 0 だけでは出さない）
+      if (Number.isFinite(remainingNum) && remainingNum <= remEps) {
         progressParts.push('<div class="article7-progress-done">作成済み ✔</div>');
       }
     }

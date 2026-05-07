@@ -130,7 +130,7 @@ def _sum_actuals_all_finalized(
     p: models.PriorityItem,
     im: str,
 ) -> float:
-    """actual_at がある行のみ、ライン単位で PriorityItem に属する数量をすべて合算する。"""
+    """与えられた WorkUnit 行について、actual_at がある行のラインを PriorityItem に突合し数量を合算する。"""
     total = 0.0
     for u in units:
         if getattr(u, "actual_at", None) is None:
@@ -147,6 +147,32 @@ def _sum_actuals_all_finalized(
     return total
 
 
+def _latest_work_units_with_actual_per_natural_key(
+    units: List[models.WorkUnit],
+) -> List[models.WorkUnit]:
+    """
+    同一 (company_id, task_id, process_id, user_id, business_date) について、
+    actual_at がある行のうち id 最大だけを採用する（同日キー内の訂正・履歴の二重計上防止）。
+    business_date が無い行はキー无法のためそのまま1件ずつ含める。
+    """
+    by_natural: Dict[Tuple[str, str, str, str, date], List[models.WorkUnit]] = defaultdict(list)
+    loose: List[models.WorkUnit] = []
+    for u in units:
+        if getattr(u, "actual_at", None) is None:
+            continue
+        bd = u.business_date
+        if bd is None:
+            loose.append(u)
+            continue
+        by_natural[
+            (u.company_id, u.task_id, u.process_id, u.user_id, bd)
+        ].append(u)
+    out: List[models.WorkUnit] = list(loose)
+    for lst in by_natural.values():
+        out.append(max(lst, key=lambda x: x.id))
+    return out
+
+
 def article5_progress_for_priority_items(
     company_id: str,
     priorities: List[models.PriorityItem],
@@ -154,7 +180,9 @@ def article5_progress_for_priority_items(
 ) -> Dict[int, Tuple[float, float]]:
     """
     priority.id -> (completed_qty, remaining_qty)。
-    remaining_qty = max(0, prod_value - completed_qty)。PriorityItem は更新しない。
+    completed は「実績確定あり」の作業行のうち、同一営業日キーごとに最新 1 行だけから集計（履歴の重複除外）。
+    remaining_qty = prod_value - completed_qty（超過時は負。現場の「残り」と ✔ 判定に使う）。
+    PriorityItem は更新しない。
     """
     cid = (company_id or "").strip()
     out: Dict[int, Tuple[float, float]] = {}
@@ -170,13 +198,16 @@ def article5_progress_for_priority_items(
         .filter(models.WorkUnit.actual_at.isnot(None))
         .all()
     )
+    latest_units = _latest_work_units_with_actual_per_natural_key(units)
 
     for p in priorities:
-        completed = _sum_actuals_all_finalized(units, p, im)
+        completed = _sum_actuals_all_finalized(latest_units, p, im)
         prod = float(p.prod_value) if p.prod_value is not None else 0.0
         if not math.isfinite(prod) or prod < 0:
             prod = 0.0
-        remaining = max(0.0, prod - completed)
+        remaining = prod - completed
+        if not math.isfinite(remaining):
+            remaining = prod
         out[int(p.id)] = (completed, remaining)
 
     return out
