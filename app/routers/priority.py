@@ -25,6 +25,13 @@ from app.services.priority_article7_context import (
     article7_context_for_priority_items,
 )
 from app.services.priority_rebuild import rebuild_priority_items_for_company
+from app.services.company_validator import validate_company_id
+from app.services.article7_safety_stock import (
+    SafetyStockInfo,
+    load_safety_stock_by_product_code,
+    usable_stock_qty,
+)
+from app.services.article3_cutoff_observe import is_after_order_cutoff
 
 router = APIRouter(prefix="/v2/priority", tags=["v2-第7条"])
 
@@ -43,8 +50,19 @@ def _priority_tuple_for_row(r: models.PriorityItem) -> Tuple[str, float]:
         r.ship_value,
         getattr(r, "stock_qty", None) or 0,
         r.due_date,
+        shortage_qty=getattr(r, "prod_value", None),
     )
     return pl, float(sc)
+
+
+def _safety_info_for_item(
+    product_code: str,
+    safety_map: Dict[str, SafetyStockInfo],
+) -> SafetyStockInfo:
+    pc = (product_code or "").strip()
+    if pc and pc in safety_map:
+        return safety_map[pc]
+    return SafetyStockInfo(value=0, is_unset=True)
 
 
 def _priority_sort_key(rr: models.PriorityItem) -> Tuple[int, str, int]:
@@ -70,20 +88,29 @@ def _rows_to_out(
     rows: List[models.PriorityItem],
     ctx: Optional[Dict[int, Tuple[Optional[str], List[str]]]] = None,
     article5_prog: Optional[Dict[int, Tuple[float, float]]] = None,
+    safety_map: Optional[Dict[str, SafetyStockInfo]] = None,
 ) -> List[PriorityItemOut]:
     ctx = ctx or {}
+    safety_map = safety_map or {}
     items: List[PriorityItemOut] = []
     for r in rows:
         hint, notices = ctx.get(int(r.id), (None, []))
         pl, pscore = _priority_tuple_for_row(r)
+        stock_f = float(getattr(r, "stock_qty", None) or 0)
+        pc = getattr(r, "product_code", None) or ""
+        sinfo = _safety_info_for_item(pc, safety_map)
         kw = dict(
             id=r.id,
-            product_code=getattr(r, "product_code", None) or "",
+            product_code=pc,
             label=r.label or "",
             ship_value=float(r.ship_value),
-            stock_qty=float(getattr(r, "stock_qty", None) or 0),
+            stock_qty=stock_f,
             prod_value=float(r.prod_value),
             due_date=r.due_date,
+            safety_stock_value=None if sinfo.is_unset else int(sinfo.value),
+            safety_stock_unset=bool(sinfo.is_unset),
+            usable_stock_qty=float(usable_stock_qty(stock_f, sinfo.value)),
+            is_after_cutoff=bool(getattr(r, "is_after_cutoff", False)),
             status=(getattr(r, "status", None) or "open").strip() or "open",
             priority_level=str(pl),
             priority_score=float(pscore),
@@ -123,12 +150,13 @@ def list_priority_items(
 
     rows_sorted = sorted(rows, key=_priority_sort_key)
     ctx = article7_context_for_priority_items(cid, rows_sorted, db)
+    safety_map = load_safety_stock_by_product_code(db, cid)
     prog = (
         article5_progress_for_priority_items(cid, rows_sorted, db)
         if article5_progress
         else None
     )
-    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx, prog))
+    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx, prog, safety_map))
 
 
 @router.post(
@@ -138,12 +166,10 @@ def list_priority_items(
 def rebuild_priority_items(body: PriorityRebuildIn, db: Session = Depends(get_db)):
     """
     当該 company_id の **open** の priority_item のみ削除し、出荷×在庫から再生成する（closed は残す）。
-    stock_qty = stock_map.get(product_code, 0)、required_qty = max(0, ship_qty - stock_qty)。
+    available = stock - safety_stock(product_master) - ship; required_qty = max(0, -available)。
     required_qty > 0 かつ納期が parse_due_date 可能な行のみ保存する。
     """
-    cid = (body.company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = validate_company_id(db, body.company_id)
     success_count, warning_count, detail = rebuild_priority_items_for_company(cid, db)
     return PriorityRebuildOut(
         ok=True,
@@ -191,9 +217,7 @@ def close_priority_items(body: PriorityCloseIn, db: Session = Depends(get_db)):
 
 @router.post("/create", summary="第7条・優先指示を保存（open 全置換）")
 def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get_db)):
-    cid = (body.company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = validate_company_id(db, body.company_id)
     to_insert: List[dict] = []
     for it in body.items:
         lb = (it.label or "").strip()
@@ -236,6 +260,13 @@ def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get
         )
 
     now = datetime.utcnow()
+    settings = (
+        db.query(models.CompanySettings)
+        .filter(models.CompanySettings.company_id == cid)
+        .first()
+    )
+    order_cutoff = getattr(settings, "order_cutoff_time", None) if settings else None
+    after_cutoff = is_after_order_cutoff(now, order_cutoff)
     db.query(models.PriorityItem).filter(
         models.PriorityItem.company_id == cid,
         models.PriorityItem.status == "open",
@@ -253,6 +284,7 @@ def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get
                 value=ship,
                 due_date=row["due_date"],
                 status="open",
+                is_after_cutoff=after_cutoff,
                 created_at=now,
                 updated_at=now,
             )
@@ -268,4 +300,5 @@ def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get
 
     rows_sorted = sorted(rows, key=_priority_sort_key)
     ctx = article7_context_for_priority_items(cid, rows_sorted, db)
-    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx))
+    safety_map = load_safety_stock_by_product_code(db, cid)
+    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx, None, safety_map))

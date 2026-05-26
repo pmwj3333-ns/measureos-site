@@ -9,6 +9,7 @@ from app.services import anomaly as anomaly_svc
 from app.services.business_date import calc_business_date_with_db, next_business_day
 from app.services.event_log import log_event, EventType
 from app.services.work_unit_guard import is_closed, raise_if_closed
+from app.services.company_validator import validate_company_id, validate_unit_company_id
 
 router = APIRouter(prefix="/作業記録", tags=["作業記録"])
 
@@ -152,6 +153,10 @@ def _with_lines(
                 _line_out(l, db) for l in prev_unit.lines if l.line_type == "planned"
             ]
 
+    from app.routers.work import used_materials_for_api
+
+    out.used_materials = used_materials_for_api(unit)
+
     return out
 
 
@@ -185,6 +190,7 @@ def get_or_create_unit(body: schemas.UnitIdentifiers, db: Session = Depends(get_
     今日の business_date でレコードを取得します。なければ空のレコードを作成します。
     新規作成時は前営業日 WorkUnit を forecast_ref_id に自動紐づけします。
     """
+    validate_company_id(db, body.company_id)
     settings = _get_settings(body.company_id, db)
     unit, is_new = _get_or_create_unit(
         body.company_id, body.task_id, body.process_id, body.user_id, db, settings
@@ -215,6 +221,7 @@ def start_next_business_day(body: schemas.NextDayStartCreate, db: Session = Depe
     4. 更新された work_unit を返す。
     """
     from datetime import date as date_type
+    validate_company_id(db, body.company_id)
     settings = _get_settings(body.company_id, db)
 
     # 完了済み業務日の翌営業日を算出
@@ -281,6 +288,7 @@ def create_started(unit_id: int, body: schemas.StartedCreate, db: Session = Depe
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, unit)
     raise_if_closed(unit)
     settings = _get_settings(unit.company_id, db)
 
@@ -307,6 +315,7 @@ def create_actual_bulk(unit_id: int, body: schemas.ActualBulkCreate, db: Session
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, unit)
     raise_if_closed(unit)
     settings = _get_settings(unit.company_id, db)
 
@@ -355,11 +364,12 @@ def create_planned_bulk(unit_id: int, body: schemas.PlannedBulkCreate, db: Sessi
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, unit)
     raise_if_closed(unit)
     settings = _get_settings(unit.company_id, db)
 
     # 再送信検出
-    was_already_submitted = unit.planned_at is not None
+    was_already_submitted = getattr(unit, "planned_registered_at", None) is not None
 
     for line in list(unit.lines):
         if line.line_type == "planned":
@@ -374,6 +384,7 @@ def create_planned_bulk(unit_id: int, body: schemas.PlannedBulkCreate, db: Sessi
 
     unit.planned_value = total if body.lines else None
     unit.planned_at = datetime.utcnow()
+    unit.planned_registered_at = datetime.utcnow()
 
     db.flush()
     anomaly_svc.detect_and_update(unit, settings, db)
@@ -399,6 +410,7 @@ def approve(unit_id: int, body: schemas.ApprovalCreate, db: Session = Depends(ge
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, unit)
     settings = _get_settings(unit.company_id, db)
     if is_closed(unit):
         db.refresh(unit)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services.event_log import log_event, EventType
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(prefix="/対象", tags=["対象マスター"])
 
@@ -15,6 +16,7 @@ def create_item(body: schemas.TaskItemCreate, db: Session = Depends(get_db)):
     現場が新規作成した商品・作業をマスターに保存します。
     現場は追加のみ可能です（編集・削除は事務が行います）。
     """
+    validate_company_id(db, body.company_id)
     item = models.TaskItem(
         company_id=body.company_id,
         item_code=body.item_code,
@@ -49,6 +51,7 @@ def edit_item(item_id: int, body: schemas.ItemEditBody, db: Session = Depends(ge
     item = db.get(models.TaskItem, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="商品が見つかりません")
+    validate_company_id(db, item.company_id)
 
     before = {"item_name": item.item_name, "item_code": item.item_code, "category": item.category}
     if body.item_name is not None:
@@ -77,6 +80,7 @@ def merge_items(body: schemas.ItemMergeBody, db: Session = Depends(get_db)):
     keep = db.get(models.TaskItem, body.keep_id)
     if not keep:
         raise HTTPException(status_code=404, detail="残す商品が見つかりません")
+    validate_company_id(db, keep.company_id)
     if body.keep_id in body.merge_ids:
         raise HTTPException(status_code=400, detail="同じ商品は統合できません")
 

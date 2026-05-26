@@ -13,6 +13,7 @@ from app.schemas import (
     ProductMasterOut,
     ProductMasterPatchIn,
 )
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(prefix="/v2/product-master", tags=["v2-商品マスタ"])
 
@@ -24,6 +25,7 @@ def _row_to_out(r: models.ProductMaster) -> ProductMasterOut:
         product_code=(r.product_code or "").strip() or None,
         label=(r.label or "").strip(),
         is_active=bool(getattr(r, "is_active", True)),
+        safety_stock_value=getattr(r, "safety_stock_value", None),
         created_at=r.created_at.isoformat() if r.created_at else None,
         updated_at=r.updated_at.isoformat() if r.updated_at else None,
     )
@@ -47,10 +49,8 @@ def list_product_master(
 
 @router.post("", summary="商品マスタ新規作成（label のみ・同一会社で label 重複は 422）")
 def create_product_master(body: ProductMasterCreateIn, db: Session = Depends(get_db)):
-    cid = (body.company_id or "").strip()
+    cid = validate_company_id(db, body.company_id)
     lb = (body.label or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
     if not lb:
         raise HTTPException(status_code=422, detail="label が空です")
     clash = (
@@ -81,10 +81,8 @@ def create_product_master(body: ProductMasterCreateIn, db: Session = Depends(get
 
 @router.post("/ensure", summary="ラベルが無ければマスタに1件作成（product_code は null）")
 def ensure_product_master(body: ProductMasterEnsureIn, db: Session = Depends(get_db)):
-    cid = (body.company_id or "").strip()
+    cid = validate_company_id(db, body.company_id)
     lb = (body.label or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
     if not lb:
         raise HTTPException(status_code=422, detail="label が空です")
     now = datetime.utcnow()
@@ -122,6 +120,7 @@ def patch_product_master(row_id: int, body: ProductMasterPatchIn, db: Session = 
     row = db.get(models.ProductMaster, row_id)
     if not row:
         raise HTTPException(status_code=404, detail="商品マスタが見つかりません")
+    validate_company_id(db, row.company_id)
     patch = body.model_dump(exclude_unset=True)
     now = datetime.utcnow()
 
@@ -160,6 +159,25 @@ def patch_product_master(row_id: int, body: ProductMasterPatchIn, db: Session = 
 
     if "is_active" in patch and patch["is_active"] is not None:
         row.is_active = bool(patch["is_active"])
+
+    if "safety_stock_value" in patch:
+        raw_ss = patch["safety_stock_value"]
+        if raw_ss is None:
+            row.safety_stock_value = None
+        else:
+            try:
+                ss = int(raw_ss)
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=422,
+                    detail="safety_stock_value は0以上の整数で指定してください",
+                ) from None
+            if ss < 0:
+                raise HTTPException(
+                    status_code=422,
+                    detail="safety_stock_value は0以上の整数で指定してください",
+                )
+            row.safety_stock_value = ss
 
     row.updated_at = now
     db.commit()

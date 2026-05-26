@@ -36,6 +36,79 @@
   .card-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
                 color: #8e8e93; text-transform: uppercase; margin-bottom: 16px; }
 
+  .field-app-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 400px);
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+    background: #fff;
+    z-index: 600;
+    overflow: hidden;
+  }
+  .field-app-modal::backdrop {
+    background: rgba(0, 0, 0, 0.42);
+    -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(1px);
+  }
+  @keyframes fieldAppModalPop {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -47%) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  .field-app-modal[open] {
+    animation: fieldAppModalPop 0.2s ease-out;
+  }
+  .field-app-modal-panel {
+    padding: 22px 20px 18px;
+  }
+  .field-app-modal-title {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1c1c1e;
+    text-align: center;
+    line-height: 1.38;
+  }
+  .field-app-modal-body {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #3a3a3c;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .field-app-modal-body p:last-child {
+    margin-bottom: 0;
+  }
+  .field-app-modal-detail { font-size: 0.86rem; color: #3a3a3c; }
+  .field-app-modal-muted { font-size: 0.8rem; color: #8e8e93; }
+  .field-app-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .field-app-modal-actions .btn-secondary,
+  .field-app-modal-actions .btn-primary {
+    flex: 1;
+    width: auto;
+    margin-top: 0;
+    padding: 12px 12px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+
   /* 入力 */
   .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   .input-num  { flex: 1; font-size: 1.5rem; font-weight: 700; border: none;
@@ -56,8 +129,15 @@
   .readonly-block .ro-line:last-child { border-bottom: none; }
   .readonly-block .ro-k { color: #8e8e93; flex-shrink: 0; }
   .readonly-block .ro-v { font-weight: 600; text-align: right; word-break: break-word; }
+  .readonly-block.readonly-block--draft-planned {
+    background: linear-gradient(180deg, #fdfbf3 0%, #f7f4ea 100%);
+    border: 1px solid #e8e4d8;
+    border-left: 3px solid rgba(10, 132, 255, 0.42);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
   .subhead { font-size: 0.7rem; font-weight: 700; color: #636366;
              letter-spacing: 0.06em; margin: 16px 0 10px; }
+  .subhead.actual-planned-subhead--draft { color: #5a5248; }
   .pattern-row { display: flex; flex-direction: column; gap: 10px; margin-top: 14px;
                   padding-top: 14px; border-top: 1px solid #e5e5ea; }
   .pattern-check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem;
@@ -236,7 +316,7 @@
 
     <div class="card">
       <div class="card-label">今日の実績</div>
-      <div class="subhead">予告（参照）</div>
+      <div class="subhead" id="actual-planned-subhead">予告（参照）</div>
       <div class="readonly-block" id="actual-planned-summary"></div>
       <div class="subhead">実績（入力）</div>
       <div id="actual-inputs-mfg">
@@ -293,6 +373,17 @@
   </div>
 </div>
 
+<dialog id="field-app-modal" class="field-app-modal" aria-labelledby="field-app-modal-title">
+  <div class="field-app-modal-panel">
+    <h2 id="field-app-modal-title" class="field-app-modal-title"></h2>
+    <div id="field-app-modal-body" class="field-app-modal-body"></div>
+    <div class="field-app-modal-actions">
+      <button type="button" class="btn-secondary" id="field-app-modal-cancel">キャンセル</button>
+      <button type="button" class="btn-primary" id="field-app-modal-confirm">OK</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- ================================================
      画面: 完了
      ================================================ -->
@@ -325,9 +416,7 @@ let inputMode = "manufacturing";   // manufacturing | logistics
 let submitting = false;
 /** 最後にサーバと整合した予告明細（着手許可の比較用） */
 let _plannedSavedFingerprint = "[]";
-/** 空明細で「予告を記録」成功直後のみ、着手可 */
-let _plannedAllowEmptyAfterSave = false;
-/** 担当者サジェスト：field_users 展開後 { name, proc, label } */
+let _serverPlannedRegistered = false;
 let fieldUserSuggestRows = [];
 let fieldUserSuggestBlurTimer = null;
 
@@ -340,6 +429,150 @@ function escHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+let _fieldAppModalResolve = null;
+
+function initFieldAppModal() {
+  const dlg = document.getElementById("field-app-modal");
+  if (!dlg || dlg.dataset.moBound === "1") return;
+  dlg.dataset.moBound = "1";
+  dlg.addEventListener("close", () => {
+    const resolve = _fieldAppModalResolve;
+    _fieldAppModalResolve = null;
+    if (!resolve) return;
+    const confirmed = dlg.returnValue === "confirm";
+    dlg.returnValue = "";
+    resolve(confirmed);
+  });
+  document.getElementById("field-app-modal-cancel").addEventListener("click", () => {
+    dlg.returnValue = "";
+    dlg.close();
+  });
+  document.getElementById("field-app-modal-confirm").addEventListener("click", () => {
+    dlg.returnValue = "confirm";
+    dlg.close();
+  });
+}
+
+function openFieldAppModal(opts) {
+  initFieldAppModal();
+  const dlg = document.getElementById("field-app-modal");
+  dlg.returnValue = "";
+  document.getElementById("field-app-modal-title").textContent = opts.title || "";
+  document.getElementById("field-app-modal-body").innerHTML = opts.bodyHtml || "";
+  document.getElementById("field-app-modal-cancel").textContent =
+    opts.cancelText != null ? opts.cancelText : "キャンセル";
+  document.getElementById("field-app-modal-confirm").textContent =
+    opts.confirmText != null ? opts.confirmText : "OK";
+  return new Promise((resolve) => {
+    _fieldAppModalResolve = resolve;
+    dlg.showModal();
+  });
+}
+
+async function executeStartFromPlanned(pinnedWorkUnitId, draftPlannedLinesForStart) {
+  const sbtn = document.getElementById("planned-start-btn");
+  sbtn.disabled    = true;
+  sbtn.textContent = "着手中...";
+
+  const cfg = getConfig();
+  let id = pinnedWorkUnitId != null ? pinnedWorkUnitId : unitId;
+  try {
+    if ((id == null || id === "") && bizDate) {
+      const w = await api("POST", "/work", {
+        company_id:    cfg.company,
+        task_id:       cfg.task,
+        process_id:    cfg.process,
+        user_id:       cfg.user,
+        business_date: bizDate,
+      });
+      if (!w || w.__error || !w.id) {
+        toast(w && w.message ? w.message : "作業記録の準備に失敗しました");
+        return;
+      }
+      unitId = w.id;
+      id     = w.id;
+      syncInputModeFromPayload(w);
+    }
+    if (!id) {
+      toast("営業日が不明です");
+      return;
+    }
+
+    const idNum = Number(id);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      toast("作業行がありません。ページを再読み込みしてください。");
+      return;
+    }
+
+    const startPayload =
+      draftPlannedLinesForStart != null && draftPlannedLinesForStart.length
+        ? { lines: draftPlannedLinesForStart }
+        : {};
+    const st = await api("POST", `/work/${idNum}/start`, startPayload);
+    let row = (st && !st.__error) ? st : null;
+    if (!row) {
+      row = await api("POST", "/work", {
+        company_id:    cfg.company,
+        task_id:       cfg.task,
+        process_id:    cfg.process,
+        user_id:       cfg.user,
+        business_date: bizDate || undefined,
+      });
+    }
+    if (!row || row.__error || !row.id) {
+      toast(row && row.message ? row.message : "着手に失敗しました");
+      return;
+    }
+    applyUnit(row.unit);
+    syncInputModeFromPayload(row);
+    toast("着手を記録しました");
+    await showActual(row);
+  } finally {
+    sbtn.disabled    = false;
+    sbtn.textContent = "着手して実績入力へ";
+  }
+}
+
+async function submitStartFromPlanned() {
+  const host = plannedRowsHost();
+  const scanned = scanHostLines(host, { allowQtyEmpty: true });
+  if (scanned.error) {
+    toast(scanned.error);
+    return;
+  }
+  if (scanned.lines.length === 0) {
+    toast("予告内容がありません");
+    return;
+  }
+  const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
+  const serverFp = _plannedSavedFingerprint;
+  const registered = _serverPlannedRegistered;
+  const workUnitIdForStart = unitId;
+  const draftLinesForStart = registered ? null : scanned.lines;
+  let needDeferAfterModal = false;
+  if (registered && currentFp !== serverFp) {
+    toast(MSG_PLANNED_UNSAVED);
+    return;
+  }
+  if (!registered) {
+    const go = await openFieldAppModal({
+      title: "予告登録されていません",
+      bodyHtml:
+        "<p>このまま着手すると、「予告なし作業」として記録されます。</p>" +
+        "<p>予告として正式に残す場合は、先に「予告を記録」を押してください。</p>",
+      cancelText: "戻る",
+      confirmText: "このまま着手",
+    });
+    if (!go) return;
+    needDeferAfterModal = true;
+  }
+  if (needDeferAfterModal) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+
+  await executeStartFromPlanned(workUnitIdForStart, draftLinesForStart);
 }
 
 function dispStr(v) {
@@ -434,7 +667,9 @@ function parseQtyInput(raw) {
 }
 
 /** 空行はスキップ。不完全行は { error } */
-function scanHostLines(host) {
+function scanHostLines(host, opts) {
+  opts = opts || {};
+  const allowQtyEmpty = !!opts.allowQtyEmpty;
   if (!host) return { lines: [] };
   const out = [];
   for (const row of host.querySelectorAll(".multi-row-line")) {
@@ -442,18 +677,32 @@ function scanHostLines(host) {
     const qtyEl = row.querySelector("[data-line-qty]");
     const lb = (labEl && labEl.value || "").trim();
     const rawQ = qtyEl ? qtyEl.value : "";
+    const rawTrim = String(rawQ ?? "").trim();
     const q = parseQtyInput(rawQ);
-    if (!lb && String(rawQ).trim() === "") continue;
-    if (lb && (String(rawQ).trim() === "" || q === null)) {
-      return { error: "名前だけ入力された行があります。数量も入力してください" };
+    if (!lb && rawTrim === "") continue;
+    if (!lb && rawTrim !== "" && Number.isNaN(q)) {
+      return { error: "数量の形式が不正な行があります" };
     }
     if (!lb && q !== null && !Number.isNaN(q)) {
       return { error: "数量だけ入力された行があります。名前と数量をセットで入力してください" };
     }
-    if (Number.isNaN(q)) {
-      return { error: "数量の形式が不正な行があります" };
+    if (allowQtyEmpty) {
+      if (lb && rawTrim !== "" && (q === null || Number.isNaN(q))) {
+        return { error: "数量の形式が不正な行があります" };
+      }
+    } else {
+      if (lb && (rawTrim === "" || q === null)) {
+        return { error: "名前だけ入力された行があります。数量も入力してください" };
+      }
+      if (Number.isNaN(q)) {
+        return { error: "数量の形式が不正な行があります" };
+      }
     }
-    out.push({ label: lb, value: q });
+    const line = { label: lb };
+    if (q !== null && !Number.isNaN(q)) {
+      line.value = q;
+    }
+    out.push(line);
   }
   return { lines: out };
 }
@@ -466,22 +715,28 @@ function syncLineUnitSuffixes() {
 
 /** scan / サーバ双方で同一形式の JSON 文字列にそろえる */
 function fingerprintPlannedLinesNormalized(lines) {
-  const arr = (lines || []).map((L) => {
-    const label = String(L.label != null ? L.label : "").trim();
-    const value = Number(L.value);
-    return { label, value };
-  }).filter((x) => x.label && Number.isFinite(x.value));
+  const arr = (lines || [])
+    .map((L) => {
+      const label = String(L.label != null ? L.label : "").trim();
+      if (!label) return null;
+      const rawV = L.value;
+      const hasVal =
+        rawV != null && rawV !== "" && Number.isFinite(Number(rawV));
+      const o = { label };
+      if (hasVal) o.value = Number(rawV);
+      return o;
+    })
+    .filter(Boolean);
   return JSON.stringify(arr);
 }
 
 function plannedFingerprintFromServerPayload(data) {
   if (!data || typeof data !== "object") return "[]";
-  let raw = [];
   if (Array.isArray(data.planned_lines) && data.planned_lines.length) {
-    raw = data.planned_lines;
-  } else {
-    raw = legacyPlannedLinesFromScalars(data);
+    return fingerprintPlannedLinesNormalized(data.planned_lines);
   }
+  if (!data.planned_registered_at) return "[]";
+  const raw = legacyPlannedLinesFromScalars(data);
   return fingerprintPlannedLinesNormalized(raw);
 }
 
@@ -536,15 +791,16 @@ function fillRowsHost(host, lineObjs, placeholder, listId) {
 }
 
 function setPlannedRowsFromData(prefill) {
-  _plannedAllowEmptyAfterSave = false;
   const host = plannedRowsHost();
   const log = isLogistics();
   const listId = log ? "dl-work-label" : "dl-item-name";
   let lines = [];
-  if (prefill && Array.isArray(prefill.planned_lines) && prefill.planned_lines.length) {
-    lines = prefill.planned_lines;
-  } else {
-    lines = legacyPlannedLinesFromScalars(prefill);
+  if (prefill && typeof prefill === "object") {
+    if (Array.isArray(prefill.planned_lines) && prefill.planned_lines.length) {
+      lines = prefill.planned_lines;
+    } else if (prefill.planned_registered_at) {
+      lines = legacyPlannedLinesFromScalars(prefill);
+    }
   }
   if (!lines.length) {
     fillRowsHost(host, [{}], "候補から選ぶか入力", listId);
@@ -556,6 +812,9 @@ function setPlannedRowsFromData(prefill) {
   } else {
     _plannedSavedFingerprint = "[]";
   }
+  _serverPlannedRegistered = Boolean(
+    prefill && typeof prefill === "object" && prefill.planned_registered_at,
+  );
 }
 
 function setActualRowsFromData(data) {
@@ -575,37 +834,85 @@ function setActualRowsFromData(data) {
   fillRowsHost(host, lines, "候補から選ぶか入力", listId);
 }
 
+function hasDisplayablePlannedQty(qRaw) {
+  if (qRaw == null) return false;
+  const s = String(qRaw).trim();
+  if (s === "") return false;
+  return Number.isFinite(Number(s));
+}
+
+function formatReadonlyPlannedQty(n) {
+  if (!Number.isFinite(n)) return "";
+  if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+  const r = Math.round(n * 100) / 100;
+  return String(r);
+}
+
 function renderLinesSummaryReadonly(lines) {
   if (!lines || !lines.length) return "";
-  return lines.map((l) =>
-    `<div class="ro-line"><span class="ro-k">${escHtml(l.label)}</span>` +
-    `<span class="ro-v">${escHtml(String(l.value))} ${escHtml(unitVal)}</span></div>`
-  ).join("");
+  return lines.map((l) => {
+    const lb = escHtml(l.label);
+    const qRaw = l.value;
+    const hasQ = hasDisplayablePlannedQty(qRaw);
+    const qDisp = hasQ
+      ? formatReadonlyPlannedQty(Number(String(qRaw).trim()))
+      : "";
+    return (
+      `<div class="ro-line"><span class="ro-k">${lb}</span>` +
+      (hasQ
+        ? `<span class="ro-v">${escHtml(qDisp)} ${escHtml(unitVal)}</span>`
+        : "") +
+      `</div>`
+    );
+  }).join("");
 }
 
 function renderPlannedSummaryForActual(data) {
   const sum = document.getElementById("actual-planned-summary");
+  const sub = document.getElementById("actual-planned-subhead");
   if (!sum) return;
+  const formal = Boolean(data && data.planned_registered_at);
   const pl = data.planned_lines;
+
+  function setChrome(label, draftVisual) {
+    if (sub) {
+      sub.textContent = label;
+      sub.classList.toggle("actual-planned-subhead--draft", !!draftVisual);
+    }
+    sum.classList.toggle("readonly-block--draft-planned", !!draftVisual);
+  }
+
   if (pl && pl.length) {
+    const draft = !formal;
+    setChrome(draft ? "着手前入力（未登録）（参照）" : "今日の予告（参照）", draft);
     sum.innerHTML = renderLinesSummaryReadonly(pl);
     return;
   }
-  const qv = (q) => (q != null ? `${q} ${unitVal}` : "—");
+
+  setChrome(formal ? "今日の予告（参照）" : "着手前の入力（参照）", false);
+  function scalarQtyRow(q) {
+    if (!hasDisplayablePlannedQty(q)) return "";
+    const qDisp = formatReadonlyPlannedQty(Number(String(q).trim()));
+    return (
+      `<div class="ro-line"><span class="ro-k">数量</span>` +
+      `<span class="ro-v">${escHtml(qDisp)} ${escHtml(unitVal)}</span></div>`
+    );
+  }
   if (isLogistics()) {
     const plab = logisticsPlannedLabel(data);
     sum.innerHTML =
       `<div class="ro-line"><span class="ro-k">作業内容</span><span class="ro-v">${escHtml(dispStr(plab))}</span></div>` +
-      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+      scalarQtyRow(data.planned_value);
   } else {
     sum.innerHTML =
       `<div class="ro-line"><span class="ro-k">商品名・対象</span><span class="ro-v">${escHtml(dispStr(data.planned_item_name))}</span></div>` +
-      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+      scalarQtyRow(data.planned_value);
   }
 }
 
 function hasWorkPlanned(data) {
   if (!data) return false;
+  if (!data.planned_registered_at) return false;
   if (data.planned_lines && data.planned_lines.length > 0) return true;
   return data.planned_value != null
     || (data.planned_work_type && String(data.planned_work_type).trim() !== "")
@@ -1273,9 +1580,15 @@ async function submitPlanned() {
     return;
   }
 
-  const scanned = scanHostLines(plannedRowsHost());
+  const scanned = scanHostLines(plannedRowsHost(), { allowQtyEmpty: true });
   if (scanned.error) {
     toast(scanned.error);
+    btn.disabled    = false;
+    btn.textContent = "予告を記録";
+    return;
+  }
+  if (!scanned.lines.length) {
+    toast("商品名（または作業名）が入力されている行がありません");
     btn.disabled    = false;
     btn.textContent = "予告を記録";
     return;
@@ -1308,83 +1621,7 @@ async function submitPlanned() {
     sbtn.textContent = "着手して実績入力へ";
   }
   setPlannedRowsFromData(data);
-  if (plannedFingerprintFromServerPayload(data) === "[]") {
-    _plannedAllowEmptyAfterSave = true;
-  } else {
-    _plannedAllowEmptyAfterSave = false;
-  }
   show("planned");
-}
-
-async function submitStartFromPlanned() {
-  const sbtn = document.getElementById("planned-start-btn");
-  const host = plannedRowsHost();
-  const scanned = scanHostLines(host);
-  if (scanned.error) {
-    toast(MSG_PLANNED_UNSAVED);
-    return;
-  }
-  const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
-  if (currentFp === "[]" && !_plannedAllowEmptyAfterSave) {
-    toast("予告が確定していません。先に「予告を記録」してください。空でも保存できます。");
-    return;
-  }
-  if (currentFp !== _plannedSavedFingerprint) {
-    toast(MSG_PLANNED_UNSAVED);
-    return;
-  }
-
-  sbtn.disabled    = true;
-  sbtn.textContent = "着手中...";
-
-  const cfg = getConfig();
-  let id = unitId;
-  try {
-    if ((id == null || id === "") && bizDate) {
-      const w = await api("POST", "/work", {
-        company_id:    cfg.company,
-        task_id:       cfg.task,
-        process_id:    cfg.process,
-        user_id:       cfg.user,
-        business_date: bizDate,
-      });
-      if (!w || w.__error || !w.id) {
-        toast(w && w.message ? w.message : "作業記録の準備に失敗しました");
-        return;
-      }
-      unitId = w.id;
-      id     = w.id;
-      syncInputModeFromPayload(w);
-    }
-    if (!id) {
-      toast("営業日が不明です");
-      return;
-    }
-
-    const st = await api("POST", `/work/${id}/start`, {});
-    let row = (st && !st.__error) ? st : null;
-    if (!row) {
-      row = await api("POST", "/work", {
-        company_id:    cfg.company,
-        task_id:       cfg.task,
-        process_id:    cfg.process,
-        user_id:       cfg.user,
-        business_date: bizDate || undefined,
-      });
-    }
-    if (!row || row.__error || !row.id) {
-      toast(row && row.message ? row.message : "着手に失敗しました");
-      return;
-    }
-    applyUnit(row.unit);
-    syncInputModeFromPayload(row);
-    _plannedAllowEmptyAfterSave = false;
-    toast("着手を記録しました");
-    await showActual(row);
-  } finally {
-    sbtn.disabled    = false;
-    sbtn.textContent = "着手して実績入力へ";
-  }
 }
 
 // =================================================================
@@ -1498,6 +1735,7 @@ function detailFromApiError(parsed, fallback) {
 // =================================================================
 // 起動（リロードのたびに担当者選択から。予告・着手へは「この名前で使用する」確定後のみ）
 // =================================================================
+initFieldAppModal();
 document.getElementById("overlay").classList.remove("hidden");
 document.getElementById("user-input").value = fieldUserOverlayPrefill();
 fieldUserFetchMaster().finally(() => {

@@ -68,10 +68,14 @@ def work_unit_has_planned_facts(unit: models.WorkUnit) -> bool:
 def sync_planned_at_with_planned_facts(unit: models.WorkUnit) -> None:
     """
     予告事実と planned_at の整合（append-only スナップショット用）。
-    ・事実があり planned_at が null → 現在時刻（新規予告または旧不整合の修復）
-    ・事実があり planned_at あり → 維持（clone による引き継ぎ）
-    ・事実が無い → planned_at を null（明示的に予告を消した行の整合）
+    ・planned_registered_at が無い → 正式予告ではないため planned_at は常に null
+    ・登録済みで事実があり planned_at が null → 現在時刻
+    ・登録済みで事実があり planned_at あり → 維持（clone による引き継ぎ）
+    ・登録済みで事実が無い → planned_at を null
     """
+    if getattr(unit, "planned_registered_at", None) is None:
+        unit.planned_at = None
+        return
     if not work_unit_has_planned_facts(unit):
         unit.planned_at = None
         return

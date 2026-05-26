@@ -2,6 +2,26 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Literal
 
 
+# ─── company_master（管理用・第1段階）────────────────────────
+class CompanyMasterCreateIn(BaseModel):
+    company_id: str
+    company_name: str
+
+
+class CompanyMasterPatchIn(BaseModel):
+    company_name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CompanyMasterOut(BaseModel):
+    id: int
+    company_id: str
+    company_name: str
+    is_active: bool
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
 # ─── 会社設定 ───────────────────────────────────────────────
 class CompanySettingsIn(BaseModel):
     company_id:        str
@@ -86,6 +106,22 @@ class NextDayQuery(BaseModel):
     current_business_date: str   # "YYYY-MM-DD"
 
 
+class UsedMaterialIn(BaseModel):
+    """第5条・実績に付随する使用物ログ（任意・記録のみ。product_code なし）。"""
+
+    label: str = ""
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    lot_no: Optional[str] = None
+
+
+class UsedMaterialOut(BaseModel):
+    label: str = ""
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    lot_no: Optional[str] = None
+
+
 class WorkLineIn(BaseModel):
     """One planned line: label, quantity, optional line_id (stable row id), optional due_date."""
     label: str = ""
@@ -93,6 +129,10 @@ class WorkLineIn(BaseModel):
     line_id: Optional[str] = None
     due_date: Optional[str] = None
     product_code: Optional[str] = None
+    # 実績行のみ。現場メモ（引継ぎ・補足）。予告保存時はサーバ側で保持しない。
+    line_memo: Optional[str] = None
+    # 実績（actual lines）のみ利用。予告では無視される。任意・記録のみ。
+    used_materials: Optional[List[UsedMaterialIn]] = None
 
 
 class ActualIn(BaseModel):
@@ -109,6 +149,8 @@ class ActualIn(BaseModel):
     deviation_reason: Optional[str] = None
     # 現場・実績時のみ任意（誤入力説明・補足）
     actual_memo: Optional[str] = None
+    # 使用物ログ（原料・備品・ロット等）。省略時はサーバ側でクリア。空配列も可。
+    used_materials: Optional[List[UsedMaterialIn]] = None
 
 
 class PlannedIn(BaseModel):
@@ -116,6 +158,12 @@ class PlannedIn(BaseModel):
     planned_work_type: Optional[str] = None
     planned_work_label: Optional[str] = None
     planned_item_name: Optional[str] = None
+    lines: Optional[List[WorkLineIn]] = None
+
+
+class StartedIn(BaseModel):
+    """POST /work/{id}/start 用。正式予告（planned_registered_at 無し）のときだけ lines を受理し着手時点の予告スナップショットを保存する。"""
+
     lines: Optional[List[WorkLineIn]] = None
 
 
@@ -128,10 +176,12 @@ class DebugSetBusinessDateIn(BaseModel):
 
 class WorkLineOut(BaseModel):
     label: str
-    value: float
+    value: Optional[float] = None
     line_id: Optional[str] = None
     due_date: Optional[str] = None  # YYYY-MM-DD
     product_code: Optional[str] = None
+    line_memo: Optional[str] = None
+    used_materials: Optional[List[UsedMaterialOut]] = None
 
 
 class PlannedDueMergeEntry(BaseModel):
@@ -169,6 +219,11 @@ class PriorityItemOut(BaseModel):
     stock_qty: float = 0
     prod_value: float
     due_date: Optional[str] = None
+    # 第7条・商品マスタ基準在庫（GET 時に付与。NULL=未設定・計算は0）
+    safety_stock_value: Optional[int] = None
+    safety_stock_unset: bool = False
+    usable_stock_qty: float = 0
+    is_after_cutoff: bool = False
     status: str = "open"
     # 第7条フェーズ1・在庫×出荷×納期から算出（CSV再生成・手入力どちらも GET 時に同じ式）
     priority_level: str = "low"
@@ -230,6 +285,7 @@ class ProductMasterOut(BaseModel):
     product_code: Optional[str] = None
     label: str
     is_active: bool = True
+    safety_stock_value: Optional[int] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -250,6 +306,7 @@ class ProductMasterPatchIn(BaseModel):
     product_code: Optional[str] = None
     label: Optional[str] = None
     is_active: Optional[bool] = None
+    safety_stock_value: Optional[int] = None
 
 
 class StockImportOut(BaseModel):
@@ -310,6 +367,8 @@ class WorkUnitOut(BaseModel):
     planned_work_type:   Optional[str] = None
     planned_work_label:  Optional[str] = None
     planned_item_name:   Optional[str] = None
+    planned_at:          Optional[str] = None
+    planned_registered_at: Optional[str] = None  # 「予告を登録」確定時のみ
     planned_lines:       Optional[List[WorkLineOut]] = None
     planned_value:       Optional[float]
     started_at:          Optional[str]
@@ -320,6 +379,8 @@ class WorkUnitOut(BaseModel):
     actual_value:        Optional[float]
     actual_at:           Optional[str]
     actual_memo:         Optional[str] = None
+    used_materials:      Optional[List[UsedMaterialOut]] = None
+    used_materials_json: Optional[str] = None
     pattern_a:           Optional[bool] = None
     pattern_b:           Optional[bool] = None
     user_pattern:        Optional[str] = None  # 現場申告 B のみ（未申告は null）。system_pattern とは独立
@@ -350,3 +411,49 @@ class WorkUnitOut(BaseModel):
     is_actual_revision: bool = False
     actual_revision_detail_line: Optional[str] = None
     actual_revision_notice_strong: bool = False
+
+
+class PackageAObserveSummaryOut(BaseModel):
+    blue_count: int = 0
+    after_cutoff_count: int = 0
+    prev_day_incomplete_count: int = 0
+    planned_unstarted_count: int = 0
+    diff_anomaly_count: int = 0
+    exception_input_count: int = 0
+
+
+class PackageAObserveAnomalyRowOut(BaseModel):
+    observed_at: str = ""
+    time_label: str = ""
+    leader: str = ""
+    process_id: str = ""
+    kind: str = ""
+    content: str = ""
+    business_date: str = ""
+
+
+class PackageAObserveProcessRowOut(BaseModel):
+    process_id: str = ""
+    blue_count: int = 0
+    blue_rate: float = 0.0
+    after_cutoff_count: int = 0
+    incomplete_count: int = 0
+    total_count: int = 0
+
+
+class PackageAObservePriorityStatusOut(BaseModel):
+    shortage_count: int = 0
+    after_cutoff_count: int = 0
+    safety_unset_count: int = 0
+    concentration_label: str = ""
+    open_item_count: int = 0
+
+
+class PackageAObserveDashboardOut(BaseModel):
+    company_id: str
+    generated_at: str
+    current_business_date: str
+    summary: PackageAObserveSummaryOut
+    recent_anomalies: List[PackageAObserveAnomalyRowOut]
+    process_observation: List[PackageAObserveProcessRowOut]
+    priority_status: PackageAObservePriorityStatusOut

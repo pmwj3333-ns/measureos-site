@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(tags=["設定"])
 
@@ -62,6 +63,7 @@ def list_companies(db: Session = Depends(get_db)):
 
 @router.post("/settings/field-users", summary="班長リストのみ保存する")
 def save_field_users(body: schemas.FieldUsersIn, db: Session = Depends(get_db)):
+    validate_company_id(db, body.company_id)
     s = db.query(models.CompanySettings).filter_by(company_id=body.company_id).first()
     if s is None:
         s = models.CompanySettings(company_id=body.company_id)
@@ -74,6 +76,7 @@ def save_field_users(body: schemas.FieldUsersIn, db: Session = Depends(get_db)):
 
 @router.post("/settings", summary="会社設定を保存する")
 def save_settings(body: schemas.CompanySettingsIn, db: Session = Depends(get_db)):
+    validate_company_id(db, body.company_id)
     s = db.query(models.CompanySettings).filter_by(company_id=body.company_id).first()
     if s is None:
         s = models.CompanySettings(company_id=body.company_id)
@@ -103,6 +106,7 @@ def get_settings(company_id: str, db: Session = Depends(get_db)):
 
 @router.post("/calendar", summary="カレンダーを登録する")
 def save_calendar(body: schemas.CalendarIn, db: Session = Depends(get_db)):
+    validate_company_id(db, body.company_id)
     from datetime import date as date_type
     d = date_type.fromisoformat(body.date)
     record = db.query(models.CompanyCalendar).filter_by(

@@ -14,6 +14,22 @@ from sqlalchemy import (
 from app.database import Base
 
 
+class CompanyMaster(Base):
+    """登録済み会社の唯一管理テーブル（観測対象 company_id の土台。第1段階・API 全体検証は未接続）。"""
+
+    __tablename__ = "company_master"
+    __table_args__ = (
+        UniqueConstraint("company_id", name="uq_company_master_company_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    company_name = Column(String, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+
 class CompanySettings(Base):
     __tablename__ = "company_settings"
 
@@ -66,6 +82,8 @@ class WorkUnit(Base):
     planned_lines_json = Column(String, nullable=True)
     planned_value   = Column(Float, nullable=True)
     planned_at      = Column(DateTime, nullable=True)
+    # 「予告を登録」確定時のみセット。未登録の入力ドラフトは正式予告にしない。
+    planned_registered_at = Column(DateTime, nullable=True)
     started_at      = Column(DateTime, nullable=True)
     actual_work_type = Column(String, nullable=True)
     actual_work_label = Column(String, nullable=True)
@@ -74,6 +92,8 @@ class WorkUnit(Base):
     actual_value    = Column(Float, nullable=True)
     actual_at       = Column(DateTime, nullable=True)
     actual_memo     = Column(String, nullable=True)
+    # Package A: 実績に付随する「使用物」ログのみ（在庫減算・BOM・ロット管理は行わない）
+    used_materials_json = Column(String, nullable=True)
     diff_value      = Column(Float, nullable=True)
 
     pattern_a       = Column(Boolean, nullable=True)
@@ -116,6 +136,8 @@ class ProductMaster(Base):
     product_code = Column(String, nullable=True)
     label = Column(String, nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
+    # 第7条・基準在庫（安全在庫）。NULL=未設定（計算時 0、観測バッジ用に未設定扱い）
+    safety_stock_value = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -138,6 +160,8 @@ class PriorityItem(Base):
     due_date = Column(String, nullable=True)
     # open = 現場・一覧に出す / closed = 事務クローズ済み（一覧・GET items では返さない）
     status = Column(String, nullable=False, default="open")
+    # 第3条 Package A: 締切（order_cutoff_time）後に生成された作成指示（観測のみ）
+    is_after_cutoff = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 

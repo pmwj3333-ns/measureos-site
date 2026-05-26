@@ -28,6 +28,531 @@
 
   .main { max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
 
+  /* 予告・作業盤（幅広・2カラム） */
+  .field-planned-main { max-width: 1160px; }
+  .field-planned-card { padding: 10px 10px 10px; }
+  .sub-text.tight { margin: 4px 0; line-height: 1.45; }
+  .field-planned-unit-hint.sub-text.tight { margin-top: 2px; margin-bottom: 0; }
+  .field-board-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .field-board-col { min-width: 0; }
+  .field-board-a7-head {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #8e8e93;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .field-board-a7-scroll {
+    max-height: min(72vh, 620px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    padding: 3px 3px 5px;
+    background: #ececef;
+  }
+  .field-board-a7-foot { margin-top: 6px; font-size: 0.72rem; }
+  /* 予告：下部＝操作バー（巨大フォームボタン感を抑える） */
+  .field-planned-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e8e8ed;
+  }
+  .field-planned-actions-submit {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .field-planned-actions .btn-primary,
+  .field-planned-actions .btn-secondary {
+    width: 100%;
+    margin-top: 0;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+  .field-planned-actions .btn-planned-start {
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1e3d5c;
+    background: #e8f1f9;
+    border: 1px solid rgba(15, 70, 120, 0.22);
+    box-shadow: none;
+  }
+  .field-planned-actions .btn-planned-start:disabled {
+    opacity: 0.45;
+  }
+  /* 現場共通確認モーダル（中央・backdrop・第7条「作成済み」／予告未登録着手 などで共有） */
+  .field-app-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 400px);
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+    background: #fff;
+    z-index: 600;
+    overflow: hidden;
+  }
+  .field-app-modal::backdrop {
+    background: rgba(0, 0, 0, 0.42);
+    -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(1px);
+  }
+  @keyframes fieldAppModalPop {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -47%) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  .field-app-modal[open] {
+    animation: fieldAppModalPop 0.2s ease-out;
+  }
+  .field-app-modal-panel {
+    padding: 22px 20px 18px;
+  }
+  .field-app-modal-title {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1c1c1e;
+    text-align: center;
+    line-height: 1.38;
+  }
+  .field-app-modal-body {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #3a3a3c;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .field-app-modal-body p {
+    margin: 0 0 10px;
+  }
+  .field-app-modal-body p:last-child {
+    margin-bottom: 0;
+  }
+  .field-app-modal-detail {
+    font-size: 0.86rem;
+    color: #3a3a3c;
+  }
+  .field-app-modal-muted {
+    font-size: 0.8rem;
+    color: #8e8e93;
+  }
+  .field-app-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .field-app-modal-actions .btn-secondary,
+  .field-app-modal-actions .btn-primary {
+    flex: 1;
+    width: auto;
+    margin-top: 0;
+    padding: 12px 12px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+  .field-planned-actions .btn-add-planned-compact {
+    align-self: flex-start;
+  }
+  @media (min-width: 768px) {
+    .field-planned-actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    .field-planned-actions-submit {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .field-planned-actions .btn-primary,
+    .field-planned-actions .btn-secondary {
+      width: auto;
+      min-width: 0;
+    }
+    .field-planned-actions .btn-add-planned-compact {
+      margin-right: auto;
+    }
+  }
+  .main.field-planned-main {
+    padding-bottom: 56px;
+  }
+  .article7-board .a7-board-empty { font-size: 0.76rem; color: #8e8e93; margin: 4px 3px; }
+  .article7-board .a7-board-sec { margin-bottom: 4px; }
+  .article7-board .a7-board-sec-title {
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #8e8e93;
+    letter-spacing: 0.06em;
+    margin: 3px 2px 2px;
+    text-transform: uppercase;
+  }
+  .article7-board .a7-board-low {
+    border-top: 1px solid #d8d8dc;
+    margin-top: 2px;
+    padding-top: 2px;
+  }
+  .article7-board .a7-board-low > summary {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #636366;
+    cursor: pointer;
+    padding: 3px 2px;
+    list-style: none;
+  }
+  .article7-board .a7-board-low > summary::-webkit-details-marker { display: none; }
+  .article7-board .a7-board-low > div {
+    padding-top: 2px;
+  }
+  .article7-board .a7-card {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    border-bottom: 1px solid #dcdce0;
+    margin-bottom: 0;
+    overflow: visible;
+  }
+  .article7-board .a7-board-sec .a7-card:last-child {
+    border-bottom: none;
+  }
+  .article7-board .a7-board-sec .a7-card-wrap:last-child {
+    border-bottom: none;
+  }
+  .article7-board .a7-card-wrap {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    border-bottom: 1px solid #dcdce0;
+    margin-bottom: 0;
+    overflow: visible;
+  }
+  .article7-board .a7-card-pick {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 3px 5px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.76rem;
+    line-height: 1.3;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 0;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .article7-board .a7-card-pick .a7-card-one-line {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .article7-board .a7-card-pick:hover { background: rgba(0, 122, 255, 0.07); }
+  .article7-board .a7-card-pick:active { background: rgba(0, 122, 255, 0.11); }
+  .article7-board .a7-card-pick.a7-pick-flash {
+    animation: a7PickFlash 0.28s ease-out;
+  }
+  @keyframes a7PickFlash {
+    from { background: rgba(0, 122, 255, 0.22); }
+    to { background: transparent; }
+  }
+  .article7-board .a7-card-more {
+    margin: 0;
+    padding: 0 2px 2px;
+    border: none;
+    background: transparent;
+  }
+  .article7-board .a7-card-more > summary.a7-card-more-sum {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #8e8e93;
+    cursor: pointer;
+    list-style: none;
+    padding: 1px 4px 3px;
+  }
+  .article7-board .a7-card-more > summary.a7-card-more-sum::-webkit-details-marker { display: none; }
+  .article7-board .a7-card-wrap .a7-card-body {
+    margin-top: 2px;
+  }
+  .planned-row-a7-flash {
+    animation: plannedRowA7Flash 0.95s ease-out;
+  }
+  @keyframes plannedRowA7Flash {
+    0% { box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.45); }
+    100% { box-shadow: none; }
+  }
+  @keyframes actualPlannedPickFlash {
+    0% { background-color: rgba(0, 122, 255, 0.14); }
+    100% { background-color: transparent; }
+  }
+  .actual-planned-hit.actual-planned-pick-flash {
+    animation: actualPlannedPickFlash 0.38s ease-out;
+  }
+  .article7-board .a7-card-sum {
+    display: block;
+    padding: 3px 5px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.76rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .article7-board .a7-card-sum::-webkit-details-marker { display: none; }
+  .article7-board .a7-card-one-line {
+    color: #1c1c1e;
+    font-weight: 600;
+  }
+  .article7-board .a7-card-body {
+    padding: 4px 6px 5px;
+    margin: 0 2px 3px;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: #3a3a3c;
+    border-top: none;
+    background: rgba(255,255,255,0.72);
+    border-radius: 6px;
+    border: 1px solid #e5e5ea;
+  }
+  .article7-board .a7-card-body .lbl { color: #8e8e93; margin-right: 3px; font-size: 0.68rem; }
+  .article7-board .a7-cutoff-obs {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  @media (min-width: 768px) {
+    .field-board-grid { flex-direction: row; align-items: flex-start; gap: 12px; }
+    .field-board-col.field-board-a7 {
+      flex: 0 0 35%;
+      min-width: 200px;
+      max-width: 400px;
+    }
+    .field-board-col.field-board-planned-input {
+      flex: 1 1 65%;
+      min-width: 260px;
+    }
+  }
+
+  .multi-row-line.planned-product-block {
+    display: block;
+    padding: 5px 7px;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    background: #f9f9fb;
+    border-bottom: none;
+  }
+  .multi-row-line.planned-product-block:last-child { margin-bottom: 4px; }
+  .planned-rows-tight.multi-rows { margin-bottom: 2px; }
+  .planned-input-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .planned-input-head .field-label { margin-bottom: 0; }
+  .btn-add-planned-compact {
+    flex-shrink: 0;
+    padding: 5px 11px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px dashed #c7c7cc;
+    border-radius: 8px;
+    background: #fff;
+    color: #007aff;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .planned-card-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+  }
+  .planned-card-top .line-resolved-pc { display: none !important; }
+  .planned-inp-product {
+    flex: 1 1 180px;
+    min-width: 140px;
+    margin-bottom: 0;
+    padding: 6px 9px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .planned-inp-product:focus { outline: none; border-color: #007aff; }
+  .planned-inp-qty-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .planned-inp-qty-wrap .input-unit {
+    font-size: 0.62rem;
+    color: #aeaeb2;
+    flex-shrink: 0;
+    max-width: 2.8em;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+  .planned-inp-qty {
+    width: 58px;
+    max-width: 76px;
+    flex: 0 0 58px;
+    font-size: 0.94rem;
+    font-weight: 600;
+    padding: 4px 3px;
+    margin-bottom: 0;
+    border: none;
+    border-bottom: 1px solid #d1d1d6;
+    background: transparent;
+    box-sizing: border-box;
+  }
+  .planned-inp-qty:focus { border-bottom-color: #007aff; outline: none; }
+  .planned-um-details {
+    flex: 0 1 auto;
+  }
+  .planned-um-details[open] {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .planned-um-details > summary.planned-um-summary {
+    font-size: 0.64rem;
+    font-weight: 500;
+    color: #8e8e93;
+    cursor: pointer;
+    padding: 3px 6px;
+    list-style: none;
+    border: 1px solid #e8e8ed;
+    border-radius: 6px;
+    background: #f4f4f6;
+    white-space: nowrap;
+  }
+  .planned-um-details > summary.planned-um-summary::-webkit-details-marker { display: none; }
+  .planned-um-details > summary.planned-um-summary::before {
+    content: "▼";
+    display: inline-block;
+    margin-right: 3px;
+    font-size: 0.52rem;
+    vertical-align: middle;
+    opacity: 0.75;
+  }
+  .planned-um-details[open] > summary.planned-um-summary::before {
+    content: "▲";
+  }
+  .planned-row-remove.btn-line-remove {
+    flex: 0 0 40px;
+    width: 40px;
+    min-height: 40px;
+    margin-left: auto;
+    align-self: center;
+  }
+  .planned-um-body {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #eaeaea;
+  }
+  .planned-um-body .um-table {
+    background: #fff;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .planned-product-block .um-row {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+  }
+  .planned-um-body .btn-add-um-inline {
+    margin-top: 6px;
+    padding: 8px;
+  }
+  @media (min-width: 768px) {
+    .planned-inp-qty {
+      font-size: 0.9rem;
+      width: 62px;
+      max-width: 72px;
+      flex: 0 0 62px;
+      font-weight: 600;
+    }
+    .planned-inp-qty-wrap .input-unit {
+      font-size: 0.58rem;
+    }
+  }
+  @media (max-width: 767px) {
+    .planned-card-top {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .planned-inp-qty-wrap {
+      width: 100%;
+    }
+    .planned-inp-qty {
+      flex: 1;
+      width: auto;
+      max-width: none;
+      font-size: 1.35rem;
+    }
+    .planned-um-details { width: 100%; }
+    .planned-um-details[open] { flex-basis: auto; }
+    .planned-row-remove.btn-line-remove {
+      margin-left: 0;
+      align-self: flex-end;
+    }
+    .planned-inp-product {
+      border: none;
+      border-bottom: 2px solid #e5e5ea;
+      border-radius: 0;
+      padding: 8px 0;
+      background: transparent;
+    }
+  }
+
   .settings-adv {
     max-width: 480px; margin: 0 auto; padding: 8px 16px 0;
     font-size: 0.78rem; color: #636366;
@@ -120,6 +645,403 @@
     font-weight: 600; font-size: 0.9rem; cursor: pointer; font-family: inherit;
     -webkit-tap-highlight-color: transparent;
   }
+  /* 当日実績盤（横1行＝1商品・一覧優先） */
+  .field-actual-main { max-width: 1160px; }
+  .main.field-actual-main { padding-bottom: 56px; }
+  .field-actual-board-card { padding: 10px 10px 12px; }
+  .field-actual-board-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 10px;
+    margin-bottom: 8px;
+  }
+  .field-actual-board-head .card-label { margin-bottom: 0; }
+  .field-actual-board-head .field-actual-board-tagline {
+    font-size: 0.72rem;
+    color: #8e8e93;
+    line-height: 1.4;
+    max-width: 520px;
+  }
+  .field-actual-board-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .field-actual-ref-col {
+    min-width: 0;
+  }
+  .field-actual-ref-scroll {
+    max-height: min(72vh, 620px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e5e5ea;
+    border-radius: 10px;
+    background: #ececef;
+    padding: 6px 6px 8px;
+  }
+  .actual-planned-board {
+    margin-bottom: 2px;
+  }
+  /** 着手時スナップショット（正式予告未登録）のみ。強い警告ではなく区別用。 */
+  .actual-planned-board.actual-planned-board--draft {
+    background: linear-gradient(180deg, #fdfbf3 0%, #f7f4ea 100%);
+    border: 1px solid #e8e4d8;
+    border-left: 3px solid rgba(10, 132, 255, 0.42);
+    border-radius: 8px;
+    padding: 8px 8px 10px;
+    margin: 0 0 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .actual-planned-board.actual-planned-board--draft .actual-planned-board-head {
+    border-bottom-color: #dcd5c8;
+  }
+  .actual-planned-board.actual-planned-board--draft .actual-planned-board-title {
+    color: #5a5248;
+  }
+  .actual-planned-board.actual-planned-board--draft .actual-planned-count {
+    color: #7a7268;
+  }
+  .actual-planned-board.actual-planned-board--draft .actual-planned-hit:hover {
+    background: rgba(10, 132, 255, 0.07);
+  }
+  .actual-planned-board.actual-planned-board--draft .actual-planned-hit:active {
+    background: rgba(10, 132, 255, 0.1);
+  }
+  .actual-planned-board-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 2px 2px 6px;
+    border-bottom: 1px solid #dcdce0;
+    margin-bottom: 2px;
+  }
+  .actual-planned-board-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #636366;
+    letter-spacing: 0.05em;
+  }
+  .actual-planned-count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #8e8e93;
+    flex-shrink: 0;
+  }
+  .actual-planned-summary-host { min-height: 0; }
+  .actual-planned-hit {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 4px 5px;
+    border: none;
+    border-bottom: 1px solid #e0e0e5;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    border-radius: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .actual-planned-hit:last-child { border-bottom: none; }
+  .actual-planned-hit:hover { background: rgba(0, 122, 255, 0.07); }
+  .actual-planned-hit:active { background: rgba(0, 122, 255, 0.11); }
+  .ap-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1c1c1e;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ap-qty {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #3a3a3c;
+    font-variant-numeric: tabular-nums;
+  }
+  .actual-planned-empty {
+    font-size: 0.76rem;
+    color: #8e8e93;
+    margin: 4px 2px 6px;
+    line-height: 1.45;
+  }
+  .actual-planned-empty-sub { font-size: 0.72rem; color: #aeaeb2; }
+  .actual-a7-details {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #d0d0d6;
+  }
+  .actual-a7-details > summary.actual-a7-summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #636366;
+    padding: 4px 2px 6px;
+    letter-spacing: 0.02em;
+  }
+  .actual-a7-details > summary.actual-a7-summary::-webkit-details-marker { display: none; }
+  .actual-a7-details > summary.actual-a7-summary::before {
+    content: "▼";
+    display: inline-block;
+    margin-right: 5px;
+    font-size: 0.55rem;
+    opacity: 0.72;
+    vertical-align: middle;
+  }
+  .actual-a7-details[open] > summary.actual-a7-summary::before {
+    content: "▲";
+  }
+  .actual-a7-details-body {
+    padding-top: 2px;
+  }
+  .actual-a7-hint {
+    margin: 0 0 6px !important;
+    font-size: 0.68rem !important;
+    line-height: 1.4 !important;
+    color: #8e8e93 !important;
+  }
+  .actual-row-flash {
+    animation: actualRowFlash 1.05s ease-out;
+  }
+  @keyframes actualRowFlash {
+    0% { box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.65); background: rgba(0, 122, 255, 0.1); }
+    100% { box-shadow: none; background: #f9f9fb; }
+  }
+  .field-actual-input-col { min-width: 0; }
+  .field-actual-rows-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .field-actual-rows-toolbar .field-label { margin-bottom: 0; }
+  .btn-add-actual-compact {
+    flex-shrink: 0;
+    padding: 5px 11px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px dashed #c7c7cc;
+    border-radius: 8px;
+    background: #fff;
+    color: #007aff;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .actual-horiz-rows.multi-rows { margin-bottom: 2px; }
+  .multi-row-line.actual-product-block {
+    display: block;
+    padding: 5px 7px;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    background: #f9f9fb;
+    border-bottom: none;
+  }
+  .multi-row-line.actual-product-block:last-child { margin-bottom: 4px; }
+  .actual-board-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+  }
+  .actual-board-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+  .actual-inp-product {
+    flex: 1 1 140px;
+    min-width: 120px;
+    margin-bottom: 0;
+    padding: 6px 9px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    background: #fff;
+    box-sizing: border-box;
+    font-family: inherit;
+    color: #1c1c1e;
+  }
+  .actual-inp-product:focus { outline: none; border-color: #007aff; }
+  .actual-inp-qty-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .actual-inp-qty-wrap .input-unit {
+    font-size: 0.62rem;
+    color: #aeaeb2;
+    flex-shrink: 0;
+    max-width: 2.8em;
+    overflow: hidden;
+  }
+  .actual-inp-qty {
+    width: 58px;
+    max-width: 76px;
+    flex: 0 0 58px;
+    font-size: 0.94rem;
+    font-weight: 600;
+    padding: 4px 3px;
+    margin-bottom: 0;
+    border: none;
+    border-bottom: 1px solid #d1d1d6;
+    background: transparent;
+    box-sizing: border-box;
+    font-family: inherit;
+    color: #1c1c1e;
+  }
+  .actual-inp-qty:focus { border-bottom-color: #007aff; outline: none; }
+  .actual-um-details {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .actual-um-details[open] {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .actual-um-details > summary.actual-um-summary {
+    font-size: 0.64rem;
+    font-weight: 500;
+    color: #8e8e93;
+    cursor: pointer;
+    padding: 3px 6px;
+    list-style: none;
+    border: 1px solid #e8e8ed;
+    border-radius: 6px;
+    background: #f4f4f6;
+    white-space: nowrap;
+  }
+  .actual-um-details > summary.actual-um-summary::-webkit-details-marker { display: none; }
+  .actual-line-memo {
+    flex: 1 1 160px;
+    min-width: 100px;
+    padding: 5px 8px;
+    font-size: 0.82rem;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    background: #fff;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  .actual-line-memo:focus { outline: none; border-color: #007aff; }
+  .actual-line-memo::placeholder { color: #c7c7cc; }
+  .actual-board-remove.btn-line-remove {
+    width: 36px;
+    min-height: 36px;
+    align-self: center;
+    flex-shrink: 0;
+    font-size: 1.2rem;
+    border-radius: 8px;
+  }
+  .actual-um-body {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #eaeaea;
+  }
+  .actual-um-body .um-table {
+    background: #fff;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .actual-um-body .btn-add-um-inline {
+    margin-top: 6px;
+    padding: 8px;
+  }
+  .actual-product-block .um-row { margin-bottom: 6px; padding-bottom: 6px; }
+  .actual-anomaly-details {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #e8e8ed;
+  }
+  .actual-anomaly-details > summary.actual-anomaly-sum {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #636366;
+    cursor: pointer;
+    list-style: none;
+    padding: 4px 0;
+  }
+  .actual-anomaly-details > summary.actual-anomaly-sum::-webkit-details-marker { display: none; }
+  .actual-anomaly-body .pattern-row { margin-top: 8px; }
+  .field-actual-global-memo {
+    margin-top: 8px;
+  }
+  .field-actual-global-memo .input-textarea {
+    min-height: 52px;
+    margin-top: 4px;
+    font-size: 0.86rem;
+  }
+  .field-actual-actions {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #e8e8ed;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  /* 当日盤の締め：全面青バーではなく右端の確定操作 */
+  .field-actual-actions .btn-primary {
+    width: auto;
+    margin-top: 0;
+    padding: 7px 20px;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    box-shadow: none;
+    flex-shrink: 0;
+  }
+  @media (min-width: 768px) {
+    .field-actual-board-grid { flex-direction: row; align-items: flex-start; gap: 12px; }
+    .field-actual-ref-col {
+      flex: 0 0 35%;
+      min-width: 200px;
+      max-width: 400px;
+      align-self: flex-start;
+    }
+    .field-actual-input-col {
+      flex: 1 1 65%;
+      min-width: 260px;
+    }
+    .actual-inp-qty { font-size: 0.9rem; width: 62px; flex: 0 0 62px; }
+  }
+  @media (max-width: 767px) {
+    .actual-board-main {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .actual-inp-qty-wrap { width: 100%; }
+    .actual-inp-qty { flex: 1; width: auto; max-width: none; }
+    .actual-um-details[open] { flex-basis: auto; }
+  }
+  .um-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px;
+    padding-bottom: 10px; border-bottom: 1px solid #e5e5ea;
+  }
+  .um-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .um-row .input-text { flex: 1 1 100px; min-width: 0; }
+  .um-row .um-qty { width: 72px; flex-shrink: 0; }
+  .um-row .um-unit { width: 56px; flex-shrink: 0; }
+  .um-row .um-lot { flex: 1 1 80px; min-width: 0; }
   .article7-ref { font-size: 0.88rem; line-height: 1.5; color: #3a3a3c; }
   .article7-ref .article7-line { padding: 8px 0; border-bottom: 1px solid #e5e5ea; }
   .article7-ref .article7-line:last-child { border-bottom: none; }
@@ -360,77 +1282,136 @@
 </details>
 
 <div id="screen-planned" class="screen">
-  <div class="main">
-    <div class="card">
-      <div class="card-label">第5条・明日の予告（任意）</div>
-      <div class="subhead" style="margin-top:4px;">事務の指示（第7条・参照のみ）</div>
-      <p class="sub-text" style="margin-top:0;margin-bottom:10px;">
-        事務が決めるのは<strong>何を・どれだけ・いつまでに・見る順（優先）</strong>までです。第7条に機械・担当・段取りは含みません。ここからの入力では第7条は変わりません。
-      </p>
-      <div id="article7-panel-planned" class="readonly-block article7-ref"></div>
-      <div id="planned-block-mfg">
-        <div class="field-label">第5条・予告：商品名・対象名と数量（複数行可）</div>
-        <div id="planned-rows-mfg" class="multi-rows"></div>
-        <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
+  <div class="main field-planned-main">
+    <div class="card field-planned-card">
+      <div class="field-planned-toolbar">
+        <div class="card-label" style="margin-bottom:6px;">第5条・明日の予告（任意）</div>
+        <p class="sub-text tight">
+          左で第7条を見ながら、右で種目別に予告します。第7条は<strong>参照のみ</strong>（強制しません）。
+        </p>
       </div>
-      <div id="planned-block-log" style="display:none;">
-        <div class="field-label">第5条・予告：作業内容と数量（複数行可）</div>
-        <div id="planned-rows-log" class="multi-rows"></div>
-        <button type="button" class="btn-add-row" onclick="addPlannedRow()">＋ 行を追加</button>
+      <div class="field-board-grid">
+        <aside class="field-board-col field-board-a7">
+          <div class="field-board-a7-head">第7条（左・スクロール）</div>
+          <div class="field-board-a7-scroll">
+            <div id="article7-board-planned" class="article7-board"></div>
+          </div>
+          <p class="sub-text tight field-board-a7-foot">不足行をタップで予告へ反映（商品名のみ・数量はご入力）。在庫・出荷などは各行の「詳細」から。</p>
+        </aside>
+        <div class="field-board-col field-board-planned-input">
+          <div id="planned-block-mfg">
+            <div class="planned-input-head">
+              <span class="field-label">予告（製造・横1行＝1商品）</span>
+            </div>
+            <div id="planned-rows-mfg" class="multi-rows planned-rows-tight"></div>
+          </div>
+          <div id="planned-block-log" style="display:none;">
+            <div class="planned-input-head">
+              <span class="field-label">予告（物流）</span>
+            </div>
+            <div id="planned-rows-log" class="multi-rows planned-rows-tight"></div>
+          </div>
+          <p class="sub-text tight field-planned-unit-hint">単位 <span id="planned-unit">個</span>（会社設定）。左の第7条の行をタップすると予告盤へ商品名が入ります（数量は空欄）。手入力も可能です。</p>
+          <div class="field-planned-actions">
+            <button type="button" class="btn-add-planned-compact" id="planned-add-row-btn" onclick="addPlannedRow()">＋ 商品追加</button>
+            <div class="field-planned-actions-submit">
+              <button type="button" class="btn-primary" id="planned-btn" onclick="submitPlanned()">予告を登録</button>
+              <button type="button" class="btn-secondary btn-planned-start" id="planned-start-btn" onclick="submitStartFromPlanned()">着手して実績報告へ</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <p class="field-label" style="margin-top:10px;">単位</p>
-      <p class="sub-text" style="margin-top:0;"><span id="planned-unit">個</span>（会社設定）</p>
-      <p class="sub-text">候補がなくても入力できます。すべて空欄でもかまいません。</p>
-      <button type="button" class="btn-primary" id="planned-btn" onclick="submitPlanned()">予告を登録</button>
-      <button type="button" class="btn-primary" id="planned-start-btn" onclick="submitStartFromPlanned()">着手して実績報告へ</button>
     </div>
   </div>
 </div>
 
+<dialog id="field-app-modal" class="field-app-modal" aria-labelledby="field-app-modal-title">
+  <div class="field-app-modal-panel">
+    <h2 id="field-app-modal-title" class="field-app-modal-title"></h2>
+    <div id="field-app-modal-body" class="field-app-modal-body"></div>
+    <div class="field-app-modal-actions">
+      <button type="button" class="btn-secondary" id="field-app-modal-cancel">キャンセル</button>
+      <button type="button" class="btn-primary" id="field-app-modal-confirm">OK</button>
+    </div>
+  </div>
+</dialog>
+
 <div id="screen-actual" class="screen">
-  <div class="main">
+  <div class="main field-actual-main">
     <div class="started-info" id="started-info" style="display:none;"></div>
-    <div class="card">
-      <div class="card-label">第5条・今日の実績</div>
-      <div class="subhead">事務の指示（第7条・参照のみ）</div>
-      <p class="sub-text" style="margin-top:0;margin-bottom:10px;">
-        事務が決めるのは<strong>何を・どれだけ・いつまでに・見る順（優先）</strong>までです。第7条に機械・担当・段取りは含みません。実績入力で第7条そのものを書き換えられることはありません。
-      </p>
-      <div id="article7-panel-actual" class="readonly-block article7-ref"></div>
-      <div class="subhead">第5条・予告（参照）</div>
-      <div class="readonly-block" id="actual-planned-summary"></div>
-      <div class="subhead">第5条・実績（入力）</div>
-      <div id="actual-inputs-mfg">
-        <div class="field-label">第5条・実績：商品名・対象名と数量（複数行可）</div>
-        <div id="actual-rows-mfg" class="multi-rows"></div>
-        <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
+    <div class="card field-actual-board-card">
+      <div class="field-actual-board-head">
+        <div class="card-label">第5条・今日の実績盤</div>
+        <p class="field-actual-board-tagline">
+          左の<strong id="actual-planned-tagline-label">今日の予告</strong>を見ながら、右で実績を入力します。第7条は必要なときだけ開いて参照してください。
+        </p>
       </div>
-      <div id="actual-inputs-log" style="display:none;">
-        <div class="field-label">第5条・実績：作業内容と数量（複数行可）</div>
-        <div id="actual-rows-log" class="multi-rows"></div>
-        <button type="button" class="btn-add-row" onclick="addActualRow()">＋ 行を追加</button>
+      <div class="field-actual-board-grid">
+        <div class="field-actual-ref-col">
+          <div class="field-actual-ref-scroll">
+            <section class="actual-planned-board" id="actual-planned-board" aria-label="今日の予告">
+              <div class="actual-planned-board-head">
+                <span class="actual-planned-board-title" id="actual-planned-board-title">今日の予告</span>
+                <span class="actual-planned-count" id="actual-planned-count"></span>
+              </div>
+              <div id="actual-planned-summary" class="actual-planned-summary-host"></div>
+            </section>
+            <details class="actual-a7-details">
+              <summary class="actual-a7-summary">第7条詳細を見る</summary>
+              <div class="actual-a7-details-body">
+                <p class="sub-text tight actual-a7-hint">
+                  判断・リスク確認用。開いたときだけ不足・優先・在庫・納期・進捗などを表示します。
+                </p>
+                <div id="article7-panel-actual" class="article7-board"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="field-actual-input-col">
+          <div class="field-actual-rows-toolbar">
+            <span class="field-label">実績（1行＝商品・順不同）</span>
+            <button type="button" class="btn-add-actual-compact" onclick="addActualRow()">＋ 行追加</button>
+          </div>
+          <div id="actual-inputs-mfg">
+            <div id="actual-rows-mfg" class="multi-rows actual-horiz-rows"></div>
+          </div>
+          <div id="actual-inputs-log" style="display:none;">
+            <div id="actual-rows-log" class="multi-rows actual-horiz-rows"></div>
+          </div>
+        </div>
       </div>
-      <p class="sub-text">数量・順序の違いは第7条逸脱ではありません。<strong>open の第7条に無い商品</strong>を実績に含めたときだけ逸脱となり、理由の入力が必要です。商品名はこれまでどおり入力でき、裏側で商品コードが付く場合はコード優先で突合します（コード片側のみと名前だけの突合はしません）。入力自体は止めません。</p>
-      <div id="deviation-reason-wrap" class="deviation-reason-wrap" style="display:none;">
-        <label for="deviation-reason" class="field-label">逸脱の理由（現場の記録）（必須）</label>
-        <textarea id="deviation-reason" class="input-textarea" rows="3" autocomplete="off"
-          placeholder="なぜ第7条に無い商品を作成したか"></textarea>
+      <details id="actual-anomaly-panel" class="actual-anomaly-details">
+        <summary class="actual-anomaly-sum">異常・逸脱の記録（必要なときのみ）</summary>
+        <div class="actual-anomaly-body">
+          <p class="sub-text tight" style="margin-bottom:8px;">
+            第7条に無い商品・予告数量との差・予告なし実績など、確認が必要なときに開きます。通常の入力では閉じたままで構いません。
+          </p>
+          <div id="actual-deviation-block" style="display:none;">
+            <label for="deviation-reason" class="field-label">逸脱の理由（現場の記録）（必須）</label>
+            <textarea id="deviation-reason" class="input-textarea" rows="3" autocomplete="off"
+              placeholder="なぜ第7条に無い商品を作成したか"></textarea>
+          </div>
+          <div class="subhead" style="margin-top:12px;">異常の分類（任意）</div>
+          <div class="pattern-row">
+            <label class="pattern-check">
+              <input type="checkbox" id="pattern-a-cb" />
+              <span><strong>A</strong> プロセス不備（手順ミス）</span>
+            </label>
+            <label class="pattern-check">
+              <input type="checkbox" id="pattern-b-cb" />
+              <span><strong>B</strong> 結果不備（数値ズレ）</span>
+            </label>
+          </div>
+        </div>
+      </details>
+      <div class="field-actual-global-memo">
+        <label for="actual-one-line-memo" class="field-label">全体メモ（任意・引継ぎ・補足）</label>
+        <textarea id="actual-one-line-memo" class="input-textarea" rows="2" maxlength="4000" autocomplete="off"
+          placeholder="全体に関する補足があれば"></textarea>
       </div>
-      <div class="subhead" style="margin-top:16px;">異常の分類（任意）</div>
-      <div class="pattern-row">
-        <label class="pattern-check">
-          <input type="checkbox" id="pattern-a-cb" />
-          <span><strong>A</strong> プロセス不備（手順ミス）</span>
-        </label>
-        <label class="pattern-check">
-          <input type="checkbox" id="pattern-b-cb" />
-          <span><strong>B</strong> 結果不備（数値ズレ）</span>
-        </label>
+      <div class="field-actual-actions">
+        <button class="btn-primary" id="actual-btn" onclick="submitActual()">実績を報告</button>
       </div>
-      <label for="actual-one-line-memo" class="field-label" style="margin-top:14px;">一言メモ（任意）</label>
-      <textarea id="actual-one-line-memo" class="input-textarea" rows="2" maxlength="4000" autocomplete="off"
-        placeholder="誤入力の訂正説明や補足があれば記載できます"></textarea>
-      <button class="btn-primary" id="actual-btn" onclick="submitActual()">実績を記録する</button>
     </div>
   </div>
 </div>
@@ -489,7 +1470,6 @@ let unitVal = "個";
 let inputMode = "manufacturing";
 let submitting = false;
 let _plannedSavedFingerprint = "[]";
-let _plannedAllowEmptyAfterSave = false;
 let fieldUserSuggestRows = [];
 let fieldUserSuggestBlurTimer = null;
 /** 担当者オーバーレイから入った直後は必ず予告画面へ（完了画面に直行しない） */
@@ -721,6 +1701,12 @@ function fieldActualInputTargetFingerprint() {
 }
 
 let _fieldLastActualInputTargetFp = "";
+/** 実績画面が参照のみ（報告済み）か。異常パネル表示に使う */
+let actualScreenReadOnly = false;
+
+/** 実績入力ドラフト（localStorage・着手/報告は DB 基準） */
+let _actualDraftSaveTimer = null;
+let _actualDraftHooksBound = false;
 
 /** 実績フォームを空にする（actual lines・一言メモ・A/B・逸脱理由）。readOnly 時は呼ばないこと。 */
 function resetActualEntryFormIndependent() {
@@ -803,6 +1789,14 @@ function formatArticle5ProgressQty(n) {
   return String(r);
 }
 
+/** 予告行の数量を出すか（null・空は未定。0 は実数量として表示） */
+function plannedLineHasDisplayableQty(rawVal) {
+  if (rawVal == null) return false;
+  const s = String(rawVal).trim();
+  if (s === "") return false;
+  return Number.isFinite(Number(s));
+}
+
 function dispStr(v) {
   if (v == null || String(v).trim() === "") return "—";
   return String(v);
@@ -841,6 +1835,8 @@ function applyInputModePanels() {
   document.getElementById("planned-block-log").style.display = log ? "block" : "none";
   document.getElementById("actual-inputs-mfg").style.display = log ? "none" : "block";
   document.getElementById("actual-inputs-log").style.display = log ? "block" : "none";
+  const addBtn = document.getElementById("planned-add-row-btn");
+  if (addBtn) addBtn.textContent = log ? "＋ 行追加" : "＋ 商品追加";
 }
 
 function applyUnit(u) {
@@ -871,28 +1867,309 @@ function actualRowsHost() {
   return document.getElementById(isLogistics() ? "actual-rows-log" : "actual-rows-mfg");
 }
 
-function makeInputLineRow(placeholder, listId, withProductCode) {
+function resetUsedMaterialsInHost(host, rows) {
+  if (!host) return;
+  host.innerHTML = "";
+  const list = Array.isArray(rows) && rows.length ? rows : [];
+  if (!list.length) {
+    host.appendChild(makeUsedMaterialRow(host));
+    const board = host.closest(".multi-row-line");
+    if (board) syncActualRowUmSummary(board);
+    return;
+  }
+  for (const r of list) {
+    const el = makeUsedMaterialRow(host);
+    const lb = r.label != null ? String(r.label) : "";
+    const lot = r.lot_no != null ? String(r.lot_no) : "";
+    const unit = r.unit != null ? String(r.unit) : "";
+    const qEl = el.querySelector("[data-um-qty]");
+    if (lb.trim()) el.querySelector("[data-um-label]").value = lb.trim();
+    if (unit.trim()) el.querySelector("[data-um-unit]").value = unit.trim();
+    if (lot.trim()) el.querySelector("[data-um-lot]").value = lot.trim();
+    if (r.value != null && Number.isFinite(Number(r.value)) && qEl) {
+      const n = Number(r.value);
+      if (Math.abs(n - Math.round(n)) < 1e-9) qEl.value = String(Math.round(n));
+      else qEl.value = String(n);
+    }
+    host.appendChild(el);
+  }
+  const board = host.closest(".multi-row-line");
+  if (board) syncActualRowUmSummary(board);
+}
+
+function makeUsedMaterialRow(umHost) {
   const wrap = document.createElement("div");
-  wrap.className = "multi-row-line";
+  wrap.className = "um-row";
+  wrap.innerHTML =
+    '<input class="input-text" type="text" data-um-label="" autocomplete="off" placeholder="ラベル" />' +
+    '<input class="input-text um-qty" type="text" data-um-qty="" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="数量" />' +
+    '<input class="input-text um-unit" type="text" data-um-unit="" autocomplete="off" placeholder="単位" />' +
+    '<input class="input-text um-lot" type="text" data-um-lot="" autocomplete="off" placeholder="lot（任意）" />' +
+    '<button type="button" class="btn-line-remove btn-um-remove" aria-label="この行を削除">×</button>';
+  const qtyIn = wrap.querySelector("[data-um-qty]");
+  qtyIn.addEventListener("input", () => {
+    const v = normalizeNumberInput(qtyIn.value);
+    if (v !== qtyIn.value) qtyIn.value = v;
+  });
+  wrap.querySelector(".btn-um-remove").addEventListener("click", () => removeUsedMaterialRow(wrap, umHost));
+  return wrap;
+}
+
+function removeUsedMaterialRow(lineEl, host) {
+  if (!host) return;
+  const board = host.closest(".multi-row-line");
+  const rows = host.querySelectorAll(".um-row");
+  if (rows.length <= 1) {
+    lineEl.querySelectorAll("input").forEach((inp) => {
+      inp.value = "";
+    });
+    if (board) syncActualRowUmSummary(board);
+    return;
+  }
+  lineEl.remove();
+  if (board) syncActualRowUmSummary(board);
+}
+
+function collectUsedMaterialsFromHost(host) {
+  if (!host) return [];
+  const out = [];
+  for (const row of host.querySelectorAll(".um-row")) {
+    const lb = (row.querySelector("[data-um-label]")?.value || "").trim();
+    const qtyEl = row.querySelector("[data-um-qty]");
+    const rawQ = qtyEl ? qtyEl.value : "";
+    const unit = (row.querySelector("[data-um-unit]")?.value || "").trim();
+    const lot = (row.querySelector("[data-um-lot]")?.value || "").trim();
+    if (!lb && !unit && !lot && String(rawQ).trim() === "") continue;
+    const q = parseQtyInput(rawQ);
+    if (String(rawQ).trim() !== "" && (q === null || Number.isNaN(q)))
+      throw new Error("使用物の数量の形式が不正です");
+    const o = {};
+    if (lb) o.label = lb;
+    if (q !== null && !Number.isNaN(q)) o.value = q;
+    if (unit) o.unit = unit;
+    if (lot) o.lot_no = lot;
+    if (Object.keys(o).length === 0) continue;
+    out.push(o);
+  }
+  return out;
+}
+
+function countNonemptyUsedMaterialRowsInHost(host) {
+  if (!host) return 0;
+  let n = 0;
+  for (const row of host.querySelectorAll(".um-row")) {
+    const lb = (row.querySelector("[data-um-label]")?.value || "").trim();
+    const rawQ = row.querySelector("[data-um-qty]") ? row.querySelector("[data-um-qty]").value : "";
+    const unit = (row.querySelector("[data-um-unit]")?.value || "").trim();
+    const lot = (row.querySelector("[data-um-lot]")?.value || "").trim();
+    if (lb || unit || lot || String(rawQ).trim()) n++;
+  }
+  return n;
+}
+
+function syncActualRowUmSummary(lineEl) {
+  if (!lineEl || !lineEl.classList.contains("actual-product-block")) return;
+  const sum = lineEl.querySelector(".actual-um-summary");
+  const host = lineEl.querySelector("[data-um-host]");
+  if (!sum || !host) return;
+  const n = countNonemptyUsedMaterialRowsInHost(host);
+  sum.textContent = "使用物" + n + "件";
+}
+
+function syncActualPerLineMaterialsReadOnly(ro) {
+  const h = actualRowsHost();
+  if (!h) return;
+  h.querySelectorAll(".actual-um-body input").forEach((inp) => {
+    inp.disabled = !!ro;
+  });
+  h.querySelectorAll(".actual-um-body .btn-um-remove").forEach((b) => {
+    b.disabled = !!ro;
+    b.style.visibility = ro ? "hidden" : "";
+  });
+  h.querySelectorAll(".actual-um-body .btn-add-um-inline").forEach((b) => {
+    b.disabled = !!ro;
+    b.style.opacity = ro ? "0.45" : "";
+  });
+  h.querySelectorAll(".actual-inp-product, .actual-inp-qty, .actual-line-memo").forEach((inp) => {
+    inp.disabled = !!ro;
+  });
+  h.querySelectorAll(".actual-board-remove").forEach((b) => {
+    b.disabled = !!ro;
+    b.style.visibility = ro ? "hidden" : "";
+  });
+  document.querySelectorAll(".field-actual-input-col .btn-add-actual-compact").forEach((b) => {
+    b.disabled = !!ro;
+    b.style.opacity = ro ? "0.45" : "";
+  });
+}
+
+function scanProductBlockLinesForSubmit(host, opts) {
+  opts = opts || {};
+  const allowQtyEmpty = !!opts.allowQtyEmpty;
+  normalizeQtyInputsInHost(host);
+  if (!host) return { lines: [] };
+  const out = [];
+  for (const row of host.querySelectorAll(".multi-row-line")) {
+    const labEl = row.querySelector("[data-line-label]");
+    const qtyEl = row.querySelector("[data-line-qty]");
+    const pcEl = row.querySelector("[data-line-resolved-pc]");
+    const pc = pcEl ? String(pcEl.value || "").trim() : "";
+    const lb = (labEl && labEl.value || "").trim();
+    const rawQ = qtyEl ? qtyEl.value : "";
+    const rawTrim = String(rawQ ?? "").trim();
+    const q = parseQtyInput(rawQ);
+    if (!lb && rawTrim === "") continue;
+    if (!lb && rawTrim !== "" && Number.isNaN(q)) {
+      return { error: "数量の形式が不正な行があります" };
+    }
+    if (!lb && q !== null && !Number.isNaN(q)) {
+      return { error: "数量だけ入力された行があります。名前と数量をセットで入力してください" };
+    }
+    if (allowQtyEmpty) {
+      if (lb && rawTrim !== "" && (q === null || Number.isNaN(q))) {
+        return { error: "数量の形式が不正な行があります" };
+      }
+    } else {
+      if (lb && (rawTrim === "" || q === null)) {
+        return { error: "名前だけ入力された行があります。数量も入力してください" };
+      }
+      if (Number.isNaN(q)) {
+        return { error: "数量の形式が不正な行があります" };
+      }
+    }
+    const line = { label: lb, used_materials: [] };
+    if (q !== null && !Number.isNaN(q)) {
+      line.value = q;
+    }
+    if (pc) line.product_code = pc;
+    const lid = (row.dataset.lineId || "").trim();
+    if (lid) line.line_id = lid;
+    const memoIn = row.querySelector("[data-line-memo]");
+    if (memoIn) {
+      const mm = String(memoIn.value || "").trim();
+      if (mm) line.line_memo = mm;
+    }
+    const umHost = row.querySelector("[data-um-host]");
+    if (umHost) {
+      try {
+        line.used_materials = collectUsedMaterialsFromHost(umHost);
+      } catch (e2) {
+        return { error: e2.message || "使用物の入力を確認してください" };
+      }
+    }
+    out.push(line);
+  }
+  return { lines: normalizeScannedLines(out) };
+}
+
+function makeInputLineRow(placeholder, listId, withProductCode, materialsMode) {
+  const withActual = materialsMode === "actual";
+  const withPlanned = materialsMode === "planned";
+  const wrap = document.createElement("div");
+  if (withActual) {
+    wrap.className = "multi-row-line actual-product-block";
+  } else if (withPlanned) {
+    wrap.className = "multi-row-line planned-product-block";
+  } else {
+    wrap.className = "multi-row-line";
+  }
   const hiddenPc =
     withProductCode === true && !isLogistics()
       ? '<input type="hidden" class="line-resolved-pc" data-line-resolved-pc value="" autocomplete="off" />'
       : "";
-  wrap.innerHTML =
-    `<div class="multi-row-fields">
+  const fieldsInner = `
        ${hiddenPc}
        <input class="input-text" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />
        <div class="input-row">
          <input class="input-num" type="text" data-line-qty="" inputmode="numeric" placeholder="数量" autocomplete="off" autocorrect="off" spellcheck="false" />
          <span class="input-unit line-unit-suffix"></span>
+       </div>`;
+  if (withActual) {
+    wrap.innerHTML =
+      `<div class="actual-board-row">` +
+      `<div class="actual-board-main">` +
+      `${hiddenPc}` +
+      `<input class="actual-inp-product" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />` +
+      `<div class="actual-inp-qty-wrap">` +
+      `<input class="actual-inp-qty" type="text" data-line-qty="" inputmode="numeric" placeholder="数量" autocomplete="off" autocorrect="off" spellcheck="false" />` +
+      `<span class="input-unit line-unit-suffix"></span>` +
+      `</div>` +
+      `<details class="actual-um-details">` +
+      `<summary class="actual-um-summary">使用物0件</summary>` +
+      `<div class="actual-um-body">` +
+      `<div class="um-table" data-um-host></div>` +
+      `<button type="button" class="btn-add-row btn-add-um-inline">＋ 使用物を追加</button>` +
+      `</div>` +
+      `</details>` +
+      `<input type="text" class="actual-line-memo" data-line-memo="" maxlength="4000" autocomplete="off" placeholder="一言（任意）" />` +
+      `</div>` +
+      `<button type="button" class="btn-line-remove actual-board-remove" aria-label="この行を削除">×</button>` +
+      `</div>`;
+    const umHost = wrap.querySelector("[data-um-host]");
+    const addUm = wrap.querySelector(".btn-add-um-inline");
+    if (addUm && umHost) {
+      addUm.addEventListener("click", () => {
+        umHost.appendChild(makeUsedMaterialRow(umHost));
+      });
+    }
+    if (umHost) {
+      umHost.addEventListener("input", () => syncActualRowUmSummary(wrap));
+      umHost.addEventListener("change", () => syncActualRowUmSummary(wrap));
+    }
+    resetUsedMaterialsInHost(umHost, null);
+  } else if (withPlanned) {
+    wrap.innerHTML =
+      `<div class="planned-card-top">
+         ${hiddenPc}
+         <input class="planned-inp-product" type="text" data-line-label="" autocomplete="off" placeholder="" list="" />
+         <div class="planned-inp-qty-wrap">
+           <input class="input-num planned-inp-qty" type="text" data-line-qty="" inputmode="numeric" placeholder="数量" autocomplete="off" autocorrect="off" spellcheck="false" />
+           <span class="input-unit line-unit-suffix"></span>
+         </div>
+         <details class="planned-um-details">
+           <summary class="planned-um-summary">使用物</summary>
+           <div class="planned-um-body">
+             <div class="um-table" data-um-host></div>
+             <button type="button" class="btn-add-row btn-add-um-inline">＋ 使用物を追加</button>
+           </div>
+         </details>
+         <button type="button" class="btn-line-remove planned-row-remove" aria-label="この行を空に戻す">×</button>
+       </div>`;
+    const umHost = wrap.querySelector("[data-um-host]");
+    const addUm = wrap.querySelector(".btn-add-um-inline");
+    if (addUm && umHost) {
+      addUm.addEventListener("click", () => {
+        umHost.appendChild(makeUsedMaterialRow(umHost));
+      });
+    }
+    resetUsedMaterialsInHost(umHost, null);
+  } else {
+    wrap.innerHTML =
+      `<div class="multi-row-fields">
+         ${fieldsInner}
        </div>
-     </div>
-     <button type="button" class="btn-line-remove" aria-label="この行を削除">×</button>`;
+       <button type="button" class="btn-line-remove" aria-label="この行を削除">×</button>`;
+  }
   const labIn = wrap.querySelector("[data-line-label]");
   labIn.placeholder = placeholder;
-  labIn.setAttribute("list", listId);
+  if (listId && String(listId).trim()) {
+    labIn.setAttribute("list", listId);
+  } else {
+    labIn.removeAttribute("list");
+  }
   wrap.querySelector(".line-unit-suffix").textContent = unitVal;
-  wrap.querySelector(".btn-line-remove").addEventListener("click", () => removeInputLineRow(wrap));
+  const rowRemoveBtn = withPlanned
+    ? wrap.querySelector(".planned-row-remove")
+    : withActual
+      ? wrap.querySelector(".actual-board-remove")
+      : wrap.querySelector(".btn-line-remove");
+  if (rowRemoveBtn) {
+    if (withPlanned) {
+      rowRemoveBtn.addEventListener("click", () => resetPlannedRow(wrap));
+    } else {
+      rowRemoveBtn.addEventListener("click", () => removeInputLineRow(wrap));
+    }
+  }
   const qtyIn = wrap.querySelector("[data-line-qty]");
   function onLabOrQty() {
     syncResolvedProductCodeForRow(wrap);
@@ -937,6 +2214,38 @@ function makeInputLineRow(placeholder, listId, withProductCode) {
   return wrap;
 }
 
+/** 予告盤：行DOMは残し、入力・使用物・フラッシュ等を初期化（空行1行は維持）。 */
+function resetPlannedRow(rowEl) {
+  if (!rowEl || !rowEl.classList.contains("planned-product-block")) return;
+  rowEl.classList.remove("planned-row-a7-flash");
+  const labIn = rowEl.querySelector("[data-line-label]");
+  const qtyIn = rowEl.querySelector("[data-line-qty]");
+  const pcIn = rowEl.querySelector("[data-line-resolved-pc]");
+  const memoIn = rowEl.querySelector("[data-line-memo]");
+  if (labIn) labIn.value = "";
+  if (qtyIn) moAssignQtyValue(qtyIn, "", "resetPlannedRow");
+  if (pcIn) pcIn.value = "";
+  if (memoIn) memoIn.value = "";
+  delete rowEl.dataset.lineId;
+  rowEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    cb.checked = false;
+  });
+  const umHost = rowEl.querySelector("[data-um-host]");
+  if (umHost) resetUsedMaterialsInHost(umHost, null);
+  const umDet = rowEl.querySelector("details.planned-um-details");
+  if (umDet) umDet.removeAttribute("open");
+  syncResolvedProductCodeForRow(rowEl);
+  syncDeviationReasonPanel();
+  if (labIn) {
+    rowEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    try {
+      labIn.focus({ preventScroll: true });
+    } catch (_) {
+      labIn.focus();
+    }
+  }
+}
+
 function removeInputLineRow(lineEl) {
   const host = lineEl.parentElement;
   if (!host) return;
@@ -949,28 +2258,41 @@ function removeInputLineRow(lineEl) {
     if (b) moAssignQtyValue(b, "", "removeInputLineRow.clearLastRow");
     if (c) c.value = "";
     delete lineEl.dataset.lineId;
+    const memoIn = lineEl.querySelector("[data-line-memo]");
+    if (memoIn) memoIn.value = "";
+    const umHost = lineEl.querySelector("[data-um-host]");
+    if (umHost) resetUsedMaterialsInHost(umHost, null);
     syncDeviationReasonPanel();
+    schedulePersistActualDraft();
     return;
   }
   lineEl.remove();
   syncDeviationReasonPanel();
+  schedulePersistActualDraft();
 }
 
 function addPlannedRow() {
   const h = plannedRowsHost();
   h.appendChild(
     makeInputLineRow(
-      "候補から選ぶか入力",
-      isLogistics() ? "dl-work-label" : "dl-item-name",
+      isLogistics() ? "作業名を入力" : "商品名を入力",
+      "",
       !isLogistics(),
+      "planned",
     ));
 }
 
 function addActualRow() {
   const h = actualRowsHost();
   h.appendChild(
-    makeInputLineRow("候補から選ぶか入力", isLogistics() ? "dl-work-label" : "dl-item-name", true));
+    makeInputLineRow(
+      "候補から選ぶか入力",
+      isLogistics() ? "dl-work-label" : "dl-item-name",
+      true,
+      "actual",
+    ));
   syncDeviationReasonPanel();
+  schedulePersistActualDraft();
 }
 
 function parseQtyInput(raw) {
@@ -994,14 +2316,16 @@ function normalizeScannedLines(lines) {
 }
 
 /** DOM を半角にそろえたうえで scan → 送信直前の lines を返す */
-function scanHostLinesForSubmit(host) {
+function scanHostLinesForSubmit(host, opts) {
   normalizeQtyInputsInHost(host);
-  const result = scanHostLines(host);
+  const result = scanHostLines(host, opts);
   if (result.error) return result;
   return { lines: normalizeScannedLines(result.lines) };
 }
 
-function scanHostLines(host) {
+function scanHostLines(host, opts) {
+  opts = opts || {};
+  const allowQtyEmpty = !!opts.allowQtyEmpty;
   if (!host) return { lines: [] };
   const out = [];
   for (const row of host.querySelectorAll(".multi-row-line")) {
@@ -1011,18 +2335,31 @@ function scanHostLines(host) {
     const pc = pcEl ? String(pcEl.value || "").trim() : "";
     const lb = (labEl && labEl.value || "").trim();
     const rawQ = qtyEl ? qtyEl.value : "";
+    const rawTrim = String(rawQ ?? "").trim();
     const q = parseQtyInput(rawQ);
-    if (!lb && String(rawQ).trim() === "") continue;
-    if (lb && (String(rawQ).trim() === "" || q === null)) {
-      return { error: "名前だけ入力された行があります。数量も入力してください" };
+    if (!lb && rawTrim === "") continue;
+    if (!lb && rawTrim !== "" && Number.isNaN(q)) {
+      return { error: "数量の形式が不正な行があります" };
     }
     if (!lb && q !== null && !Number.isNaN(q)) {
       return { error: "数量だけ入力された行があります。名前と数量をセットで入力してください" };
     }
-    if (Number.isNaN(q)) {
-      return { error: "数量の形式が不正な行があります" };
+    if (allowQtyEmpty) {
+      if (lb && rawTrim !== "" && (q === null || Number.isNaN(q))) {
+        return { error: "数量の形式が不正な行があります" };
+      }
+    } else {
+      if (lb && (rawTrim === "" || q === null)) {
+        return { error: "名前だけ入力された行があります。数量も入力してください" };
+      }
+      if (Number.isNaN(q)) {
+        return { error: "数量の形式が不正な行があります" };
+      }
     }
-    const line = { label: lb, value: q };
+    const line = { label: lb };
+    if (q !== null && !Number.isNaN(q)) {
+      line.value = q;
+    }
     if (pc) line.product_code = pc;
     const lid = (row.dataset.lineId || "").trim();
     if (lid) line.line_id = lid;
@@ -1100,6 +2437,47 @@ function rebuildFieldProductCodeMap() {
   fieldProductCodeByLabel = map;
 }
 
+/** 作業行 JSON（一覧が配列を省略したときのフォールバック） */
+function fieldParseLinesJsonField(raw) {
+  if (raw == null || !String(raw).trim()) return [];
+  try {
+    const data = JSON.parse(String(raw));
+    return Array.isArray(data) ? data : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function fieldLabelsFromRowLines(row, kind) {
+  const key = kind === "planned" ? "planned_lines" : "actual_lines";
+  const jsonKey = kind === "planned" ? "planned_lines_json" : "actual_lines_json";
+  let arr = row[key];
+  if (!Array.isArray(arr) || !arr.length) {
+    arr = fieldParseLinesJsonField(row[jsonKey]);
+  }
+  const out = [];
+  for (const x of arr) {
+    if (!x || typeof x !== "object") continue;
+    const lb = String(x.label || "").trim();
+    if (lb) out.push(lb);
+  }
+  return out;
+}
+
+/**
+ * レガシーの「複数行を1文字列にした」名前を単一商品ラベルにばらす。
+ * 実績候補は商品ごとに出す（連結1行は出さない）。
+ */
+function fieldSplitJoinedProductLabels(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return [];
+  const parts = s
+    .split(/\s*(?:・|·|\u00B7|(?:\s+\/\s+)|\s*,\s*|、)\s*/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return parts.length ? parts : [];
+}
+
 /** 製造の dl-item-name と物流の dl-work-label を同一ソース（マスタ・第7条・過去作業）で埋める */
 function refillUnifiedFieldDatalists() {
   const labels = new Set();
@@ -1113,15 +2491,19 @@ function refillUnifiedFieldDatalists() {
     if (lb) labels.add(lb);
   }
   for (const r of fieldPastWorkListRows || []) {
-    if (r.planned_item_name) labels.add(String(r.planned_item_name).trim());
-    if (r.actual_item_name) labels.add(String(r.actual_item_name).trim());
-    if (r.planned_work_label) labels.add(String(r.planned_work_label).trim());
-    if (r.actual_work_label) labels.add(String(r.actual_work_label).trim());
-    for (const x of r.planned_lines || []) {
-      if (x && x.label) labels.add(String(x.label).trim());
+    const plLabs = fieldLabelsFromRowLines(r, "planned");
+    const alLabs = fieldLabelsFromRowLines(r, "actual");
+    for (const lb of plLabs) labels.add(lb);
+    for (const lb of alLabs) labels.add(lb);
+    if (!plLabs.length) {
+      for (const p of fieldSplitJoinedProductLabels(r.planned_item_name)) labels.add(p);
+      for (const p of fieldSplitJoinedProductLabels(r.planned_work_label)) labels.add(p);
+      for (const p of fieldSplitJoinedProductLabels(r.planned_work_type)) labels.add(p);
     }
-    for (const x of r.actual_lines || []) {
-      if (x && x.label) labels.add(String(x.label).trim());
+    if (!alLabs.length) {
+      for (const p of fieldSplitJoinedProductLabels(r.actual_item_name)) labels.add(p);
+      for (const p of fieldSplitJoinedProductLabels(r.actual_work_label)) labels.add(p);
+      for (const p of fieldSplitJoinedProductLabels(r.actual_work_type)) labels.add(p);
     }
   }
   const sorted = [...labels].filter(Boolean).sort((a, b) => a.localeCompare(b, "ja"));
@@ -1133,15 +2515,35 @@ function refillUnifiedFieldDatalists() {
 }
 
 function fingerprintPlannedLinesNormalized(lines) {
+  function normUm(ums) {
+    if (!Array.isArray(ums)) return [];
+    return ums
+      .map((m) => {
+        if (!m || typeof m !== "object") return null;
+        const o = {};
+        if (m.label != null && String(m.label).trim()) o.label = String(m.label).trim();
+        if (m.value != null && Number.isFinite(Number(m.value))) o.value = Number(m.value);
+        if (m.unit != null && String(m.unit).trim()) o.unit = String(m.unit).trim();
+        if (m.lot_no != null && String(m.lot_no).trim()) o.lot_no = String(m.lot_no).trim();
+        return Object.keys(o).length ? o : null;
+      })
+      .filter(Boolean);
+  }
   const arr = (lines || []).map((L) => {
     const label = String(L.label != null ? L.label : "").trim();
-    const value = Number(L.value);
+    if (!label) return null;
+    const rawV = L.value;
+    const hasVal =
+      rawV != null && rawV !== "" && Number.isFinite(Number(rawV));
     const line_id = L.line_id != null ? String(L.line_id).trim() : "";
     const pcRaw = L.product_code != null ? String(L.product_code).trim() : "";
-    const out = { label, value, line_id: line_id || undefined };
+    const out = { label, line_id: line_id || undefined };
+    if (hasVal) out.value = Number(rawV);
     if (pcRaw) out.product_code = pcRaw;
+    const um = normUm(L.used_materials);
+    if (um.length) out.used_materials = um;
     return out;
-  }).filter((x) => x.label && Number.isFinite(x.value));
+  }).filter(Boolean);
   return JSON.stringify(arr);
 }
 
@@ -1150,6 +2552,7 @@ function plannedFingerprintFromServerPayload(data) {
   if (Array.isArray(data.planned_lines) && data.planned_lines.length) {
     return fingerprintPlannedLinesNormalized(data.planned_lines);
   }
+  if (!data.planned_registered_at) return "[]";
   const pv = data.planned_value;
   if (pv != null && Number.isFinite(Number(pv)) && Number(pv) !== 0) {
     const im = data.input_mode === "logistics" ? "logistics" : "manufacturing";
@@ -1180,7 +2583,10 @@ function fillRowsHost(host, lines, ph, listId, withProductCode, fillOpts) {
   const wpc = withProductCode === true;
   for (let idx = 0; idx < L.length; idx++) {
     const row = L[idx];
-    const el = makeInputLineRow(ph, listId, wpc);
+    let matMode = false;
+    if (fillOpts.actualPerLineMaterials) matMode = "actual";
+    else if (fillOpts.plannedPerLineMaterials) matMode = "planned";
+    const el = makeInputLineRow(ph, listId, wpc, matMode);
     const lab = el.querySelector("[data-line-label]");
     const qty = el.querySelector("[data-line-qty]");
     const pcIn = el.querySelector("[data-line-resolved-pc]");
@@ -1207,19 +2613,56 @@ function fillRowsHost(host, lines, ph, listId, withProductCode, fillOpts) {
     const lid = row.line_id != null ? String(row.line_id).trim() : "";
     if (lid) el.dataset.lineId = lid;
     else delete el.dataset.lineId;
+    const memoIn = el.querySelector("[data-line-memo]");
+    if (memoIn && row.line_memo != null && String(row.line_memo).trim()) {
+      memoIn.value = String(row.line_memo).trim();
+    }
+    if (fillOpts.actualPerLineMaterials || fillOpts.plannedPerLineMaterials) {
+      const umHost = el.querySelector("[data-um-host]");
+      const um = row.used_materials;
+      resetUsedMaterialsInHost(
+        umHost,
+        Array.isArray(um) && um.length ? um : null,
+      );
+      if (
+        fillOpts.plannedPerLineMaterials &&
+        Array.isArray(um) &&
+        um.length > 0
+      ) {
+        const det = el.querySelector(".planned-um-details");
+        if (det) det.open = true;
+      }
+      if (
+        fillOpts.actualPerLineMaterials &&
+        Array.isArray(um) &&
+        um.length > 0
+      ) {
+        const det = el.querySelector(".actual-um-details");
+        if (det) det.open = true;
+      }
+      if (fillOpts.actualPerLineMaterials) syncActualRowUmSummary(el);
+    }
     host.appendChild(el);
   }
-  syncDeviationReasonPanel();
+  if (host === actualRowsHost()) syncDeviationReasonPanel();
 }
 
 function setPlannedRowsFromData(data) {
   const host = plannedRowsHost();
-  const listId = isLogistics() ? "dl-work-label" : "dl-item-name";
   let lines = [];
   if (data && Array.isArray(data.planned_lines) && data.planned_lines.length) {
     lines = data.planned_lines;
   }
-  fillRowsHost(host, lines, "候補から選ぶか入力", listId, !isLogistics());
+  fillRowsHost(
+    host,
+    lines,
+    isLogistics() ? "作業名を入力" : "商品名を入力",
+    "",
+    !isLogistics(),
+    {
+      plannedPerLineMaterials: true,
+    },
+  );
   _plannedSavedFingerprint = plannedFingerprintFromServerPayload(data);
 }
 
@@ -1231,7 +2674,10 @@ function setActualRowsFromData(data) {
     lines = data.actual_lines;
   }
   /** 実績は work_unit 単位で初期表示する。dirty／フォーカス中数量の SNAPSHOT 復元は使わない（別担当・別商品で数量だけ残る不具合の原因）。 */
-  fillRowsHost(host, lines, "候補から選ぶか入力", listId, true, { protectEditedQty: false });
+  fillRowsHost(host, lines, "候補から選ぶか入力", listId, true, {
+    protectEditedQty: false,
+    actualPerLineMaterials: true,
+  });
   const ta = document.getElementById("deviation-reason");
   if (ta) ta.value = "";
   syncDeviationReasonPanel();
@@ -1243,34 +2689,519 @@ function setActualRowsFromData(data) {
     const t = String(data.deviation_reason).trim();
     if (t) ta.value = t;
   }
+  syncDeviationReasonPanel();
 }
 
-function renderLinesSummaryReadonly(lines) {
-  if (!lines || !lines.length) return "";
-  return lines.map((l) => (
-    `<div class="ro-line"><span class="ro-k">${escHtml(l.label)}</span>` +
-    `<span class="ro-v">${escHtml(String(l.value))} ${escHtml(unitVal)}</span></div>`
-  )).join("");
+function workStateAllowsActualDraftPersist(data) {
+  return (
+    data &&
+    data.started_at &&
+    String(data.started_at).trim() !== "" &&
+    !data.actual_at
+  );
+}
+
+function actualDraftStorageKeyPartsFrom(data) {
+  const cfg = getConfig();
+  const bd = data && data.business_date != null ? String(data.business_date).trim() : "";
+  return {
+    company_id: String(cfg.company || "").trim(),
+    task_id: String(cfg.task || "").trim(),
+    process_id: String(cfg.process || "").trim(),
+    user_id: String(cfg.user || "").trim(),
+    business_date: bd,
+  };
+}
+
+function actualDraftStorageKeyFrom(data) {
+  const p = actualDraftStorageKeyPartsFrom(data);
+  if (!p.company_id || !p.business_date || !p.user_id) return null;
+  return (
+    "mo_field_v2_actual_draft:" +
+    JSON.stringify([
+      p.company_id,
+      p.task_id,
+      p.process_id,
+      p.user_id,
+      p.business_date,
+    ])
+  );
+}
+
+function actualDraftStorageKey() {
+  return actualDraftStorageKeyFrom(lastWorkData);
+}
+
+function clearActualDraftForWorkSnapshot(data) {
+  const k = actualDraftStorageKeyFrom(data);
+  if (!k) return;
+  try {
+    localStorage.removeItem(k);
+  } catch (_) { /* ok */ }
+}
+
+function snapshotActualDraftLinesFromDom() {
+  const host = actualRowsHost();
+  if (!host) return [];
+  const rows = [];
+  for (const row of host.querySelectorAll(".multi-row-line")) {
+    const labEl = row.querySelector("[data-line-label]");
+    const qtyEl = row.querySelector("[data-line-qty]");
+    const pcEl = row.querySelector("[data-line-resolved-pc]");
+    const memoIn = row.querySelector("[data-line-memo]");
+    const lb = labEl ? String(labEl.value || "") : "";
+    const qtyStr = qtyEl ? String(qtyEl.value ?? "") : "";
+    const pc = pcEl ? String(pcEl.value || "").trim() : "";
+    const lid = (row.dataset.lineId || "").trim();
+    const mm = memoIn ? String(memoIn.value || "") : "";
+    let used = [];
+    const umHost = row.querySelector("[data-um-host]");
+    if (umHost) {
+      try {
+        used = collectUsedMaterialsFromHost(umHost);
+      } catch (_) {
+        used = [];
+      }
+    }
+    rows.push({
+      label: lb,
+      qty_text: qtyStr,
+      product_code: pc || undefined,
+      line_id: lid || undefined,
+      line_memo: mm || undefined,
+      used_materials: used.length ? used : undefined,
+    });
+  }
+  return rows;
+}
+
+function persistActualDraftNow() {
+  if (submitting) return;
+  if (!workStateAllowsActualDraftPersist(lastWorkData)) return;
+  const key = actualDraftStorageKey();
+  if (!key) return;
+  const body = {
+    v: 1,
+    lines: snapshotActualDraftLinesFromDom(),
+    actual_memo: String(
+      document.getElementById("actual-one-line-memo")?.value || "",
+    ),
+    deviation_reason: String(
+      document.getElementById("deviation-reason")?.value || "",
+    ),
+    pattern_a: document.getElementById("pattern-a-cb")?.checked === true,
+    pattern_b: document.getElementById("pattern-b-cb")?.checked === true,
+  };
+  try {
+    localStorage.setItem(key, JSON.stringify(body));
+  } catch (_) { /* quota */ }
+}
+
+function schedulePersistActualDraft() {
+  if (submitting) return;
+  if (actualScreenReadOnly) return;
+  if (!workStateAllowsActualDraftPersist(lastWorkData)) return;
+  window.clearTimeout(_actualDraftSaveTimer);
+  _actualDraftSaveTimer = window.setTimeout(() => {
+    try {
+      persistActualDraftNow();
+    } catch (_) { /* ok */ }
+  }, 400);
+}
+
+function actualDraftOnDelegatedInteraction(el) {
+  if (!el || !el.closest) return;
+  if (actualScreenReadOnly) return;
+  const sa = document.getElementById("screen-actual");
+  if (!sa || !sa.classList.contains("active")) return;
+  if (!workStateAllowsActualDraftPersist(lastWorkData)) return;
+  const host = actualRowsHost();
+  if (!host) return;
+  if (el.id === "actual-one-line-memo" || el.id === "deviation-reason") {
+    schedulePersistActualDraft();
+    return;
+  }
+  if (el.id === "pattern-a-cb" || el.id === "pattern-b-cb") {
+    schedulePersistActualDraft();
+    return;
+  }
+  if (host.contains(el)) schedulePersistActualDraft();
+}
+
+function actualDraftOnDelegatedClick(el) {
+  if (!el || !el.closest) return;
+  if (actualScreenReadOnly) return;
+  const sa = document.getElementById("screen-actual");
+  if (!sa || !sa.classList.contains("active")) return;
+  if (!workStateAllowsActualDraftPersist(lastWorkData)) return;
+  const host = actualRowsHost();
+  if (!host || !host.contains(el)) return;
+  if (
+    el.closest(".btn-line-remove") ||
+    el.closest(".btn-add-um-inline") ||
+    el.closest(".btn-um-remove")
+  ) {
+    schedulePersistActualDraft();
+  }
+}
+
+function ensureActualDraftInputHooks() {
+  if (_actualDraftHooksBound) return;
+  _actualDraftHooksBound = true;
+  const shell = document.getElementById("field-main-shell") || document.body;
+  shell.addEventListener(
+    "input",
+    (ev) => {
+      actualDraftOnDelegatedInteraction(ev.target);
+    },
+    true,
+  );
+  shell.addEventListener(
+    "change",
+    (ev) => {
+      actualDraftOnDelegatedInteraction(ev.target);
+    },
+    true,
+  );
+  shell.addEventListener(
+    "click",
+    (ev) => {
+      actualDraftOnDelegatedClick(ev.target);
+    },
+    true,
+  );
+}
+
+function tryRestoreActualDraftIntoForm(data) {
+  if (!workStateAllowsActualDraftPersist(data)) return false;
+  const key = actualDraftStorageKeyFrom(data);
+  if (!key) return false;
+  let raw = null;
+  try {
+    raw = localStorage.getItem(key);
+  } catch (_) {
+    return false;
+  }
+  if (!raw || !String(raw).trim()) return false;
+  let draft = null;
+  try {
+    draft = JSON.parse(raw);
+  } catch (_) {
+    return false;
+  }
+  if (!draft || draft.v !== 1 || !Array.isArray(draft.lines)) return false;
+
+  const host = actualRowsHost();
+  const listId = isLogistics() ? "dl-work-label" : "dl-item-name";
+  const srcLines = draft.lines.length ? draft.lines : [{}];
+  const fillLines = srcLines.map((d) => {
+    const row = {};
+    if (d.label != null && String(d.label).trim()) {
+      row.label = String(d.label).trim();
+    }
+    const qt = d.qty_text != null ? String(d.qty_text).trim() : "";
+    if (qt !== "") {
+      const q = parseQtyInput(qt);
+      if (Number.isFinite(q)) row.value = q;
+    }
+    if (d.product_code != null && String(d.product_code).trim()) {
+      row.product_code = String(d.product_code).trim();
+    }
+    if (d.line_id != null && String(d.line_id).trim()) {
+      row.line_id = String(d.line_id).trim();
+    }
+    if (d.line_memo != null && String(d.line_memo).trim()) {
+      row.line_memo = String(d.line_memo).trim();
+    }
+    if (Array.isArray(d.used_materials) && d.used_materials.length) {
+      row.used_materials = d.used_materials;
+    }
+    return row;
+  });
+  fillRowsHost(host, fillLines, "候補から選ぶか入力", listId, true, {
+    actualPerLineMaterials: true,
+  });
+  const domRows = host.querySelectorAll(".multi-row-line");
+  srcLines.forEach((d, i) => {
+    const el = domRows[i];
+    if (!el) return;
+    const qtyEl = el.querySelector("[data-line-qty]");
+    if (qtyEl && d.qty_text != null && String(d.qty_text) !== "") {
+      moAssignQtyValue(qtyEl, String(d.qty_text), "draftRestore", {
+        clearDirty: false,
+      });
+    }
+  });
+  const memoEl = document.getElementById("actual-one-line-memo");
+  if (memoEl) {
+    memoEl.value =
+      draft.actual_memo != null ? String(draft.actual_memo) : "";
+  }
+  const reasonEl = document.getElementById("deviation-reason");
+  if (reasonEl) {
+    reasonEl.value =
+      draft.deviation_reason != null ? String(draft.deviation_reason) : "";
+  }
+  const pa = document.getElementById("pattern-a-cb");
+  const pb = document.getElementById("pattern-b-cb");
+  if (pa && draft.pattern_a != null) pa.checked = draft.pattern_a === true;
+  if (pb && draft.pattern_b != null) pb.checked = draft.pattern_b === true;
+  syncDeviationReasonPanel();
+  return true;
 }
 
 function renderPlannedSummaryForActual(data) {
   const sum = document.getElementById("actual-planned-summary");
-  const pl = data.planned_lines;
-  if (pl && pl.length) {
-    sum.innerHTML = renderLinesSummaryReadonly(pl);
+  const cntEl = document.getElementById("actual-planned-count");
+  const board = document.getElementById("actual-planned-board");
+  const titleEl = document.getElementById("actual-planned-board-title");
+  const tagLabel = document.getElementById("actual-planned-tagline-label");
+  if (!sum) return;
+  const formal = Boolean(data && data.planned_registered_at);
+  const lines = normPlannedLinesFromWorkData(data);
+
+  function syncLeftPlannedChrome(opts) {
+    const label = opts.label;
+    const draftVisual = !!opts.draftVisual;
+    if (titleEl) titleEl.textContent = label;
+    if (tagLabel) tagLabel.textContent = label;
+    if (board) {
+      board.classList.toggle("actual-planned-board--draft", draftVisual);
+      board.setAttribute("aria-label", label);
+    }
+  }
+
+  if (!lines.length) {
+    syncLeftPlannedChrome({
+      label: formal ? "今日の予告" : "着手前の入力",
+      draftVisual: false,
+    });
+    if (cntEl) cntEl.textContent = "0件";
+    sum.innerHTML = formal
+      ? '<p class="actual-planned-empty">正式な予告はまだありません。<span class="actual-planned-empty-sub">（空でも着手・入力できます）</span></p>'
+      : '<p class="actual-planned-empty">着手前の入力はまだありません。<span class="actual-planned-empty-sub">（空でも着手・入力できます）</span></p>';
     return;
   }
-  const qv = (q) => (q != null ? `${q} ${unitVal}` : "—");
-  if (isLogistics()) {
-    const plab = logisticsPlannedLabel(data);
-    sum.innerHTML =
-      `<div class="ro-line"><span class="ro-k">作業内容</span><span class="ro-v">${escHtml(dispStr(plab))}</span></div>` +
-      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
-  } else {
-    sum.innerHTML =
-      `<div class="ro-line"><span class="ro-k">商品名・対象</span><span class="ro-v">${escHtml(dispStr(data.planned_item_name))}</span></div>` +
-      `<div class="ro-line"><span class="ro-k">数量</span><span class="ro-v">${escHtml(qv(data.planned_value))}</span></div>`;
+
+  const isDraftSnapshot = !formal;
+  syncLeftPlannedChrome({
+    label: isDraftSnapshot ? "着手前入力（未登録）" : "今日の予告",
+    draftVisual: isDraftSnapshot,
+  });
+  if (cntEl) cntEl.textContent = String(lines.length) + "件";
+  sum.innerHTML = lines
+    .map((l) => {
+      const attr = escAttr(l.label);
+      const pcAttr = escAttr(l.product_code || "");
+      const qtySpan = plannedLineHasDisplayableQty(l.value)
+        ? `<span class="ap-qty">${escHtml(
+            formatArticle5ProgressQty(Number(String(l.value).trim())),
+          )}\u00A0${escHtml(unitVal)}</span>`
+        : "";
+      return (
+        `<button type="button" class="actual-planned-hit" data-planned-label="${attr}" data-planned-pc="${pcAttr}">` +
+        `<span class="ap-name">${escHtml(l.label)}</span>` +
+        qtySpan +
+        `</button>`
+      );
+    })
+    .join("");
+}
+
+function flashActualProductRow(rowEl) {
+  if (!rowEl) return;
+  rowEl.classList.remove("actual-row-flash");
+  void rowEl.offsetWidth;
+  rowEl.classList.add("actual-row-flash");
+  window.setTimeout(() => rowEl.classList.remove("actual-row-flash"), 1100);
+}
+
+/** 実績盤：左「今日の予告」タップで商品名のみ反映（数量は空欄のまま）。同一ラベル→フォーカスのみ、未入力名の空行→再利用、なければ行追加。 */
+function applyPlannedPickToActual(rawLabel, rawPc) {
+  const sa = document.getElementById("screen-actual");
+  if (!sa || !sa.classList.contains("active")) return;
+  const label = String(rawLabel || "").trim();
+  if (!label) return;
+  const host = actualRowsHost();
+  if (!host) return;
+  const pc = String(rawPc || "").trim();
+
+  function focusQtyScrollFlash(row) {
+    const qtyIn = row.querySelector("[data-line-qty]");
+    const labIn = row.querySelector("[data-line-label]");
+    row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (qtyIn) {
+      try {
+        qtyIn.focus({ preventScroll: true });
+      } catch (_) {
+        qtyIn.focus();
+      }
+    } else if (labIn) {
+      try {
+        labIn.focus({ preventScroll: true });
+      } catch (_) {
+        labIn.focus();
+      }
+    }
+    flashActualProductRow(row);
   }
+
+  for (const row of host.querySelectorAll(".multi-row-line.actual-product-block")) {
+    const labIn = row.querySelector("[data-line-label]");
+    if (!labIn) continue;
+    if (String(labIn.value || "").trim() === label) {
+      focusQtyScrollFlash(row);
+      return;
+    }
+  }
+
+  for (const row of host.querySelectorAll(".multi-row-line.actual-product-block")) {
+    const labIn = row.querySelector("[data-line-label]");
+    if (!labIn) continue;
+    if (String(labIn.value || "").trim() !== "") continue;
+    const hid = row.querySelector("[data-line-resolved-pc]");
+    labIn.value = label;
+    if (hid && pc) hid.value = pc;
+    syncResolvedProductCodeForRow(row);
+    syncDeviationReasonPanel();
+    focusQtyScrollFlash(row);
+    return;
+  }
+
+  const el = makeInputLineRow(
+    "候補から選ぶか入力",
+    isLogistics() ? "dl-work-label" : "dl-item-name",
+    true,
+    "actual",
+  );
+  const labIn = el.querySelector("[data-line-label]");
+  const hid = el.querySelector("[data-line-resolved-pc]");
+  if (labIn) labIn.value = label;
+  if (hid && pc) hid.value = pc;
+  syncResolvedProductCodeForRow(el);
+  host.appendChild(el);
+  syncDeviationReasonPanel();
+  focusQtyScrollFlash(el);
+}
+
+function initActualPlannedBoardNav() {
+  const board = document.getElementById("actual-planned-board");
+  if (!board || board.dataset.moPlannedNavBound === "1") return;
+  board.dataset.moPlannedNavBound = "1";
+  board.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".actual-planned-hit");
+    if (!btn || !board.contains(btn)) return;
+    btn.classList.remove("actual-planned-pick-flash");
+    void btn.offsetWidth;
+    btn.classList.add("actual-planned-pick-flash");
+    window.setTimeout(() => btn.classList.remove("actual-planned-pick-flash"), 400);
+    applyPlannedPickToActual(
+      btn.getAttribute("data-planned-label") || "",
+      btn.getAttribute("data-planned-pc") || "",
+    );
+  });
+}
+
+function flashPlannedRowFromArticle7(rowEl) {
+  if (!rowEl) return;
+  rowEl.classList.remove("planned-row-a7-flash");
+  void rowEl.offsetWidth;
+  rowEl.classList.add("planned-row-a7-flash");
+  window.setTimeout(() => rowEl.classList.remove("planned-row-a7-flash"), 950);
+}
+
+/** 予告盤のみ：第7条ピックで商品名を反映（数量は空欄のまま）。同一ラベル→フォーカスのみ、未入力名の空行→再利用、なければ行追加。 */
+function applyArticle7PickToPlanned(rawLabel, rawPc) {
+  const sp = document.getElementById("screen-planned");
+  if (!sp || !sp.classList.contains("active")) return;
+  const label = String(rawLabel || "").trim();
+  if (!label) return;
+  const host = plannedRowsHost();
+  if (!host) return;
+  const pc = String(rawPc || "").trim();
+
+  for (const row of host.querySelectorAll(".multi-row-line.planned-product-block")) {
+    const labIn = row.querySelector("[data-line-label]");
+    if (!labIn) continue;
+    if (String(labIn.value || "").trim() === label) {
+      const qtyIn = row.querySelector("[data-line-qty]");
+      const focusEl = qtyIn || labIn;
+      row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      try {
+        focusEl.focus({ preventScroll: true });
+      } catch (_) {
+        focusEl.focus();
+      }
+      flashPlannedRowFromArticle7(row);
+      return;
+    }
+  }
+
+  for (const row of host.querySelectorAll(".multi-row-line.planned-product-block")) {
+    const labIn = row.querySelector("[data-line-label]");
+    if (!labIn) continue;
+    if (String(labIn.value || "").trim() !== "") continue;
+    const hid = row.querySelector("[data-line-resolved-pc]");
+    labIn.value = label;
+    if (hid && pc) hid.value = pc;
+    syncResolvedProductCodeForRow(row);
+    const qtyIn = row.querySelector("[data-line-qty]");
+    row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (qtyIn) {
+      try {
+        qtyIn.focus({ preventScroll: true });
+      } catch (_) {
+        qtyIn.focus();
+      }
+    } else if (labIn) {
+      labIn.focus();
+    }
+    flashPlannedRowFromArticle7(row);
+    return;
+  }
+
+  const el = makeInputLineRow(
+    isLogistics() ? "作業名を入力" : "商品名を入力",
+    "",
+    !isLogistics(),
+    "planned",
+  );
+  const labIn = el.querySelector("[data-line-label]");
+  const hid = el.querySelector("[data-line-resolved-pc]");
+  if (labIn) labIn.value = label;
+  if (hid && pc) hid.value = pc;
+  syncResolvedProductCodeForRow(el);
+  host.appendChild(el);
+  const qtyIn = el.querySelector("[data-line-qty]");
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  if (qtyIn) {
+    try {
+      qtyIn.focus({ preventScroll: true });
+    } catch (_) {
+      qtyIn.focus();
+    }
+  } else if (labIn) {
+    labIn.focus();
+  }
+  flashPlannedRowFromArticle7(el);
+}
+
+function initArticle7PlannedPickNav() {
+  const board = document.getElementById("article7-board-planned");
+  if (!board || board.dataset.moA7PickBound === "1") return;
+  board.dataset.moA7PickBound = "1";
+  board.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".a7-card-pick");
+    if (!btn || !board.contains(btn)) return;
+    ev.preventDefault();
+    const lab = btn.getAttribute("data-a7-label") || "";
+    const pc = btn.getAttribute("data-a7-pc") || "";
+    btn.classList.remove("a7-pick-flash");
+    void btn.offsetWidth;
+    btn.classList.add("a7-pick-flash");
+    window.setTimeout(() => btn.classList.remove("a7-pick-flash"), 300);
+    applyArticle7PickToPlanned(lab, pc);
+  });
 }
 
 /** サーバ article7_deviation と同趣旨: コード同士一致、または両方コード無しで label 一致のみ非逸脱 */
@@ -1296,6 +3227,74 @@ function isActualDeviantVsArticle7(lines, items) {
     if (!isActualLineCoveredByArticle7(L, items)) return true;
   }
   return false;
+}
+
+function normPlannedLinesFromWorkData(data) {
+  if (!data) return [];
+  const pl = data.planned_lines;
+  if (Array.isArray(pl) && pl.length) {
+    return pl
+      .map((x) => ({
+        label: String(x.label != null ? x.label : "").trim(),
+        value: x.value != null ? Number(x.value) : NaN,
+        product_code: x.product_code != null ? String(x.product_code).trim() : "",
+      }))
+      .filter((x) => x.label);
+  }
+  if (!data.planned_registered_at) return [];
+  const pv = data.planned_value;
+  if (pv != null && Number.isFinite(Number(pv))) {
+    const fv = Number(pv);
+    if (isLogistics()) {
+      const lab = logisticsPlannedLabel(data);
+      if (lab) return [{ label: lab, value: fv, product_code: "" }];
+    } else {
+      const n = String(data.planned_item_name || "").trim();
+      if (n) return [{ label: n, value: fv, product_code: "" }];
+    }
+  }
+  return [];
+}
+
+function actualLineMatchesPlannedLine(a, p) {
+  const aPc = String(a.product_code || "").trim();
+  const pPc = String(p.product_code || "").trim();
+  const aLb = String(a.label || "").trim();
+  const pLb = String(p.label || "").trim();
+  if (aPc && pPc && aPc === pPc) return true;
+  if (!aPc && !pPc && aLb && pLb && aLb === pLb) return true;
+  return false;
+}
+
+function isActualQtyDeviatesFromPlanned(actualLines, plannedLines) {
+  const EPS = 1e-6;
+  if (!actualLines || !plannedLines || !plannedLines.length) return false;
+  for (const a of actualLines) {
+    if (!a) continue;
+    const aLb = String(a.label || "").trim();
+    if (!aLb) continue;
+    const av = Number(a.value);
+    if (!Number.isFinite(av)) continue;
+    for (const p of plannedLines) {
+      if (!actualLineMatchesPlannedLine(a, p)) continue;
+      const pv = Number(p.value);
+      if (!Number.isFinite(pv)) continue;
+      if (Math.abs(av - pv) > EPS) return true;
+    }
+  }
+  return false;
+}
+
+function hasActualWithoutPlanned(actualLines, plannedLines) {
+  if (!actualLines || !actualLines.length) return false;
+  const nonempty = actualLines.some((l) => {
+    if (!l) return false;
+    const lb = String(l.label || "").trim();
+    const v = Number(l.value);
+    return Boolean(lb && Number.isFinite(v));
+  });
+  if (!nonempty) return false;
+  return !plannedLines || plannedLines.length === 0;
 }
 
 /** 第7条 PriorityItem と予告行の突合（サーバ _line_belongs_to_priority と同趣旨） */
@@ -1376,57 +3375,175 @@ function collectPlannedLinesWithArticle7AlreadyMade(lines, items) {
   return out;
 }
 
-/** @returns {boolean} true なら予告送信を続行 */
-function confirmPlannedIfArticle7AlreadyMade(lines) {
+let _fieldAppModalResolve = null;
+
+function initFieldAppModal() {
+  const dlg = document.getElementById("field-app-modal");
+  if (!dlg || dlg.dataset.moBound === "1") return;
+  dlg.dataset.moBound = "1";
+  dlg.addEventListener("close", () => {
+    const resolve = _fieldAppModalResolve;
+    _fieldAppModalResolve = null;
+    if (!resolve) return;
+    const confirmed = dlg.returnValue === "confirm";
+    dlg.returnValue = "";
+    resolve(confirmed);
+  });
+  document.getElementById("field-app-modal-cancel").addEventListener("click", () => {
+    dlg.returnValue = "";
+    dlg.close();
+  });
+  document.getElementById("field-app-modal-confirm").addEventListener("click", () => {
+    dlg.returnValue = "confirm";
+    dlg.close();
+  });
+}
+
+/** @returns {Promise<boolean>} 右ボタンで true、左・Esc で false */
+function openFieldAppModal(opts) {
+  initFieldAppModal();
+  const dlg = document.getElementById("field-app-modal");
+  dlg.returnValue = "";
+  document.getElementById("field-app-modal-title").textContent = opts.title || "";
+  document.getElementById("field-app-modal-body").innerHTML = opts.bodyHtml || "";
+  const c = opts.cancelText != null ? opts.cancelText : "キャンセル";
+  const o = opts.confirmText != null ? opts.confirmText : "OK";
+  document.getElementById("field-app-modal-cancel").textContent = c;
+  document.getElementById("field-app-modal-confirm").textContent = o;
+  return new Promise((resolve) => {
+    _fieldAppModalResolve = resolve;
+    dlg.showModal();
+  });
+}
+
+/** @returns {Promise<boolean>} true なら予告送信を続行 */
+async function confirmPlannedIfArticle7AlreadyMade(lines) {
   const hits = collectPlannedLinesWithArticle7AlreadyMade(lines, article7ItemsCache);
   if (!hits.length) return true;
-  const u = unitVal || "個";
+  const u = escHtml(unitVal || "個");
   const h = hits[0].completedRem;
-  let msg = "この商品はすでに作成済みです\n\n";
-  msg += "作成済み：" + formatArticle5ProgressQty(h.completed) + u + "\n";
-  msg += "残り：" + formatArticle5ProgressQty(h.remaining) + u + "\n\n";
+  let body =
+    '<p class="field-app-modal-detail">作成済み：' +
+    escHtml(formatArticle5ProgressQty(h.completed)) +
+    u +
+    "</p>" +
+    '<p class="field-app-modal-detail">残り：' +
+    escHtml(formatArticle5ProgressQty(h.remaining)) +
+    u +
+    "</p>";
   if (hits.length > 1) {
-    msg += "（ほか " + (hits.length - 1) + " 行も同様です）\n\n";
+    body +=
+      '<p class="field-app-modal-muted">（ほか ' +
+      (hits.length - 1) +
+      " 行も同様です）</p>";
   }
-  msg += "再度、予告しますか？";
-  return window.confirm(msg);
+  body += '<p>再度、予告しますか？</p>';
+  return await openFieldAppModal({
+    title: "この商品はすでに作成済みです",
+    bodyHtml: body,
+    cancelText: "キャンセル",
+    confirmText: "OK",
+  });
 }
 
 function syncDeviationReasonPanel() {
-  const wrap = document.getElementById("deviation-reason-wrap");
+  const panel = document.getElementById("actual-anomaly-panel");
+  const devBlock = document.getElementById("actual-deviation-block");
   const ta = document.getElementById("deviation-reason");
-  if (!wrap || !ta) return;
+  if (!panel || !ta) return;
+
   normalizeQtyInputsInHost(actualRowsHost());
-  const scanned = scanHostLines(actualRowsHost());
-  if (scanned.error) {
-    wrap.style.display = "none";
+
+  if (actualScreenReadOnly) {
+    panel.style.display = "block";
+    const pa = document.getElementById("pattern-a-cb");
+    const pb = document.getElementById("pattern-b-cb");
+    const hasReason = Boolean(String(ta.value || "").trim());
+    const open = hasReason || (pa && pa.checked) || (pb && pb.checked);
+    panel.open = open;
+    if (devBlock) devBlock.style.display = hasReason ? "block" : "none";
     return;
   }
-  const dev = isActualDeviantVsArticle7(scanned.lines, article7ItemsCache);
-  wrap.style.display = dev ? "block" : "none";
-  if (!dev) ta.value = "";
+
+  const scanned = scanHostLines(actualRowsHost());
+  if (scanned.error) {
+    panel.style.display = "none";
+    panel.open = false;
+    return;
+  }
+
+  const planned = normPlannedLinesFromWorkData(lastWorkData);
+  const art7dev = isActualDeviantVsArticle7(scanned.lines, article7ItemsCache);
+  const qtyOff = isActualQtyDeviatesFromPlanned(scanned.lines, planned);
+  const noPlan = hasActualWithoutPlanned(scanned.lines, planned);
+  const showPanel = art7dev || qtyOff || noPlan;
+
+  if (devBlock) devBlock.style.display = art7dev ? "block" : "none";
+  if (!art7dev) ta.value = "";
+
+  if (showPanel) {
+    panel.style.display = "block";
+    panel.open = true;
+  } else {
+    panel.style.display = "none";
+    panel.open = false;
+  }
 }
 
-function renderArticle7PanelHtml(items) {
-  if (!items || !items.length) {
-    return '<p class="article7-muted">事務から登録された第7条の一覧（納期・不足の目安）はまだありません。</p>';
+function article7BoardTier(it) {
+  const plRaw =
+    it.priority_level != null ? String(it.priority_level).trim().toLowerCase() : "";
+  if (plRaw === "high" || plRaw === "mid" || plRaw === "low") return plRaw;
+  const dueRaw = it.due_date != null ? String(it.due_date).trim() : "";
+  if (dueRaw && typeof priorityTierFromDueDate === "function") {
+    const t = priorityTierFromDueDate(dueRaw);
+    if (t && t.tier) return t.tier;
   }
-  return items.map((it) => {
-    const label = String(it.label || "").trim() || "（無名）";
+  return "low";
+}
+
+function article7DueMonthDay(it) {
+  const dueRaw = it.due_date != null ? String(it.due_date).trim() : "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dueRaw);
+  if (!m) return "—";
+  return String(Number(m[2])) + "/" + String(Number(m[3]));
+}
+
+function renderArticle7BoardPlannedHtml(items, options) {
+  options = options || {};
+  const withPick = options.withPick === true;
+  if (!items || !items.length) {
+    return '<p class="a7-board-empty">事務から登録された第7条はまだありません。</p>';
+  }
+  const high = [];
+  const mid = [];
+  const low = [];
+  for (const it of items) {
+    const t = article7BoardTier(it);
+    if (t === "high") high.push(it);
+    else if (t === "mid") mid.push(it);
+    else low.push(it);
+  }
+
+  function cardHtml(it) {
+    const labelKey = String(it.label || "").trim();
+    const label = labelKey || "（無名）";
+    const tier = article7BoardTier(it);
+    const emoji = tier === "high" ? "🔴" : tier === "mid" ? "🟡" : "🔵";
     const dueRaw = it.due_date != null ? String(it.due_date).trim() : "";
     let tierLead = "";
     const plRaw =
       it.priority_level != null ? String(it.priority_level).trim().toLowerCase() : "";
     if (plRaw === "high" || plRaw === "mid" || plRaw === "low") {
-      const emoji = plRaw === "high" ? "🔴" : plRaw === "mid" ? "🟡" : "🔵";
-      tierLead = `${emoji}${escHtml(plRaw)} · `;
+      tierLead = `${plRaw === "high" ? "🔴" : plRaw === "mid" ? "🟡" : "🔵"}${escHtml(plRaw)} · `;
     } else if (dueRaw && typeof priorityTierFromDueDate === "function") {
-      const tier = priorityTierFromDueDate(dueRaw);
-      if (tier) tierLead = `${tier.emoji}${escHtml(tier.label)} · `;
+      const tr = priorityTierFromDueDate(dueRaw);
+      if (tr) tierLead = `${tr.emoji}${escHtml(tr.label)} · `;
     }
-    const dueDisp = dueRaw ? escHtml(dueRaw) : "—";
-    const shipRaw = it.ship_value != null ? Number(it.ship_value) : (it.value != null ? Number(it.value) : NaN);
-    const prodRaw = it.prod_value != null ? Number(it.prod_value) : (it.value != null ? Number(it.value) : NaN);
+    const shipRaw =
+      it.ship_value != null ? Number(it.ship_value) : (it.value != null ? Number(it.value) : NaN);
+    const prodRaw =
+      it.prod_value != null ? Number(it.prod_value) : (it.value != null ? Number(it.value) : NaN);
     let stockRaw =
       it.stock_qty != null && it.stock_qty !== "" ? Number(it.stock_qty) : NaN;
     if (!Number.isFinite(stockRaw) && Number.isFinite(shipRaw) && Number.isFinite(prodRaw)) {
@@ -1435,6 +3552,15 @@ function renderArticle7PanelHtml(items) {
     const shipStr = Number.isFinite(shipRaw) ? String(shipRaw) : "—";
     const prodStr = Number.isFinite(prodRaw) ? String(prodRaw) : "—";
     const stockStr = Number.isFinite(stockRaw) ? String(stockRaw) : "—";
+    const dueDisp = dueRaw ? escHtml(dueRaw) : "—";
+    const dueMd = escHtml(article7DueMonthDay(it));
+    const cutoffObs =
+      it.is_after_cutoff === true
+        ? ' <span class="a7-cutoff-obs">⚠ 締切後投入</span>'
+        : "";
+    const oneLine =
+      `${emoji} ${escHtml(label)} 不足${escHtml(prodStr)} ${dueMd}${cutoffObs}`;
+    const pcKey = String(it.product_code || "").trim();
 
     const completedRaw =
       it.article5_completed_qty != null ? Number(it.article5_completed_qty) : NaN;
@@ -1449,44 +3575,84 @@ function renderArticle7PanelHtml(items) {
     ) {
       remainingNum = prodRaw - completedNum;
     }
-    const hasArticle5Progress =
-      Number.isFinite(completedNum) || Number.isFinite(remainingNum);
     const progressParts = [];
     const remEps = 1e-6;
-    if (hasArticle5Progress) {
+    if (Number.isFinite(completedNum) || Number.isFinite(remainingNum)) {
       if (Number.isFinite(completedNum) && completedNum > remEps) {
         progressParts.push(
-          `<div class="article7-muted">作成済み：${escHtml(formatArticle5ProgressQty(completedNum))} ${escHtml(unitVal)}</div>`,
+          `<div><span class="lbl">作成済み</span>${escHtml(formatArticle5ProgressQty(completedNum))} ${escHtml(unitVal)}</div>`,
         );
       }
       if (Number.isFinite(remainingNum)) {
         progressParts.push(
-          `<div class="article7-muted">残り：${escHtml(formatArticle5ProgressQty(remainingNum))} ${escHtml(unitVal)}</div>`,
+          `<div><span class="lbl">残り</span>${escHtml(formatArticle5ProgressQty(remainingNum))} ${escHtml(unitVal)}</div>`,
         );
       }
-      // T35: 残り > 0 では ✔ を出さない（completed > 0 だけでは出さない）
       if (Number.isFinite(remainingNum) && remainingNum <= remEps) {
         progressParts.push('<div class="article7-progress-done">作成済み ✔</div>');
       }
     }
     const progressBlock = progressParts.join("");
 
+    const bodyInner =
+      `<div><span class="lbl">在庫</span>${escHtml(stockStr)} ${escHtml(unitVal)}　` +
+      `<span class="lbl">出荷</span>${escHtml(shipStr)} ${escHtml(unitVal)}　` +
+      `<span class="lbl">不足目安</span>${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
+      `<div><span class="lbl">納期</span>${dueDisp}　${tierLead}<span class="lbl">目的</span>製造目安 ${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
+      progressBlock;
+
+    if (withPick) {
+      return (
+        `<div class="a7-card-wrap">` +
+        `<button type="button" class="a7-card-pick" data-a7-label="${escAttr(labelKey)}" data-a7-pc="${escAttr(pcKey)}" title="予告盤へ反映（商品名のみ）">` +
+        `<span class="a7-card-one-line">${oneLine}</span>` +
+        `</button>` +
+        `<details class="a7-card-more">` +
+        `<summary class="a7-card-more-sum">詳細</summary>` +
+        `<div class="a7-card-body">` +
+        bodyInner +
+        `</div></details></div>`
+      );
+    }
     return (
-      `<div class="article7-line">` +
-      `<div><strong>${escHtml(label)}</strong></div>` +
-      `<div class="article7-shortfall"><span class="lbl">不足</span>${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
-      `<div class="article7-muted">出荷：${escHtml(shipStr)} ${escHtml(unitVal)}　在庫：${escHtml(stockStr)} ${escHtml(unitVal)}　${tierLead}納期：${dueDisp}</div>` +
-      `<div class="article7-muted">製造目安 ${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
-      progressBlock +
+      `<details class="a7-card">` +
+      `<summary class="a7-card-sum">` +
+      `<span class="a7-card-one-line">${oneLine}</span>` +
+      `</summary>` +
+      `<div class="a7-card-body">` +
+      bodyInner +
+      `</div></details>`
+    );
+  }
+
+  function section(title, arr) {
+    if (!arr.length) return "";
+    return (
+      `<div class="a7-board-sec">` +
+      `<div class="a7-board-sec-title">${escHtml(title)}</div>` +
+      arr.map(cardHtml).join("") +
       `</div>`
     );
-  }).join("");
+  }
+
+  let html = "";
+  html += section("高", high);
+  html += section("中", mid);
+  if (low.length) {
+    html +=
+      `<details class="a7-board-low">` +
+      `<summary>低 ${low.length}件</summary>` +
+      `<div>` +
+      low.map(cardHtml).join("") +
+      `</div></details>`;
+  }
+  return html || '<p class="a7-board-empty">表示できる第7条がありません。</p>';
 }
 
 async function refreshArticle7Panels() {
-  const plannedEl = document.getElementById("article7-panel-planned");
+  const plannedBoard = document.getElementById("article7-board-planned");
   const actualEl = document.getElementById("article7-panel-actual");
-  if (!plannedEl || !actualEl) return;
+  if (!actualEl && !plannedBoard) return;
   const ae = document.activeElement;
   const ah = actualRowsHost();
   if (
@@ -1507,12 +3673,12 @@ async function refreshArticle7Panels() {
   }
   const cfg = getConfig();
   if (!cfg.company) {
-    const empty = '<p class="article7-muted">会社IDを設定すると表示されます。</p>';
-    plannedEl.innerHTML = empty;
-    actualEl.innerHTML = empty;
+    const emptyPlanned = '<p class="a7-board-empty">' + escHtml("会社IDを設定すると表示されます。") + "</p>";
+    if (plannedBoard) plannedBoard.innerHTML = emptyPlanned;
+    if (actualEl) actualEl.innerHTML = emptyPlanned;
     return;
   }
-  const fail = '<p class="article7-muted">第7条一覧の取得に失敗しました。</p>';
+  const fail = '<p class="a7-board-empty">' + escHtml("第7条一覧の取得に失敗しました。") + "</p>";
   try {
     const cid = encodeURIComponent(cfg.company);
     const [priRes, pmRes, wlRes] = await Promise.all([
@@ -1521,8 +3687,8 @@ async function refreshArticle7Panels() {
       fetch(`/v2/work/list?company_id=${cid}`, { cache: "no-store" }),
     ]);
     if (!priRes.ok) {
-      plannedEl.innerHTML = fail;
-      actualEl.innerHTML = fail;
+      if (plannedBoard) plannedBoard.innerHTML = '<p class="a7-board-empty">' + escHtml("取得に失敗しました") + "</p>";
+      if (actualEl) actualEl.innerHTML = fail;
       return;
     }
     const data = await priRes.json();
@@ -1549,12 +3715,11 @@ async function refreshArticle7Panels() {
       });
     });
     syncDeviationReasonPanel();
-    const html = renderArticle7PanelHtml(items);
-    plannedEl.innerHTML = html;
-    actualEl.innerHTML = html;
+    if (plannedBoard) plannedBoard.innerHTML = renderArticle7BoardPlannedHtml(items, { withPick: true });
+    if (actualEl) actualEl.innerHTML = renderArticle7BoardPlannedHtml(items, { withPick: false });
   } catch (_) {
-    plannedEl.innerHTML = fail;
-    actualEl.innerHTML = fail;
+    if (plannedBoard) plannedBoard.innerHTML = '<p class="a7-board-empty">' + escHtml("取得に失敗しました") + "</p>";
+    if (actualEl) actualEl.innerHTML = fail;
   }
 }
 
@@ -1861,6 +4026,21 @@ async function api(method, url, body) {
   return data;
 }
 
+/** 実績完了後など：次サイクル用に予告欄だけ空にした shell ペイロード（API の id・営業日はそのまま） */
+function shellForBlankPlannedUI(shell) {
+  if (!shell || typeof shell !== "object") return shell;
+  return {
+    ...shell,
+    planned_lines: [],
+    planned_at: null,
+    planned_registered_at: null,
+    planned_value: null,
+    planned_work_type: null,
+    planned_work_label: null,
+    planned_item_name: null,
+  };
+}
+
 async function bootstrapWork() {
   const cfg = getConfig();
   if (!cfg.company || !String(cfg.company).trim()) {
@@ -1903,12 +4083,54 @@ async function bootstrapWork() {
   const fromLeader = _bootstrapFromLeaderChoice;
   _bootstrapFromLeaderChoice = false;
   if (fromLeader) {
-    await showPlannedScreen(data);
+    if (data.actual_at) {
+      try {
+        const shell = await api("POST", "/v2/work", {
+          company_id: cfg.company,
+          task_id: cfg.task,
+          process_id: cfg.process,
+          user_id: cfg.user,
+        });
+        lastWorkData = shellForBlankPlannedUI(shell);
+        unitId = lastWorkData.id;
+        syncInputModeFromPayload(lastWorkData);
+        applyUnit(lastWorkData.unit);
+        resetActualEntryFormIndependent();
+        _fieldLastActualInputTargetFp = fieldActualInputTargetFingerprint();
+        window.clearTimeout(_actualDraftSaveTimer);
+        _actualDraftSaveTimer = null;
+        await showPlannedScreen(lastWorkData);
+      } catch (e) {
+        await showActualScreen(data, { readOnly: true });
+      }
+    } else if (data.started_at) {
+      await showActualScreen(data);
+    } else {
+      await showPlannedScreen(data);
+    }
     return;
   }
 
   if (data.actual_at) {
-    await showActualScreen(data, { readOnly: true });
+    try {
+      const shell = await api("POST", "/v2/work", {
+        company_id: cfg.company,
+        task_id: cfg.task,
+        process_id: cfg.process,
+        user_id: cfg.user,
+      });
+      lastWorkData = shellForBlankPlannedUI(shell);
+      unitId = lastWorkData.id;
+      syncInputModeFromPayload(lastWorkData);
+      applyUnit(lastWorkData.unit);
+      resetActualEntryFormIndependent();
+      _fieldLastActualInputTargetFp = fieldActualInputTargetFingerprint();
+      window.clearTimeout(_actualDraftSaveTimer);
+      _actualDraftSaveTimer = null;
+      await showPlannedScreen(lastWorkData);
+    } catch (e) {
+      await showActualScreen(data, { readOnly: true });
+    }
     return;
   }
   if (data.started_at) {
@@ -1926,12 +4148,14 @@ async function showPlannedScreen(prefill) {
   document.getElementById("planned-btn").textContent = "予告を登録";
   document.getElementById("planned-start-btn").disabled = false;
   document.getElementById("planned-start-btn").textContent = "着手して実績報告へ";
-  _plannedAllowEmptyAfterSave = false;
   show("planned");
 }
 
 async function showActualScreen(data, opts) {
   opts = opts || {};
+  const ro = !!opts.readOnly;
+  actualScreenReadOnly = ro;
+  if (data && data.id != null) lastWorkData = data;
   syncInputModeFromPayload(data);
   renderPlannedSummaryForActual(data);
   const stInfo = document.getElementById("started-info");
@@ -1953,27 +4177,28 @@ async function showActualScreen(data, opts) {
     document.getElementById("pattern-a-cb").checked = data.pattern_a === true;
     document.getElementById("pattern-b-cb").checked = data.pattern_b === true;
   }
-  const ro = !!opts.readOnly;
-  document.getElementById("actual-btn").textContent = ro ? "記録済み" : "実績を記録する";
+  let restoredActualDraft = false;
+  if (!ro && workStateAllowsActualDraftPersist(data)) {
+    ensureActualDraftInputHooks();
+    restoredActualDraft = tryRestoreActualDraftIntoForm(data);
+  }
+  syncActualPerLineMaterialsReadOnly(ro);
+  document.getElementById("actual-btn").textContent = ro ? "報告済み" : "実績を報告";
   document.getElementById("actual-btn").disabled = ro;
   document.getElementById("pattern-a-cb").disabled = ro;
   document.getElementById("pattern-b-cb").disabled = ro;
   const memoEl = document.getElementById("actual-one-line-memo");
   if (memoEl) {
     memoEl.disabled = ro;
-    if (ro) {
-      memoEl.value =
-        data.actual_memo != null && String(data.actual_memo).trim() !== ""
-          ? String(data.actual_memo)
-          : "";
-    } else {
-      memoEl.value = "";
+    if (!restoredActualDraft) {
+      memoEl.value = data.actual_memo != null ? String(data.actual_memo) : "";
     }
   }
   const reasonEl = document.getElementById("deviation-reason");
   if (reasonEl) reasonEl.disabled = ro;
   submitting = false;
   await refreshArticle7Panels();
+  syncDeviationReasonPanel();
   show("actual");
 }
 
@@ -1984,14 +4209,18 @@ async function submitPlannedCore(opts) {
     if (showToast) toast("作業行がありません");
     return false;
   }
-  const scanned = scanHostLinesForSubmit(plannedRowsHost());
+  const scanned = scanProductBlockLinesForSubmit(plannedRowsHost(), { allowQtyEmpty: true });
   if (scanned.error) {
     if (showToast) toast(scanned.error);
     return false;
   }
+  if (scanned.lines.length === 0) {
+    if (showToast) toast("商品名（または作業名）が入力されている行がありません");
+    return false;
+  }
   if (scanned.lines.length > 0) {
     await refreshArticle7Panels();
-    const proceed = confirmPlannedIfArticle7AlreadyMade(scanned.lines);
+    const proceed = await confirmPlannedIfArticle7AlreadyMade(scanned.lines);
     if (!proceed) return false;
   }
   try {
@@ -1999,7 +4228,6 @@ async function submitPlannedCore(opts) {
     lastWorkData = data;
     unitId = data.id;
     setPlannedRowsFromData(data);
-    _plannedAllowEmptyAfterSave = scanned.lines.length === 0;
     if (showToast) toast("予告を保存しました");
     return true;
   } catch (e) {
@@ -2011,7 +4239,7 @@ async function submitPlannedCore(opts) {
 async function submitPlanned() {
   const btn = document.getElementById("planned-btn");
   btn.disabled = true;
-  btn.textContent = "記録中...";
+  btn.textContent = "報告中...";
   try {
     await submitPlannedCore({ showToast: true });
   } finally {
@@ -2020,44 +4248,11 @@ async function submitPlanned() {
   }
 }
 
-async function submitStartFromPlanned() {
+async function executeStartFromPlanned(pinnedWorkUnitId, draftPlannedLinesForStart) {
   const sbtn = document.getElementById("planned-start-btn");
-  const scanned = scanHostLinesForSubmit(plannedRowsHost());
-  if (scanned.error) {
-    toast(scanned.error);
-    return;
-  }
-  const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
-  if (currentFp === "[]" && !_plannedAllowEmptyAfterSave) {
-    toast("予告が確定していません。先に「予告を登録」してください。空でも保存できます。");
-    return;
-  }
-  let fpMatch = currentFp === _plannedSavedFingerprint;
-  if (!fpMatch && currentFp !== "[]") {
-    sbtn.disabled = true;
-    sbtn.textContent = "予告を保存中...";
-    const saved = await submitPlannedCore({ showToast: true });
-    sbtn.disabled = false;
-    sbtn.textContent = "着手して実績報告へ";
-    if (!saved) {
-      toast("予告の自動保存に失敗しました。先に「予告を登録」してください。");
-      return;
-    }
-    const scanned2 = scanHostLinesForSubmit(plannedRowsHost());
-    if (scanned2.error) {
-      toast(scanned2.error);
-      return;
-    }
-    fpMatch =
-      fingerprintPlannedLinesNormalized(scanned2.lines) === _plannedSavedFingerprint;
-  }
-  if (!fpMatch) {
-    toast(MSG_PLANNED_UNSAVED);
-    return;
-  }
-
-  const id = unitId;
-  if (!id) {
+  const rawId = pinnedWorkUnitId != null ? pinnedWorkUnitId : unitId;
+  const id = Number(rawId);
+  if (!Number.isFinite(id) || id <= 0) {
     toast("作業行がありません。ページを再読み込みしてください。");
     return;
   }
@@ -2065,12 +4260,15 @@ async function submitStartFromPlanned() {
   sbtn.disabled = true;
   sbtn.textContent = "着手中...";
   try {
-    const row = await api("POST", `/v2/work/${id}/start`, {});
+    const payload =
+      draftPlannedLinesForStart != null && draftPlannedLinesForStart.length
+        ? { lines: draftPlannedLinesForStart }
+        : {};
+    const row = await api("POST", `/v2/work/${id}/start`, payload);
     lastWorkData = row;
     unitId = row.id;
     applyUnit(row.unit);
     syncInputModeFromPayload(row);
-    _plannedAllowEmptyAfterSave = false;
     toast("着手を記録しました");
     await showActualScreen(row, { blankActualInputs: true });
   } catch (e) {
@@ -2081,25 +4279,63 @@ async function submitStartFromPlanned() {
   }
 }
 
+async function submitStartFromPlanned() {
+  const scanned = scanProductBlockLinesForSubmit(plannedRowsHost(), { allowQtyEmpty: true });
+  if (scanned.error) {
+    toast(scanned.error);
+    return;
+  }
+  if (scanned.lines.length === 0) {
+    toast("予告内容がありません");
+    return;
+  }
+  const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
+  const serverFp = _plannedSavedFingerprint;
+  const registered = Boolean(lastWorkData && lastWorkData.planned_registered_at);
+  if (registered && currentFp !== serverFp) {
+    toast(MSG_PLANNED_UNSAVED);
+    return;
+  }
+  const workUnitIdForStart = unitId;
+  const draftLinesForStart = registered ? null : scanned.lines;
+  let needDeferAfterModal = false;
+  if (!registered) {
+    const go = await openFieldAppModal({
+      title: "予告登録されていません",
+      bodyHtml:
+        "<p>このまま着手すると、「予告なし作業」として記録されます。</p>" +
+        "<p>予告として正式に残す場合は、先に「予告を登録」を押してください。</p>",
+      cancelText: "戻る",
+      confirmText: "このまま着手",
+    });
+    if (!go) return;
+    needDeferAfterModal = true;
+  }
+  if (needDeferAfterModal) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  await executeStartFromPlanned(workUnitIdForStart, draftLinesForStart);
+}
+
 async function submitActual() {
   if (submitting) return;
   submitting = true;
   const btn = document.getElementById("actual-btn");
   btn.disabled = true;
-  btn.textContent = "記録中...";
+  btn.textContent = "報告中...";
 
-  const scanned = scanHostLinesForSubmit(actualRowsHost());
+  const scanned = scanProductBlockLinesForSubmit(actualRowsHost());
   if (scanned.error) {
     toast(scanned.error);
     btn.disabled = false;
-    btn.textContent = "実績を記録する";
+    btn.textContent = "実績を報告";
     submitting = false;
     return;
   }
   if (!unitId) {
     toast("作業行がありません。ページを再読み込みしてください。");
     btn.disabled = false;
-    btn.textContent = "実績を記録する";
+    btn.textContent = "実績を報告";
     submitting = false;
     return;
   }
@@ -2111,7 +4347,7 @@ async function submitActual() {
   if (needDevReason && !reasonVal) {
     toast("7条に無い作業です。理由を入力してください");
     btn.disabled = false;
-    btn.textContent = "実績を記録する";
+    btn.textContent = "実績を報告";
     submitting = false;
     return;
   }
@@ -2126,7 +4362,7 @@ async function submitActual() {
   if (needDevReason) payload.deviation_reason = reasonVal;
 
   normalizeQtyInputsInHost(plannedRowsHost());
-  const plannedDomScan = scanHostLines(plannedRowsHost());
+  const plannedDomScan = scanProductBlockLinesForSubmit(plannedRowsHost(), { allowQtyEmpty: true });
   if (fieldActualSubmitDebugEnabled()) {
     console.log("[field actual submit dbg]", {
       actualQtyDom: collectActualQtyDomSnapshot(actualRowsHost()),
@@ -2140,8 +4376,14 @@ async function submitActual() {
   }
 
   try {
+    window.clearTimeout(_actualDraftSaveTimer);
+    _actualDraftSaveTimer = null;
     const data = await api("POST", `/v2/work/${unitId}/actual`, payload);
-    let toastMsg = "実績を保存しました";
+    const preCycleSnap = lastWorkData;
+    clearActualDraftForWorkSnapshot(preCycleSnap);
+    clearActualDraftForWorkSnapshot(data);
+    lastWorkData = data;
+    let toastMsg = "実績を報告しました";
     if (data.is_actual_revision && data.actual_revision_notice_strong) {
       toastMsg += "（過去の実績が変更されました）";
     }
@@ -2157,23 +4399,28 @@ async function submitActual() {
       });
     } catch (e2) {
       toast(e2.message || "次の入力の準備に失敗しました");
+      window.clearTimeout(_actualDraftSaveTimer);
+      _actualDraftSaveTimer = null;
       lastWorkData = data;
       unitId = data.id;
       await showActualScreen(data, { readOnly: true });
       return;
     }
-    lastWorkData = shell;
-    unitId = shell.id;
-    syncInputModeFromPayload(shell);
-    applyUnit(shell.unit);
+    const blankPlanned = shellForBlankPlannedUI(shell);
+    lastWorkData = blankPlanned;
+    unitId = blankPlanned.id;
+    syncInputModeFromPayload(blankPlanned);
+    applyUnit(blankPlanned.unit);
     resetActualEntryFormIndependent();
     _fieldLastActualInputTargetFp = fieldActualInputTargetFingerprint();
-    await showPlannedScreen(shell);
+    window.clearTimeout(_actualDraftSaveTimer);
+    _actualDraftSaveTimer = null;
+    await showPlannedScreen(blankPlanned);
   } catch (e) {
     toast(e.message || "実績の送信に失敗しました");
   } finally {
     btn.disabled = false;
-    btn.textContent = "実績を記録する";
+    btn.textContent = "実績を報告";
     submitting = false;
   }
 }
@@ -2195,24 +4442,50 @@ function applyEmbeddedFieldUsers() {
 
 (function init() {
   if (window.__FIELD_V2_NEEDS_COMPANY__) return;
-  _fieldUserSessionConfirmed = false;
   removeLegacyFieldUserStorageKeys();
   loadCfgFromLocal();
+  const companyAfterLoad = (
+    param("company_id", null) ||
+    param("company", null) ||
+    (document.getElementById("cfg-company") &&
+      document.getElementById("cfg-company").value) ||
+    ""
+  ).trim();
+  const savedLeader = companyAfterLoad
+    ? readSavedUserNameForCompany(companyAfterLoad)
+    : "";
+  const hasSavedSession = Boolean(companyAfterLoad && savedLeader);
+  _fieldUserSessionConfirmed = hasSavedSession;
   resetActualEntryFormIndependent();
   _fieldLastActualInputTargetFp = fieldActualInputTargetFingerprint();
   applyEmbeddedFieldUsers();
+  initActualPlannedBoardNav();
+  initArticle7PlannedPickNav();
+  initFieldAppModal();
   const ov = document.getElementById("overlay");
-  ov.classList.remove("hidden");
-  ov.scrollTop = 0;
-  document.getElementById("header-user").textContent = "—";
-  document.getElementById("user-input").value = "";
-  fieldUserUpdateConfirmButtonState();
-  fieldUserFetchMaster().then(() => {
-    const input = document.getElementById("user-input");
-    if (input) input.value = "";
-    fieldUserUpdateClearBtnVisibility();
+  if (hasSavedSession) {
+    ov.classList.add("hidden");
+    document.getElementById("header-user").textContent = savedLeader;
+    document.getElementById("user-input").value = "";
     fieldUserUpdateConfirmButtonState();
-  });
+    void bootstrapWork();
+    fieldUserFetchMaster().then(() => {
+      fieldUserUpdateClearBtnVisibility();
+      fieldUserUpdateConfirmButtonState();
+    });
+  } else {
+    ov.classList.remove("hidden");
+    ov.scrollTop = 0;
+    document.getElementById("header-user").textContent = "—";
+    document.getElementById("user-input").value = "";
+    fieldUserUpdateConfirmButtonState();
+    fieldUserFetchMaster().then(() => {
+      const input = document.getElementById("user-input");
+      if (input) input.value = computeOverlayUserInputHint();
+      fieldUserUpdateClearBtnVisibility();
+      fieldUserUpdateConfirmButtonState();
+    });
+  }
   const shell = document.getElementById("field-main-shell");
   if (shell) {
     shell.addEventListener("keydown", function fieldQtyEnterBubble(ev) {

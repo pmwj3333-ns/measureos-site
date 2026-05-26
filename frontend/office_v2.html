@@ -99,6 +99,73 @@
     max-height: min(420px, 55vh);
     overflow: auto;
   }
+  /* 未着手予告：待機情報としてコンパクト＋内部スクロール */
+  .wrap-planned-compact {
+    max-height: min(240px, 32vh);
+    overflow: auto;
+  }
+  .office-table-planned-unstarted {
+    font-size: 0.72rem;
+  }
+  .office-table-planned-unstarted th,
+  .office-table-planned-unstarted td {
+    padding: 5px 8px;
+    line-height: 1.3;
+  }
+  /* 実績一覧：行高・可読性 */
+  .wrap-latest-hero {
+    max-height: min(520px, 62vh);
+    overflow: auto;
+    border-width: 2px;
+    border-color: #c7d2fe;
+    box-shadow: 0 1px 0 rgba(30, 58, 95, 0.06);
+  }
+  .office-table-latest {
+    font-size: 0.8rem;
+  }
+  .office-table-latest th,
+  .office-table-latest td {
+    padding: 11px 10px;
+    line-height: 1.45;
+  }
+  .office-table-latest .cell-flow {
+    max-width: 18em;
+    line-height: 1.5;
+  }
+  .office-flow-line {
+    display: block;
+  }
+  .office-flow-line--planned {
+    font-weight: 400;
+    color: #374151;
+  }
+  .office-flow-line--actual {
+    font-weight: 700;
+    color: #111827;
+    margin-top: 4px;
+  }
+  .office-latest-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-bottom: 6px;
+  }
+  .office-obs-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #4b5563;
+    background: #eef2f7;
+    border: 1px solid #d1d9e3;
+    border-radius: 4px;
+    padding: 2px 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .office-latest-rev-cell .office-latest-rev-text {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -155,6 +222,15 @@
     letter-spacing: 0.02em;
   }
   .office-section-title:first-of-type { margin-top: 6px; }
+  /* 実績「最新のみ」：観測の主役として見出しを一段強化 */
+  .office-section-title--latest-primary {
+    font-size: 1.02rem;
+    font-weight: 800;
+    line-height: 1.55;
+    margin-top: 22px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #c7d2fe;
+  }
   .detail-title {
     font-size: 0.8rem;
     font-weight: 700;
@@ -180,14 +256,94 @@
     line-height: 1.5;
   }
   .lines-detail-list li { margin: 2px 0; }
+  .office-um-line {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    margin: 3px 0;
+    color: #1a1a1a;
+  }
+  .office-um-inline {
+    font-size: 0.72rem;
+    color: #5c6b7a;
+    margin-top: 6px;
+    line-height: 1.45;
+    word-break: break-word;
+  }
+  .office-um-dd { padding-top: 2px; }
+  .office-qty-pending {
+    color: #5c6b7a;
+    font-style: italic;
+    font-size: 0.88em;
+  }
+  .office-status-unstarted {
+    color: #4b5563;
+    font-weight: 600;
+  }
+  .office-attn-summary {
+    font-size: 0.78rem;
+    color: #374151;
+    margin: 8px 0 12px;
+    padding: 8px 10px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    line-height: 1.45;
+  }
+  .office-attn-summary--clear {
+    color: #6b7280;
+  }
+  .office-attn-summary-blue { color: #1565c0; font-weight: 600; }
+  .office-attn-summary-red { color: #c62828; font-weight: 600; }
+  .detail-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 12px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  .detail-panel.detail-panel--ctx-planned .detail-head {
+    border-bottom-color: #93c5fd;
+  }
+  .detail-panel.detail-panel--ctx-latest .detail-head {
+    border-bottom-color: #6ee7b7;
+  }
+  .detail-panel.detail-panel--ctx-attention .detail-head {
+    border-bottom-color: #fca5a5;
+  }
+  .detail-context {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #4b5563;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+  }
+  .detail-panel.detail-panel--ctx-planned .detail-context {
+    border-color: #93c5fd;
+    color: #1e40af;
+    background: #eff6ff;
+  }
+  .detail-panel.detail-panel--ctx-latest .detail-context {
+    border-color: #6ee7b7;
+    color: #065f46;
+    background: #ecfdf5;
+  }
+  .detail-panel.detail-panel--ctx-attention .detail-context {
+    border-color: #fca5a5;
+    color: #991b1b;
+    background: #fef2f2;
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>事務 — 実績・訂正</h1>
+  <h1>事務 — 業務観測</h1>
   <p>
     <span id="office-header-phase-hint"></span>
-    現場の入力は止めません。<strong>同一キー・同一商品の最新実績が正（在庫反映）</strong>で、過去行は履歴として残ります。
+    上流から<strong>未着手予告・実績の流れ</strong>を観測し、下段の<strong>要注意（青・赤）</strong>で監査します。同一キー・同一商品の最新実績が正（在庫反映）で、過去行は履歴です。
     通知は<strong>訂正</strong>に限定します（一覧の赤字列・詳細・実績見出しのバッジ）。通常報告は一覧で確認するだけです（メール・音・ブラウザ通知はありません）。
     <a href="/debug/v2" style="color:#fff;">debug</a>
     · <a href="/priority/v2" style="color:#fff;">優先度（第7条）</a>
@@ -214,8 +370,55 @@
     <p id="msg" class="err" hidden></p>
     <p id="ok" class="ok" hidden></p>
 
+    <p id="office-attention-summary" class="office-attn-summary office-attn-summary--clear" aria-live="polite">
+      要注意なし
+    </p>
+
+    <h2 class="office-section-title">未着手予告一覧</h2>
+    <p class="hint">
+      <strong>正式予告済み</strong>（<span class="mono">planned_registered_at</span> あり）かつ<strong>尚未着手</strong>（<span class="mono">started_at</span> なし）の作業です。異常監査とは別の<strong>観測用</strong>一覧です。
+    </p>
+    <div class="wrap-table wrap-scroll wrap-planned-compact">
+      <table class="office-table-planned-unstarted">
+        <thead>
+          <tr>
+            <th>営業日</th>
+            <th>班長</th>
+            <th>予告内容</th>
+            <th>数量</th>
+            <th>状態</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-planned-unstarted">
+          <tr><td colspan="5" class="detail-empty">会社ID を入力して読み込み</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="office-section-title office-section-title--latest-primary">
+      実績（最新のみ）
+      <span id="office-badge-revision-latest" class="office-section-revision-badge" hidden>訂正あり</span>
+    </h2>
+    <p class="hint">同一班長・営業日・工程などの単位で、<strong>商品ごとの最新実績</strong>だけを表示します（別商品は別行）。</p>
+    <div class="wrap-table wrap-scroll wrap-latest-hero">
+      <table class="office-table-latest">
+        <thead>
+          <tr>
+            <th>営業日</th>
+            <th>班長</th>
+            <th>実績時刻</th>
+            <th>予告→実績</th>
+            <th>訂正</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-latest">
+          <tr><td colspan="5" class="detail-empty">読み込みで表示</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h2 class="office-section-title">要注意（青・赤）</h2>
-    <p class="hint">判定ロジックはサーバのままです（一覧では要点のみ）。</p>
+    <p class="hint">判定ロジックはサーバのままです（一覧では要点のみ）。監査・確認はこの下段で行います。</p>
     <div class="wrap-table wrap-scroll">
       <table>
         <thead>
@@ -232,31 +435,13 @@
         </tbody>
       </table>
     </div>
-
-    <h2 class="office-section-title">
-      実績（最新のみ）
-      <span id="office-badge-revision-latest" class="office-section-revision-badge" hidden>訂正あり</span>
-    </h2>
-    <p class="hint">同一班長・営業日・工程などの単位で、<strong>商品ごとの最新実績</strong>だけを表示します（別商品は別行）。</p>
-    <div class="wrap-table wrap-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>営業日</th>
-            <th>班長</th>
-            <th>予告→実績</th>
-            <th>訂正</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-latest">
-          <tr><td colspan="4" class="detail-empty">読み込みで表示</td></tr>
-        </tbody>
-      </table>
-    </div>
   </div>
 
-  <aside class="detail-panel">
-    <div class="detail-title">詳細</div>
+  <aside class="detail-panel" id="office-detail-panel">
+    <div class="detail-head">
+      <div class="detail-title">詳細</div>
+      <span id="detail-context" class="detail-context" hidden></span>
+    </div>
     <div id="detail-empty" class="detail-empty">一覧から行を選択してください。</div>
     <div id="detail-body" hidden>
       <div id="detail-actions" class="detail-actions" hidden>
@@ -306,6 +491,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const tbodyAnomaly = $("tbody-anomaly");
+  const tbodyPlannedUnstarted = $("tbody-planned-unstarted");
   const tbodyLatest = $("tbody-latest");
   const companyEl = $("company");
   const LS_SHARED_COMPANY_ID = "company_id";
@@ -313,6 +499,7 @@
   let rows = [];
   let rowsAll = [];
   let filteredAttn = [];
+  let filteredPlannedUnstarted = [];
   let filteredLatest = [];
   let selected = null;
   let selectedSection = null;
@@ -507,6 +694,68 @@
 
   const NAME_PREVIEW_MAX = 2;
 
+  function joinNamePreviewParts(parts) {
+    if (!parts || !parts.length) return "—";
+    const head = parts.slice(0, NAME_PREVIEW_MAX);
+    const rest = parts.length - NAME_PREVIEW_MAX;
+    let s = head.join(", ");
+    if (rest > 0) s += ", 他" + rest + "件";
+    return s;
+  }
+
+  /** 予告側：行配列＋レガシー。数量未定のラベルのみも含む（事務「欠落」表示用） */
+  function plannedDisplaySummaryParts(r, unitLabel) {
+    const u = unitLabel || "個";
+    const arr = resolveLinesArrayForDisplay(r, "planned");
+    const parts = [];
+    for (const L of arr) {
+      if (!L || typeof L !== "object") continue;
+      const lb = rawLineLabelForDisplay(L);
+      const v = L.value;
+      const hasLabel = lb !== "";
+      const hasQty = v != null && Number.isFinite(Number(v));
+      if (!hasLabel && !hasQty) continue;
+      if (hasQty) {
+        const name = hasLabel ? lb : "（無名）";
+        parts.push(esc(name) + " " + qtyWithUnit(Number(v), L.unit || u));
+      } else if (hasLabel) {
+        parts.push(esc(lb));
+      }
+    }
+    if (parts.length) return parts;
+    const name = legacyRawPlannedLabel(r);
+    const pv = r.planned_value;
+    if (name && pv != null && Number.isFinite(Number(pv)))
+      return [esc(name) + " " + qtyWithUnit(Number(pv), u)];
+    if (name) return [esc(name)];
+    if (pv != null && Number.isFinite(Number(pv)))
+      return [qtyWithUnit(Number(pv), u)];
+    return [];
+  }
+
+  /** 実績側：行配列＋レガシー（予告なし着手でも actual のラベル＋数量を出す） */
+  function actualDisplaySummaryParts(r, unitLabel) {
+    const u = unitLabel || "個";
+    const arr = resolveLinesArrayForDisplay(r, "actual");
+    const parts = [];
+    for (const L of arr) {
+      if (!L || typeof L !== "object") continue;
+      const lb = rawLineLabelForDisplay(L);
+      const v = L.value;
+      if (v == null || !Number.isFinite(Number(v))) continue;
+      const name = lb !== "" ? lb : "（無名）";
+      parts.push(esc(name) + " " + qtyWithUnit(Number(v), L.unit || u));
+    }
+    if (parts.length) return parts;
+    const name = legacyRawActualLabel(r);
+    const av = r.actual_value;
+    if (name && av != null && Number.isFinite(Number(av)))
+      return [esc(name) + " " + qtyWithUnit(Number(av), u)];
+    if (av != null && Number.isFinite(Number(av)))
+      return [qtyWithUnit(Number(av), u)];
+    return [];
+  }
+
   function actualDisplayPartsFilteredByProductKey(r, unitLabel, productKey) {
     const arr = resolveLinesArrayForDisplay(r, "actual");
     let sum = 0;
@@ -534,53 +783,122 @@
 
   /** productKey が指定されれば実績側はその商品のみ（同一キー内の別商品は別行で残す） */
   function shortProductFlowSummary(r, unitLabel, productKey) {
-    let plannedParts = rawDisplayLineStringsFromArray(
-      resolveLinesArrayForDisplay(r, "planned"),
-    );
-    let actualParts =
+    const plannedParts = plannedDisplaySummaryParts(r, unitLabel);
+    const actualParts =
       productKey != null && String(productKey).length
         ? actualDisplayPartsFilteredByProductKey(r, unitLabel, String(productKey))
-        : rawDisplayLineStringsFromArray(resolveLinesArrayForDisplay(r, "actual"));
+        : actualDisplaySummaryParts(r, unitLabel);
 
-    if (!plannedParts.length) {
-      const name = legacyRawPlannedLabel(r);
-      const pv = r.planned_value;
-      if (name && pv != null && Number.isFinite(Number(pv)))
-        plannedParts = [esc(name) + " " + qtyWithUnit(Number(pv), unitLabel)];
-    }
-    if (!actualParts.length && !(productKey != null && String(productKey).length)) {
-      const name = legacyRawActualLabel(r);
-      const av = r.actual_value;
-      if (name && av != null && Number.isFinite(Number(av)))
-        actualParts = [esc(name) + " " + qtyWithUnit(Number(av), unitLabel)];
-    }
-
-    function joinSide(parts) {
-      if (!parts.length) return "—";
-      const head = parts.slice(0, NAME_PREVIEW_MAX);
-      const rest = parts.length - NAME_PREVIEW_MAX;
-      let s = head.join(", ");
-      if (rest > 0) s += ", 他" + rest + "件";
-      return s;
-    }
-
-    const plannedStr = joinSide(plannedParts);
-    const actualStr = joinSide(actualParts);
+    const plannedStr = joinNamePreviewParts(plannedParts);
+    const actualStr = joinNamePreviewParts(actualParts);
     if (plannedStr === "—" && actualStr === "—") return "—";
     return "予告：" + plannedStr + "<br>実績：" + actualStr;
   }
 
-  function plannedActualArrowSummary(r, unitLabel) {
+  /** 当該 product_key に紐づく予告行だけを集約（観測バッジ・差異の参照用。集約ルール変更なし） */
+  function plannedDisplayPartsFilteredByProductKey(r, unitLabel, productKey) {
+    const u = unitLabel || "個";
+    const arr = resolveLinesArrayForDisplay(r, "planned");
+    const parts = [];
+    for (const L of arr) {
+      if (!L || typeof L !== "object") continue;
+      if (officeProductKeyFromLine(L) !== productKey) continue;
+      const lb = rawLineLabelForDisplay(L);
+      const v = L.value;
+      const hasLabel = lb !== "";
+      const hasQty = v != null && Number.isFinite(Number(v));
+      if (!hasLabel && !hasQty) continue;
+      if (hasQty) {
+        const name = hasLabel ? lb : "（無名）";
+        parts.push(esc(name) + " " + qtyWithUnit(Number(v), L.unit || u));
+      } else if (hasLabel) {
+        parts.push(esc(lb));
+      }
+    }
+    if (parts.length) return parts;
+    const name = legacyRawPlannedLabel(r);
     const pv = r.planned_value;
-    const av = r.actual_value;
-    const pu =
-      pv != null && Number.isFinite(Number(pv))
-        ? String(Number(pv)) + (unitLabel || "個")
-        : "—";
-    const au =
-      av != null && Number.isFinite(Number(av))
-        ? String(Number(av)) + (unitLabel || "個")
-        : "—";
+    const pk = normOfficeWs(name) || "__none__";
+    if (pk === productKey && pv != null && Number.isFinite(Number(pv)))
+      return [esc(name || "（無名）") + " " + qtyWithUnit(Number(pv), u)];
+    if (pk === productKey && name) return [esc(name)];
+    return [];
+  }
+
+  /** 実績一覧セル：予告は通常、実績ラベル行のみ太字（表示整形のみ） */
+  function latestProductFlowCellHtml(r, unitLabel, productKey) {
+    const plannedParts = plannedDisplaySummaryParts(r, unitLabel);
+    const actualParts =
+      productKey != null && String(productKey).length
+        ? actualDisplayPartsFilteredByProductKey(r, unitLabel, String(productKey))
+        : actualDisplaySummaryParts(r, unitLabel);
+    const plannedStr = joinNamePreviewParts(plannedParts);
+    const actualStr = joinNamePreviewParts(actualParts);
+    if (plannedStr === "—" && actualStr === "—") return "—";
+    return (
+      '<span class="office-flow-line office-flow-line--planned">予告：' +
+      plannedStr +
+      '</span><br><span class="office-flow-line office-flow-line--actual">実績：' +
+      actualStr +
+      "</span>"
+    );
+  }
+
+  /** actual_at を JST の HH:mm 表示（一覧用） */
+  function formatActualTimeHM(iso) {
+    if (iso == null || String(iso).trim() === "") return "—";
+    const parseFn = globalThis.parseApiUtc;
+    const d = typeof parseFn === "function" ? parseFn(String(iso).trim()) : null;
+    if (!d || Number.isNaN(d.getTime())) return "—";
+    const f = new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    return f.format(d);
+  }
+
+  /** 観測補助バッジ（青赤・status 判定は使わない） */
+  function latestObservationBadgesHtml(r, unitLabel, officeProductKey) {
+    if (!r) return "";
+    const pk =
+      officeProductKey != null && String(officeProductKey).length
+        ? String(officeProductKey)
+        : null;
+    const actualParts =
+      pk != null
+        ? actualDisplayPartsFilteredByProductKey(r, unitLabel, pk)
+        : actualDisplaySummaryParts(r, unitLabel);
+    const plannedPartsForBadge =
+      pk != null
+        ? plannedDisplayPartsFilteredByProductKey(r, unitLabel, pk)
+        : plannedDisplaySummaryParts(r, unitLabel);
+    const actualStr = joinNamePreviewParts(actualParts);
+    const plannedStrP = joinNamePreviewParts(plannedPartsForBadge);
+    const badges = [];
+    if (hasActualRevisionDetailLine(r)) badges.push("訂正あり");
+    if (normalizedUsedMaterials(r).length > 0) badges.push("使用物あり");
+    if (actualStr !== "—" && plannedStrP === "—") badges.push("予告なし");
+    if (
+      actualStr !== "—" &&
+      plannedStrP !== "—" &&
+      plannedStrP !== actualStr
+    )
+      badges.push("差異あり");
+    if (!badges.length) return "";
+    return (
+      '<div class="office-latest-badges">' +
+      badges
+        .map((t) => '<span class="office-obs-badge">' + esc(t) + "</span>")
+        .join("") +
+      "</div>"
+    );
+  }
+
+  function plannedActualArrowSummary(r, unitLabel) {
+    const pu = joinNamePreviewParts(plannedDisplaySummaryParts(r, unitLabel));
+    const au = joinNamePreviewParts(actualDisplaySummaryParts(r, unitLabel));
     if (pu === "—" && au === "—") return shortProductFlowSummary(r, unitLabel);
     return pu + " → " + au;
   }
@@ -738,6 +1056,62 @@
     }));
   }
 
+  /** 正式予告済み・尚未着手（事務の観測用・異常判定とは独立） */
+  function rowPassesPlannedUnstarted(r) {
+    if (!r) return false;
+    const pr = r.planned_registered_at;
+    if (pr == null || String(pr).trim() === "") return false;
+    const stAt = r.started_at;
+    if (stAt != null && String(stAt).trim() !== "") return false;
+    const st = String(r.status || "").trim().toLowerCase();
+    if (st === "closed") return false;
+    return true;
+  }
+
+  /**
+   * 同一 naturalKey では id 最大の1行のみ（append-only で古い行が残る場合の重複防止）。
+   * 構造は「Map → values → sort」で、後からフィルタや列追加しやすくしてある。
+   */
+  function collectPlannedUnstartedRows(sourceRows) {
+    const candidates = (sourceRows || []).filter(rowPassesPlannedUnstarted);
+    const byNk = new Map();
+    for (const r of candidates) {
+      const nk = naturalKey(r);
+      const prev = byNk.get(nk);
+      if (!prev || Number(r.id) > Number(prev.id)) byNk.set(nk, r);
+    }
+    const out = [...byNk.values()];
+    out.sort((a, b) => {
+      const db = String(b.business_date || "");
+      const da = String(a.business_date || "");
+      if (db !== da) return db.localeCompare(da);
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    });
+    return out;
+  }
+
+  /** 一覧「数量」列：planned_value が無ければ「数量未定」 */
+  function officePlannedQtyCellHtml(r, unitLabel) {
+    const pv = r.planned_value;
+    if (pv != null && Number.isFinite(Number(pv)))
+      return qtyWithUnit(Number(pv), unitLabel);
+    return '<span class="office-qty-pending">数量未定</span>';
+  }
+
+  function legacyTopLevelUsedMaterials(row) {
+    if (!row || typeof row !== "object") return [];
+    if (Array.isArray(row.used_materials) && row.used_materials.length > 0)
+      return row.used_materials;
+    const raw = row.used_materials_json;
+    if (raw == null || !String(raw).trim()) return [];
+    try {
+      const p = JSON.parse(String(raw));
+      return Array.isArray(p) ? p : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   function normalizedLines(row, kind, unit) {
     const key = kind === "planned" ? "planned_lines" : "actual_lines";
     let arr = row[key];
@@ -755,6 +1129,10 @@
         const v = L.value;
         if (v == null || !Number.isFinite(Number(v))) continue;
         const o = { name, value: Number(v) };
+        if (kind === "actual") {
+          const ums = L.used_materials;
+          if (Array.isArray(ums) && ums.length) o.used_materials = ums;
+        }
         if (L.due_date != null && String(L.due_date).trim())
           o.due_date = String(L.due_date).trim();
         out.push(o);
@@ -770,8 +1148,12 @@
     } else {
       const av = row.actual_value;
       const name = legacyRawActualLabel(row);
-      if (name && av != null && Number.isFinite(Number(av)))
-        return [{ name, value: Number(av) }];
+      if (name && av != null && Number.isFinite(Number(av))) {
+        const o = { name, value: Number(av) };
+        const leg = legacyTopLevelUsedMaterials(row);
+        if (leg.length) o.used_materials = leg;
+        return [o];
+      }
     }
     return [];
   }
@@ -780,23 +1162,124 @@
     const u = unit || "個";
     if (!lines.length)
       return '<span style="color:#6b7280">—</span>';
+    function oneUmPlain(m) {
+      return formatUsedMaterialLinePlain(m);
+    }
     return (
       "<ul class=\"lines-detail-list\">" +
       lines
         .map(
-          (L) =>
-            "<li>" +
-            esc(L.name) +
-            " " +
-            qtyWithUnit(L.value, u) +
-            (L.due_date
-              ? " <span style=\"color:#6b7280\">due " + esc(String(L.due_date)) + "</span>"
-              : "") +
-            "</li>",
+          (L) => {
+            let inner =
+              "<li>" +
+              esc(L.name) +
+              " " +
+              qtyWithUnit(L.value, u) +
+              (L.due_date
+                ? " <span style=\"color:#6b7280\">due " + esc(String(L.due_date)) + "</span>"
+                : "");
+            const ums = L.used_materials;
+            if (Array.isArray(ums) && ums.length) {
+              inner +=
+                "<ul style=\"margin:6px 0 0 14px;padding:0;list-style:none;color:#4b5563;font-size:0.92em;\">" +
+                ums
+                  .map(
+                    (m) =>
+                      "<li style=\"margin:2px 0\">└ " +
+                      esc(oneUmPlain(m)) +
+                      "</li>",
+                  )
+                  .join("") +
+                "</ul>";
+            }
+            return inner + "</li>";
+          },
         )
         .join("") +
       "</ul>"
     );
+  }
+
+  function normalizedUsedMaterials(row) {
+    if (!row) return [];
+    const lines = normalizedLines(row, "actual", row.unit || "個");
+    const flat = [];
+    for (const L of lines) {
+      const ums = L.used_materials;
+      if (!Array.isArray(ums)) continue;
+      for (const m of ums) {
+        if (m && typeof m === "object") flat.push(m);
+      }
+    }
+    if (flat.length) return flat;
+    return legacyTopLevelUsedMaterials(row);
+  }
+
+  /** 表示用1行（例: 樹脂A / 5kg / lot:202604） */
+  function formatUsedMaterialLinePlain(m) {
+    if (!m || typeof m !== "object") return "—";
+    const lab = m.label != null && String(m.label).trim() ? String(m.label).trim() : "";
+    const head = lab || "（無名）";
+    const hasQty = m.value != null && Number.isFinite(Number(m.value));
+    const un = m.unit != null && String(m.unit).trim() ? String(m.unit).trim() : "";
+    let mid = "";
+    if (hasQty) {
+      let q = String(Number(m.value));
+      if (un) q += un;
+      mid = q;
+    } else if (un) {
+      mid = un;
+    }
+    let line = mid ? head + " / " + mid : head;
+    if (m.lot_no != null && String(m.lot_no).trim())
+      line += " / lot:" + String(m.lot_no).trim();
+    return line;
+  }
+
+  function usedMaterialsDetailHtml(rows) {
+    if (!rows || !rows.length) return "";
+    return rows
+      .map(
+        (m) =>
+          '<div class="office-um-line">・' + esc(formatUsedMaterialLinePlain(m)) + "</div>",
+      )
+      .join("");
+  }
+
+  /** 一覧：件数のみ。内容は右ペイン詳細で確認（Package A・要点表示） */
+  function usedMaterialsTableHintHtml(r) {
+    const arr = normalizedUsedMaterials(r);
+    if (!arr.length) return "";
+    const n = arr.length;
+    return (
+      '<div class="office-um-inline">使用物あり（' + esc(String(n)) + "件）</div>"
+    );
+  }
+
+  function syncAttentionSummaryStrip() {
+    const el = $("office-attention-summary");
+    if (!el) return;
+    let blue = 0;
+    let red = 0;
+    for (const r of filteredAttn) {
+      const st = String(r.status || "").trim().toLowerCase();
+      if (st === "blue") blue++;
+      else if (st === "red") red++;
+    }
+    const total = blue + red;
+    el.classList.toggle("office-attn-summary--clear", total === 0);
+    if (total === 0) {
+      el.textContent = "要注意なし";
+      return;
+    }
+    el.innerHTML =
+      "要注意： " +
+      '<span class="office-attn-summary-blue">青 ' +
+      blue +
+      "件</span> ／ " +
+      '<span class="office-attn-summary-red">赤 ' +
+      red +
+      "件</span>";
   }
 
   function renderAttentionTable() {
@@ -805,11 +1288,13 @@
     if (!rows.length) {
       tbodyAnomaly.innerHTML =
         '<tr><td colspan="' + COLS + '" class="detail-empty">データなし</td></tr>';
+      syncAttentionSummaryStrip();
       return;
     }
     if (!filteredAttn.length) {
       tbodyAnomaly.innerHTML =
         '<tr><td colspan="' + COLS + '" class="detail-empty">要注意行なし</td></tr>';
+      syncAttentionSummaryStrip();
       return;
     }
     const unit = (filteredAttn[0] && filteredAttn[0].unit) || "個";
@@ -835,6 +1320,7 @@
           "</td>" +
           '<td class="cell-flow">' +
           plannedActualArrowSummary(r, unit) +
+          usedMaterialsTableHintHtml(r) +
           "</td>" +
           '<td class="cell-flow">' +
           esc(formatAnomalyBrief(r)) +
@@ -844,6 +1330,55 @@
           '">' +
           statusLabelJa(r.status) +
           "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+    syncAttentionSummaryStrip();
+  }
+
+  function renderPlannedUnstartedTable() {
+    filteredPlannedUnstarted = collectPlannedUnstartedRows(rowsAll);
+    const COLS = 5;
+    if (!rowsAll.length) {
+      tbodyPlannedUnstarted.innerHTML =
+        '<tr><td colspan="' + COLS + '" class="detail-empty">データなし</td></tr>';
+      return;
+    }
+    if (!filteredPlannedUnstarted.length) {
+      tbodyPlannedUnstarted.innerHTML =
+        '<tr><td colspan="' + COLS + '" class="detail-empty">該当なし</td></tr>';
+      return;
+    }
+    tbodyPlannedUnstarted.innerHTML = filteredPlannedUnstarted
+      .map((r) => {
+        const unit = r.unit || "個";
+        const content = joinNamePreviewParts(plannedDisplaySummaryParts(r, unit));
+        const sel =
+          selected && selectedSection === "planned" && selected.id === r.id;
+        return (
+          '<tr class="' +
+          (sel ? "selected " : "") +
+          '" data-section="planned" data-id="' +
+          r.id +
+          '">' +
+          '<td class="mono">' +
+          fmt(r.business_date) +
+          "</td>" +
+          "<td>" +
+          formatLeaderDisplay(r.user_id) +
+          (r.is_unregistered_user === true
+            ? ' <span class="unreg-tag" title="班長マスタに無い user_id">未登録</span>'
+            : "") +
+          "</td>" +
+          '<td class="cell-flow">' +
+          content +
+          usedMaterialsTableHintHtml(r) +
+          "</td>" +
+          "<td>" +
+          officePlannedQtyCellHtml(r, unit) +
+          "</td>" +
+          '<td><span class="office-status-unstarted">未着手</span></td>' +
           "</tr>"
         );
       })
@@ -861,7 +1396,7 @@
 
   function renderLatestTable() {
     filteredLatest = collectLatestActualRows(rowsAll);
-    const COLS = 4;
+    const COLS = 5;
     if (!rowsAll.length) {
       tbodyLatest.innerHTML =
         '<tr><td colspan="' + COLS + '" class="detail-empty">データなし</td></tr>';
@@ -886,6 +1421,17 @@
           ? revisionDetailToHtml(r.actual_revision_detail_line)
           : "—";
         const lk = escAttr(slice.officeLatestKey);
+        const atHM = formatActualTimeHM(r.actual_at);
+        const flowHtml = latestProductFlowCellHtml(r, unit, slice.officeProductKey);
+        const badgesHtml = latestObservationBadgesHtml(
+          r,
+          unit,
+          slice.officeProductKey,
+        );
+        const revBlock =
+          rev !== "—"
+            ? '<div class="office-latest-rev-text cell-revision">' + rev + "</div>"
+            : '<div class="office-latest-rev-text">' + rev + "</div>";
         return (
           '<tr class="' +
           (sel ? "selected " : "") +
@@ -901,11 +1447,17 @@
             ? ' <span class="unreg-tag">未登録</span>'
             : "") +
           "</td>" +
-          '<td class="cell-flow">' +
-          shortProductFlowSummary(r, unit, slice.officeProductKey) +
+          '<td class="mono">' +
+          esc(atHM) +
           "</td>" +
-          '<td class="cell-revision">' +
-          rev +
+          '<td class="cell-flow">' +
+          flowHtml +
+          "</td>" +
+          "<td>" +
+          '<div class="office-latest-rev-cell">' +
+          badgesHtml +
+          revBlock +
+          "</div>" +
           "</td>" +
           "</tr>"
         );
@@ -918,6 +1470,8 @@
     selectedSection = section;
     if (section === "attention") {
       selected = filteredAttn.find((r) => r.id === id) || null;
+    } else if (section === "planned") {
+      selected = filteredPlannedUnstarted.find((r) => r.id === id) || null;
     } else {
       selected =
         filteredLatest.find((slice) => slice.officeLatestKey === id) || null;
@@ -928,6 +1482,14 @@
       const match =
         selected &&
         selectedSection === "attention" &&
+        nid === selected.id;
+      tr.classList.toggle("selected", !!match);
+    });
+    document.querySelectorAll("#tbody-planned-unstarted tr[data-id]").forEach((tr) => {
+      const nid = Number(tr.getAttribute("data-id"));
+      const match =
+        selected &&
+        selectedSection === "planned" &&
         nid === selected.id;
       tr.classList.toggle("selected", !!match);
     });
@@ -946,18 +1508,54 @@
     const detailEmpty = $("detail-empty");
     const detailBody = $("detail-body");
     const detailDl = $("detail-dl");
+    const panel = $("office-detail-panel");
+    const ctx = $("detail-context");
     if (!selected) {
       detailEmpty.hidden = false;
       detailBody.hidden = true;
       selectedSection = null;
       const da = $("detail-actions");
       if (da) da.hidden = true;
+      if (panel) {
+        panel.classList.remove(
+          "detail-panel--ctx-planned",
+          "detail-panel--ctx-latest",
+          "detail-panel--ctx-attention",
+        );
+      }
+      if (ctx) {
+        ctx.hidden = true;
+        ctx.textContent = "";
+      }
       return;
     }
     detailEmpty.hidden = true;
     detailBody.hidden = false;
+    if (panel) {
+      panel.classList.remove(
+        "detail-panel--ctx-planned",
+        "detail-panel--ctx-latest",
+        "detail-panel--ctx-attention",
+      );
+    }
+    if (ctx) {
+      ctx.hidden = false;
+      if (selectedSection === "planned") {
+        if (panel) panel.classList.add("detail-panel--ctx-planned");
+        ctx.textContent = "一覧：未着手予告";
+      } else if (selectedSection === "latest") {
+        if (panel) panel.classList.add("detail-panel--ctx-latest");
+        ctx.textContent = "一覧：実績（最新のみ）";
+      } else if (selectedSection === "attention") {
+        if (panel) panel.classList.add("detail-panel--ctx-attention");
+        ctx.textContent = "一覧：要注意（青・赤）";
+      } else {
+        ctx.hidden = true;
+        ctx.textContent = "";
+      }
+    }
     const r =
-      selectedSection === "latest" && selected.officeUnitRow
+      selectedSection === "latest" && selected && selected.officeUnitRow
         ? selected.officeUnitRow
         : selected;
     const unit = r.unit || "個";
@@ -1012,6 +1610,18 @@
       "<dt>一言メモ</dt><dd>" +
       (memo ? esc(String(r.actual_memo)).replace(/\n/g, "<br/>") : "—") +
       "</dd>";
+
+    const usedMat = normalizedUsedMaterials(r);
+    const actNorm = normalizedLines(r, "actual", unit);
+    const hasNestedLineUm = actNorm.some(
+      (L) => Array.isArray(L.used_materials) && L.used_materials.length > 0,
+    );
+    if (usedMat.length && !hasNestedLineUm) {
+      html +=
+        "<dt>使用物</dt><dd class=\"office-um-dd\">" +
+        usedMaterialsDetailHtml(usedMat) +
+        "</dd>";
+    }
 
     const rev = hasActualRevisionDetailLine(r)
       ? revisionDetailToHtml(r.actual_revision_detail_line)
@@ -1119,9 +1729,11 @@
       rows = [];
       rowsAll = [];
       filteredAttn = [];
+      filteredPlannedUnstarted = [];
       filteredLatest = [];
       selected = null;
       renderAttentionTable();
+      renderPlannedUnstartedTable();
       renderLatestTable();
       renderDetail();
       return;
@@ -1163,6 +1775,7 @@
         rows = [];
         rowsAll = [];
         renderAttentionTable();
+        renderPlannedUnstartedTable();
         renderLatestTable();
         renderDetail();
         return;
@@ -1172,6 +1785,7 @@
         rows = [];
         rowsAll = [];
         renderAttentionTable();
+        renderPlannedUnstartedTable();
         renderLatestTable();
         renderDetail();
         return;
@@ -1181,6 +1795,7 @@
         rows = [];
         rowsAll = [];
         renderAttentionTable();
+        renderPlannedUnstartedTable();
         renderLatestTable();
         renderDetail();
         return;
@@ -1201,12 +1816,15 @@
       selectedSection = null;
 
       renderAttentionTable();
+      renderPlannedUnstartedTable();
       renderLatestTable();
       renderDetail();
 
       showOk(
         "読み込み済み（要注意 " +
           filteredAttn.length +
+          "／未着手予告 " +
+          filteredPlannedUnstarted.length +
           "／最新実績キー " +
           filteredLatest.length +
           "）",
@@ -1216,6 +1834,7 @@
       rows = [];
       rowsAll = [];
       renderAttentionTable();
+      renderPlannedUnstartedTable();
       renderLatestTable();
       renderDetail();
     } finally {
@@ -1229,6 +1848,14 @@
     const id = Number(tr.getAttribute("data-id"));
     if (Number.isNaN(id)) return;
     selectById(id, "attention");
+  });
+
+  $("tbody-planned-unstarted").addEventListener("click", (ev) => {
+    const tr = ev.target.closest("tr[data-id]");
+    if (!tr) return;
+    const id = Number(tr.getAttribute("data-id"));
+    if (Number.isNaN(id)) return;
+    selectById(id, "planned");
   });
 
   $("tbody-latest").addEventListener("click", (ev) => {

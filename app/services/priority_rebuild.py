@@ -1,9 +1,9 @@
 """在庫×出荷予定から第7条（priority_item）を再生成する。
 
 - 出荷行を走査し product_code で stock_map と突合。
-- stock_qty = stock_map.get(product_code, 0)
-- required_qty = max(0, ship_qty - stock_qty)
-- required_qty > 0 の行のみ保存。在庫のみの商品は出荷が無いため対象外。
+- available = current_stock - safety_stock(product_master) - ship_qty
+- required_qty = max(0, -available)（= max(0, ship_qty - (stock - safety))）
+- safety_stock 未設定は 0。required_qty > 0 の行のみ保存。
 - due_date は parse_due_date で YYYY-MM-DD にできない行は保存せずログに出す。
 - 優先度 high/mid/low は GET /v2/priority/items 時に在庫・出荷・納期から算出（article7_priority_phase1）。
 
@@ -19,6 +19,8 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app import models
+from app.services.article7_safety_stock import load_safety_stock_by_product_code, shortage_qty
+from app.services.article3_cutoff_observe import is_after_order_cutoff
 from app.services.shipment_csv import parse_due_date
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,13 @@ def rebuild_priority_items_for_company(company_id: str, db: Session) -> Tuple[in
             continue
         stock_map[pc] = float(s.stock_qty) if s.stock_qty is not None else 0.0
 
+    safety_map = load_safety_stock_by_product_code(db, cid)
+
+    settings = (
+        db.query(models.CompanySettings).filter(models.CompanySettings.company_id == cid).first()
+    )
+    order_cutoff = getattr(settings, "order_cutoff_time", None) if settings else None
+
     shipments: List[models.ShipmentPlanItem] = (
         db.query(models.ShipmentPlanItem)
         .filter(models.ShipmentPlanItem.company_id == cid)
@@ -61,7 +70,9 @@ def rebuild_priority_items_for_company(company_id: str, db: Session) -> Tuple[in
 
         ship_qty = float(sh.ship_qty) if sh.ship_qty is not None else 0.0
         stock_qty = stock_map.get(pc, 0.0)
-        required_qty = max(0.0, ship_qty - stock_qty)
+        safety_info = safety_map.get(pc)
+        safety_val = safety_info.value if safety_info else 0
+        required_qty = shortage_qty(stock_qty, safety_val, ship_qty)
 
         if required_qty <= 0:
             skipped_no_need_count += 1
@@ -91,6 +102,7 @@ def rebuild_priority_items_for_company(company_id: str, db: Session) -> Tuple[in
         )
 
     now = datetime.utcnow()
+    after_cutoff = is_after_order_cutoff(now, order_cutoff)
     try:
         # open のみ削除（closed は事務クローズとして温存）。全件・他社削除は禁止。
         deleted = (
@@ -118,6 +130,7 @@ def rebuild_priority_items_for_company(company_id: str, db: Session) -> Tuple[in
                     value=ship,
                     due_date=row["due_date"],
                     status="open",
+                    is_after_cutoff=after_cutoff,
                     created_at=now,
                     updated_at=now,
                 )
@@ -134,7 +147,9 @@ def rebuild_priority_items_for_company(company_id: str, db: Session) -> Tuple[in
     if empty_product_code_count > 0:
         parts.append(f"商品コード空欄の出荷行を{empty_product_code_count}件スキップしました。")
     if skipped_no_need_count > 0:
-        parts.append(f"在庫で賄えるため保存しなかった出荷が{skipped_no_need_count}件ありました。")
+        parts.append(
+            f"使用可能在庫で賄えるため保存しなかった出荷が{skipped_no_need_count}件ありました。"
+        )
     if skipped_bad_due_count > 0:
         parts.append(f"納期を解釈できずスキップした行が{skipped_bad_due_count}件ありました（ログ参照）。")
     detail: Optional[str] = "".join(parts) if parts else None

@@ -6,7 +6,7 @@ import math
 import uuid
 from datetime import datetime, date as date_type, time
 from typing import Dict, List, Optional, Set, Tuple
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 from app import models, schemas
@@ -32,6 +32,7 @@ from app.services.judgement_promote import (
     reference_now_jst,
 )
 from app.services.package_rules import is_phase2_enabled
+from app.services.company_validator import validate_company_id, validate_unit_company_id
 from app.services.article7_deviation import is_actual_deviation_from_article7
 from app.services.product_master import (
     enrich_actual_lines_product_codes,
@@ -94,6 +95,28 @@ def _norm_due_date(raw: Optional[str]) -> Optional[str]:
     return d.isoformat()
 
 
+def _normalize_used_material_dict(it: dict) -> Optional[dict]:
+    d: dict = {}
+    lab = str(it.get("label", "") or "").strip()
+    if lab:
+        d["label"] = lab
+    v = it.get("value")
+    if v is not None:
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            fv = None
+        if fv is not None and math.isfinite(fv):
+            d["value"] = fv
+    u = it.get("unit")
+    if u is not None and str(u).strip():
+        d["unit"] = str(u).strip()
+    ln = it.get("lot_no")
+    if ln is not None and str(ln).strip():
+        d["lot_no"] = str(ln).strip()
+    return d if d else None
+
+
 def _parse_lines_json(raw: Optional[str]) -> List[dict]:
     if not raw or not str(raw).strip():
         return []
@@ -108,25 +131,45 @@ def _parse_lines_json(raw: Optional[str]) -> List[dict]:
         if not isinstance(it, dict):
             continue
         lb = str(it.get("label", "")).strip()
-        v = it.get("value")
-        try:
-            fv = float(v)
-        except (TypeError, ValueError):
+        if not lb:
             continue
-        if lb and math.isfinite(fv):
-            row = {"label": lb, "value": fv}
-            pc_line = str(it.get("product_code", "")).strip()
-            if pc_line:
-                row["product_code"] = pc_line
-            lid = it.get("line_id")
-            if lid is not None and str(lid).strip():
-                row["line_id"] = str(lid).strip()
-            dd = it.get("due_date")
-            if dd is not None and str(dd).strip():
-                nd = _norm_due_date(str(dd).strip())
-                if nd:
-                    row["due_date"] = nd
-            out.append(row)
+        v = it.get("value")
+        fv: Optional[float] = None
+        if v is not None and str(v).strip() != "":
+            try:
+                fv = float(v)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(fv):
+                continue
+        row: dict = {"label": lb}
+        if fv is not None:
+            row["value"] = fv
+        pc_line = str(it.get("product_code", "")).strip()
+        if pc_line:
+            row["product_code"] = pc_line
+        lid = it.get("line_id")
+        if lid is not None and str(lid).strip():
+            row["line_id"] = str(lid).strip()
+        dd = it.get("due_date")
+        if dd is not None and str(dd).strip():
+            nd = _norm_due_date(str(dd).strip())
+            if nd:
+                row["due_date"] = nd
+        ums_raw = it.get("used_materials")
+        if isinstance(ums_raw, list) and ums_raw:
+            ums_clean: List[dict] = []
+            for uu in ums_raw:
+                if isinstance(uu, dict):
+                    nd_um = _normalize_used_material_dict(uu)
+                    if nd_um:
+                        ums_clean.append(nd_um)
+            if ums_clean:
+                row["used_materials"] = ums_clean
+        lm = it.get("line_memo")
+        if lm is not None and str(lm).strip():
+            row["line_memo"] = str(lm).strip()
+        out.append(row)
     return out
 
 
@@ -169,10 +212,127 @@ def _lines_json_dumps(lines: List[dict]) -> Optional[str]:
     return json.dumps(lines, ensure_ascii=False)
 
 
+_MAX_USED_MATERIALS_ROWS = 200
+_PER_LINE_USED_MATERIALS_MAX = 100
+
+
+def _used_material_rows_to_dicts(
+    rows: List[schemas.UsedMaterialIn],
+) -> Tuple[List[dict], Optional[str]]:
+    """使用物: 空行はスキップ。件数上限は呼び出し側で適用する。"""
+    out: List[dict] = []
+    for row in rows:
+        lb = (row.label or "").strip()
+        unit_s = (row.unit or "").strip() if row.unit is not None else ""
+        lot_s = (row.lot_no or "").strip() if row.lot_no is not None else ""
+        val_raw = row.value
+        fv: Optional[float] = None
+        if val_raw is not None:
+            try:
+                fv = float(val_raw)
+            except (TypeError, ValueError):
+                return [], "使用物の数量の形式が不正な行があります"
+            if not math.isfinite(fv):
+                return [], "使用物の数量の形式が不正な行があります"
+        if not lb and not unit_s and not lot_s and fv is None:
+            continue
+        dct: dict = {}
+        if lb:
+            dct["label"] = lb
+        if fv is not None:
+            dct["value"] = fv
+        if unit_s:
+            dct["unit"] = unit_s
+        if lot_s:
+            dct["lot_no"] = lot_s
+        if not dct:
+            continue
+        out.append(dct)
+    return out, None
+
+
+def _used_materials_from_body(
+    rows: List[schemas.UsedMaterialIn],
+) -> Tuple[List[dict], Optional[str]]:
+    """使用物ログ（トップレベル廃止予定の互換用）。空行はスキップ。"""
+    if len(rows) > _MAX_USED_MATERIALS_ROWS:
+        return [], f"使用物は最大{_MAX_USED_MATERIALS_ROWS}行までです"
+    return _used_material_rows_to_dicts(rows)
+
+
+def _legacy_used_materials_list_from_column(unit: models.WorkUnit) -> List[dict]:
+    raw = getattr(unit, "used_materials_json", None)
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(str(raw))
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(data, list) or not data:
+        return []
+    out: List[dict] = []
+    for it in data:
+        if not isinstance(it, dict):
+            continue
+        nd = _normalize_used_material_dict(it)
+        if nd:
+            out.append(nd)
+    return out
+
+
+def _flatten_used_materials_from_actual_line_dicts(lines: List[dict]) -> List[dict]:
+    flat: List[dict] = []
+    for ln in lines:
+        if not isinstance(ln, dict):
+            continue
+        ums = ln.get("used_materials")
+        if not isinstance(ums, list):
+            continue
+        for it in ums:
+            if not isinstance(it, dict):
+                continue
+            nd = _normalize_used_material_dict(it)
+            if nd:
+                flat.append(nd)
+    return flat
+
+
+def used_materials_for_api(unit: models.WorkUnit) -> Optional[List[dict]]:
+    """GET 応答用: actual_lines 内 used_materials を優先して平坦化、無ければ used_materials_json。"""
+    parsed = _parse_lines_json(getattr(unit, "actual_lines_json", None))
+    if parsed:
+        flat = _flatten_used_materials_from_actual_line_dicts(parsed)
+        if flat:
+            return flat
+    leg = _legacy_used_materials_list_from_column(unit)
+    return leg or None
+
+
 def _join_line_labels(lines: List[dict], sep: str = " · ") -> Optional[str]:
     if not lines:
         return None
     return sep.join(str(x["label"]) for x in lines)
+
+
+def _sum_line_values_optional(lines: List[dict]) -> Optional[float]:
+    """各行の value を足す。1つも有限値がなければ None（0 補完はしない）。"""
+    total = 0.0
+    any_v = False
+    for x in lines:
+        if not isinstance(x, dict) or "value" not in x:
+            continue
+        raw = x.get("value")
+        if raw is None:
+            continue
+        try:
+            fv = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(fv):
+            continue
+        total += fv
+        any_v = True
+    return total if any_v else None
 
 
 def _strict_lines_from_body(
@@ -181,9 +341,14 @@ def _strict_lines_from_body(
     include_due_date: bool = False,
     include_line_id: bool = False,
     include_product_code: bool = False,
+    include_used_materials: bool = False,
+    include_line_memo: bool = False,
+    allow_missing_main_qty: bool = False,
 ) -> Tuple[List[dict], Optional[str]]:
-    """lines 指定時。空行は無視。ラベルだけ／数量だけの行はエラー。"""
+    """lines 指定時。空行は無視。数量だけの行はエラー。
+    allow_missing_main_qty が True のとき（予告 POST のみ）商品名のみの行を許可（value は付与しない）。"""
     complete: List[dict] = []
+    total_um = 0
     for row in rows:
         lb = (row.label or "").strip()
         v = row.value
@@ -191,15 +356,17 @@ def _strict_lines_from_body(
             continue
         if not lb and v is not None:
             return None, "数量だけ入力された行があります。名前と数量をセットで入力してください"
-        if lb and v is None:
+        dct: dict = {"label": lb}
+        if v is not None:
+            try:
+                fv = float(v)
+            except (TypeError, ValueError):
+                return None, "数量の形式が不正な行があります"
+            if not math.isfinite(fv):
+                return None, "数量の形式が不正な行があります"
+            dct["value"] = fv
+        elif not allow_missing_main_qty:
             return None, "名前だけ入力された行があります。数量も入力してください"
-        try:
-            fv = float(v)
-        except (TypeError, ValueError):
-            return None, "数量の形式が不正な行があります"
-        if not math.isfinite(fv):
-            return None, "数量の形式が不正な行があります"
-        dct: dict = {"label": lb, "value": fv}
         if include_product_code:
             raw_pc = getattr(row, "product_code", None)
             if raw_pc is not None and str(raw_pc).strip():
@@ -218,6 +385,29 @@ def _strict_lines_from_body(
                     if nd is None:
                         return None, "due_date は YYYY-MM-DD で指定してください"
                     dct["due_date"] = nd
+        if include_used_materials:
+            if "used_materials" in row.model_fields_set:
+                ums = row.used_materials if row.used_materials is not None else []
+                if len(ums) > _PER_LINE_USED_MATERIALS_MAX:
+                    return (
+                        None,
+                        f"1行あたりの使用物は最大{_PER_LINE_USED_MATERIALS_MAX}行までです",
+                    )
+                udicts, uerr = _used_material_rows_to_dicts(list(ums))
+                if uerr:
+                    return None, uerr
+                total_um += len(udicts)
+                if total_um > _MAX_USED_MATERIALS_ROWS:
+                    return (
+                        None,
+                        f"使用物は全体で最大{_MAX_USED_MATERIALS_ROWS}行までです",
+                    )
+                dct["used_materials"] = udicts
+        if include_line_memo:
+            if "line_memo" in row.model_fields_set:
+                raw_memo = row.line_memo
+                if raw_memo is not None and str(raw_memo).strip():
+                    dct["line_memo"] = str(raw_memo).strip()
         complete.append(dct)
     if include_line_id and complete:
         seen: Set[str] = set()
@@ -268,6 +458,9 @@ def _planned_lines_for_response(unit: models.WorkUnit, im: str) -> List[dict]:
     parsed = _parse_lines_json(getattr(unit, "planned_lines_json", None))
     if parsed:
         return parsed
+    reg = getattr(unit, "planned_registered_at", None) is not None
+    if not reg:
+        return []
     v = unit.planned_value
     if v is None or not math.isfinite(float(v)):
         return []
@@ -286,21 +479,41 @@ def _planned_lines_for_response(unit: models.WorkUnit, im: str) -> List[dict]:
 
 def _actual_lines_for_response(unit: models.WorkUnit, im: str) -> List[dict]:
     parsed = _parse_lines_json(getattr(unit, "actual_lines_json", None))
+    legacy_um = _legacy_used_materials_list_from_column(unit)
+
+    lines: List[dict] = []
     if parsed:
-        return parsed
-    v = unit.actual_value
-    if v is None or not math.isfinite(float(v)):
-        return []
-    fv = float(v)
-    if im == "logistics":
-        lab = _opt_str(unit.actual_work_label) or _opt_str(unit.actual_work_type)
-        if not lab:
+        lines = copy.deepcopy(parsed)
+    else:
+        v = unit.actual_value
+        if v is None or not math.isfinite(float(v)):
             return []
-        return [{"label": lab, "value": fv}]
-    n = (unit.actual_item_name or "").strip()
-    if not n:
-        return []
-    return [{"label": n, "value": fv}]
+        fv = float(v)
+        if im == "logistics":
+            lab = _opt_str(unit.actual_work_label) or _opt_str(unit.actual_work_type)
+            if not lab:
+                return []
+            lines = [{"label": lab, "value": fv}]
+        else:
+            n = (unit.actual_item_name or "").strip()
+            if not n:
+                return []
+            lines = [{"label": n, "value": fv}]
+
+    if legacy_um and lines:
+        any_um = False
+        for ln in lines:
+            if not isinstance(ln, dict):
+                continue
+            ums = ln.get("used_materials")
+            if isinstance(ums, list) and len(ums) > 0:
+                any_um = True
+                break
+        if not any_um:
+            first = dict(lines[0])
+            first["used_materials"] = copy.deepcopy(legacy_um)
+            lines[0] = first
+    return lines
 
 
 def _norm_input_mode(settings: models.CompanySettings) -> str:
@@ -336,27 +549,31 @@ def _has_planned_nonzero_from_rel_lines(unit: models.WorkUnit) -> bool:
 def _has_planned_nonzero(unit: models.WorkUnit, settings: models.CompanySettings) -> bool:
     """
     A* 用「予告あり」: 次のいずれかで True
-    - planned_lines_json にラベル付きかつ数量≠0 の行がある
-    - planned_value が実数かつ≠0（NULL は.false）
+    - planned_lines_json にラベル付きの行がある（数量未入力の予告も含む）
+    - planned_lines_json に数量≠0 の行がある
+    - planned_value が実数かつ≠0（NULL は false）
     - 子テーブル planned 行に quantity≠0 がある（v2）
 
-    None / "" / 0 / "0" / 数量なし行のみ / 空配列 → false。
-    JSON に行があるが 0 ばかりのときも planned_value・子行をフォールバックで見る。
+    planned_registered_at 無し / 空配列 / ラベルも数量も無い行のみ → false。
     """
+    if getattr(unit, "planned_registered_at", None) is None:
+        return False
     parsed = _parse_lines_json(getattr(unit, "planned_lines_json", None))
     if parsed:
         json_hit = False
+        json_named = False
         for it in parsed:
             if not isinstance(it, dict):
                 continue
             lb = str(it.get("label", "")).strip()
             if not lb:
                 continue
+            json_named = True
             raw = it.get("value")
             if raw is not None and raw != "" and _numeric_nonzero(raw):
                 json_hit = True
                 break
-        if json_hit:
+        if json_hit or json_named:
             return True
     if _numeric_nonzero(getattr(unit, "planned_value", None)):
         return True
@@ -375,9 +592,13 @@ def _phase1_completely_empty_legacy_triplet(unit: models.WorkUnit) -> bool:
     """
     フェーズ1: planned_value / started_at / actual_value がすべて未入力。
     この状態では blue/red にしない（actual_at のみなどは対象外）。
+    未登録の予告ドラフト（DB に値が残っていても planned_registered_at が無い）は planned 未入力扱い。
     """
+    pv = getattr(unit, "planned_value", None)
+    if getattr(unit, "planned_registered_at", None) is None:
+        pv = None
     return (
-        getattr(unit, "planned_value", None) is None
+        pv is None
         and getattr(unit, "started_at", None) is None
         and getattr(unit, "actual_value", None) is None
     )
@@ -800,6 +1021,9 @@ def _unit_to_out(
     deviation_reason_out = str(getattr(unit, "deviation_reason", None) or "").strip()
     deviation_reason_out = deviation_reason_out or None
 
+    reg = getattr(unit, "planned_registered_at", None) is not None
+    show_planned_derived = reg or bool(plines)
+
     return {
         "id":                 unit.id,
         "company_id":         unit.company_id,
@@ -807,17 +1031,20 @@ def _unit_to_out(
         "process_id":         unit.process_id,
         "user_id":            unit.user_id,
         "business_date":      str(unit.business_date),
-        "planned_at":         unit.planned_at.isoformat() if getattr(unit, "planned_at", None) else None,
+        "planned_at":         unit.planned_at.isoformat() if reg and getattr(unit, "planned_at", None) else None,
+        "planned_registered_at": unit.planned_registered_at.isoformat()
+        if getattr(unit, "planned_registered_at", None)
+        else None,
         "created_at":         unit.created_at.isoformat() if getattr(unit, "created_at", None) else None,
         "input_source":       getattr(unit, "input_source", None) or None,
         "business_date_source": getattr(unit, "business_date_source", None),
         "business_date_debug": _parse_unit_business_date_debug(unit),
         "input_mode":         im,
-        "planned_work_type":  unit.planned_work_type,
-        "planned_work_label": unit.planned_work_label,
-        "planned_item_name":  unit.planned_item_name,
+        "planned_work_type":  unit.planned_work_type if show_planned_derived else None,
+        "planned_work_label": unit.planned_work_label if show_planned_derived else None,
+        "planned_item_name":  unit.planned_item_name if show_planned_derived else None,
         "planned_lines":      plines,
-        "planned_value":      unit.planned_value,
+        "planned_value":      unit.planned_value if show_planned_derived else None,
         "started_at":         unit.started_at.isoformat() if unit.started_at else None,
         "actual_work_type":   unit.actual_work_type,
         "actual_work_label":  unit.actual_work_label,
@@ -826,6 +1053,8 @@ def _unit_to_out(
         "actual_value":       unit.actual_value,
         "actual_at":          unit.actual_at.isoformat() if unit.actual_at else None,
         "actual_memo":        _opt_str(getattr(unit, "actual_memo", None)),
+        "used_materials":     used_materials_for_api(unit),
+        "used_materials_json": getattr(unit, "used_materials_json", None),
         "pattern_a":          unit.pattern_a,
         "pattern_b":          unit.pattern_b,
         "user_pattern":       getattr(unit, "user_pattern", None) or None,
@@ -893,6 +1122,41 @@ def _find_prev_unit(company_id, task_id, process_id, user_id,
     ).order_by(models.WorkUnit.business_date.desc()).first()
 
 
+def _resumable_open_tip_for_calendar_day(
+    db: Session,
+    company_id: str,
+    task_id: str,
+    process_id: str,
+    user_id: str,
+    biz_date: date_type,
+) -> Optional[models.WorkUnit]:
+    """
+    同日・同一キーで「いまの先頭行」（id 最大の 1 件）だけを見る。
+
+    append-only のため、同日に複数行があり古い行が未報告のまま残っていても、
+    それより新しい行で実績済みなら新規壳を作る（古い行に戻さない）。
+    """
+    tip = (
+        db.query(models.WorkUnit)
+        .filter(
+            models.WorkUnit.company_id == company_id,
+            models.WorkUnit.task_id == task_id,
+            models.WorkUnit.process_id == process_id,
+            models.WorkUnit.user_id == user_id,
+            models.WorkUnit.business_date == biz_date,
+        )
+        .order_by(models.WorkUnit.id.desc())
+        .first()
+    )
+    if tip is None:
+        return None
+    if is_closed(tip):
+        return None
+    if tip.actual_at is not None:
+        return None
+    return tip
+
+
 def _unit_to_out_with_hint(
     unit: models.WorkUnit,
     settings: models.CompanySettings,
@@ -918,9 +1182,10 @@ def get_next_business_date_only(
 
 @router.post(
     "/work",
-    summary="今日の作業記録を新規作成する（壳・append-only）",
+    summary="今日の作業記録の壳（未報告なら既存行を返し、実績済みなら新規 INSERT・append-only）",
 )
 def create_work_shell(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)):
+    validate_company_id(db, body.company_id)
     logger.warning(
         "[measureos.work.hook] POST /work company_id=%r task_id=%r process_id=%r user_id=%r business_date=%r",
         body.company_id,
@@ -947,8 +1212,35 @@ def create_work_shell(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)
         biz_debug["api"] = "POST /work"
         biz_source = "post_work_auto"
 
-    # append-only / v2: 同一 (company_id, task_id, process_id, user_id, business_date) に
-    # 複数行を許す。現場が壳を開くたびに必ず新規 INSERT（最新行の再利用・closed によるブロックなし）。
+    tip = _resumable_open_tip_for_calendar_day(
+        db,
+        body.company_id,
+        body.task_id,
+        body.process_id,
+        body.user_id,
+        biz_date,
+    )
+    if tip is not None:
+        prev_unit = _find_prev_unit(
+            body.company_id,
+            body.task_id,
+            body.process_id,
+            body.user_id,
+            biz_date,
+            db,
+        )
+        logger.warning(
+            "[measureos.work.hook] POST /work resumed unit_id=%s company_id=%r business_date=%s "
+            "has_started_at=%s has_actual_at=%s",
+            tip.id,
+            tip.company_id,
+            tip.business_date,
+            tip.started_at is not None,
+            tip.actual_at is not None,
+        )
+        return _unit_to_out_with_hint(tip, settings, db, prev_unit)
+
+    # 実績報告済みなど、未報告の行が無いときだけ新規壳を追加する（append-only）。
     unit = models.WorkUnit(
         company_id=body.company_id,
         task_id=body.task_id,
@@ -983,6 +1275,7 @@ def create_work_shell(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)
 
 @router.post("/work/next-day", summary="次の営業日を開始する（着手含む）")
 def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
+    validate_company_id(db, body.company_id)
     settings     = _get_or_create_settings(body.company_id, db)
     current_date = date_type.fromisoformat(body.current_business_date)
     next_date, next_dbg = next_business_day_detailed(current_date, body.company_id, db)
@@ -1069,6 +1362,7 @@ def approve_close_work(unit_id: int, db: Session = Depends(get_db)):
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, src)
     settings = _get_or_create_settings(src.company_id, db)
     if is_closed(src):
         prev_unit = _find_prev_unit(
@@ -1118,10 +1412,15 @@ def approve_close_work(unit_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/work/{unit_id}/start", summary="着手を記録する")
-def mark_started(unit_id: int, db: Session = Depends(get_db)):
+def mark_started(
+    unit_id: int,
+    db: Session = Depends(get_db),
+    body: schemas.StartedIn = Body(default_factory=schemas.StartedIn),
+):
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
     nu = clone_work_unit_row(src)
@@ -1131,6 +1430,37 @@ def mark_started(unit_id: int, db: Session = Depends(get_db)):
     db.flush()
     if nu.started_at is None:
         nu.started_at = datetime.utcnow()
+    if (
+        getattr(src, "planned_registered_at", None) is None
+        and body.lines is not None
+    ):
+        lines, err = _strict_lines_from_body(
+            list(body.lines),
+            include_line_id=True,
+            include_product_code=True,
+            include_used_materials=True,
+            allow_missing_main_qty=True,
+        )
+        if err:
+            raise HTTPException(status_code=422, detail=err)
+        if lines:
+            for ln in lines:
+                if isinstance(ln, dict):
+                    ln.pop("line_memo", None)
+                    ums = ln.get("used_materials")
+                    if isinstance(ums, list) and len(ums) == 0:
+                        ln.pop("used_materials", None)
+            nu.planned_lines_json = _lines_json_dumps(lines)
+            nu.planned_value = _sum_line_values_optional(lines)
+            im = _norm_input_mode(settings)
+            if im == "logistics":
+                nu.planned_work_label = _join_line_labels(lines)
+                nu.planned_work_type = None
+                nu.planned_item_name = None
+            else:
+                nu.planned_item_name = _join_line_labels(lines)
+                nu.planned_work_label = None
+                nu.planned_work_type = None
     sync_planned_at_with_planned_facts(nu)
     _touch_updated(nu)
     db.commit()
@@ -1156,20 +1486,58 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
             unit_id,
         )
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
     im = _norm_input_mode(settings)
     patch = body.model_dump(exclude_unset=True)
 
+    um_parsed: Optional[List[dict]] = None
+    if "used_materials" in patch:
+        raw_um = body.used_materials if body.used_materials is not None else []
+        um_parsed, um_err = _used_materials_from_body(list(raw_um))
+        if um_err:
+            raise HTTPException(status_code=422, detail=um_err)
+
     lines_for_dev: List[dict] = []
     parsed_lines: Optional[List[dict]] = None
+    touch_line_um = False
     if "lines" in patch:
         raw_lines = body.lines if body.lines is not None else []
+        for row in raw_lines:
+            if "used_materials" in row.model_fields_set:
+                touch_line_um = True
+                break
         parsed_lines, err = _strict_lines_from_body(
-            list(raw_lines), include_product_code=True
+            list(raw_lines),
+            include_product_code=True,
+            include_used_materials=True,
+            include_line_memo=True,
         )
         if err:
             raise HTTPException(status_code=422, detail=err)
+        if parsed_lines and "used_materials" in patch:
+            if um_parsed:
+                first = dict(parsed_lines[0])
+                cur = (
+                    list(first.get("used_materials") or [])
+                    if isinstance(first.get("used_materials"), list)
+                    else []
+                )
+                first["used_materials"] = cur + list(um_parsed)
+                if not first["used_materials"]:
+                    first.pop("used_materials", None)
+                parsed_lines[0] = first
+            else:
+                first = dict(parsed_lines[0])
+                first.pop("used_materials", None)
+                parsed_lines[0] = first
+        if parsed_lines:
+            for ln in parsed_lines:
+                if isinstance(ln, dict):
+                    ums = ln.get("used_materials")
+                    if isinstance(ums, list) and len(ums) == 0:
+                        ln.pop("used_materials", None)
         if parsed_lines:
             ensure_product_master_labels(src.company_id, parsed_lines, db)
             db.flush()
@@ -1211,6 +1579,12 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
 
     if "lines" in patch:
         lines = parsed_lines if parsed_lines is not None else []
+        has_nonempty_line_um = any(
+            isinstance(ln, dict)
+            and isinstance(ln.get("used_materials"), list)
+            and len(ln["used_materials"]) > 0
+            for ln in lines
+        )
         nu.actual_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
             nu.actual_value = sum(x["value"] for x in lines)
@@ -1251,6 +1625,12 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
     else:
         nu.actual_memo = None
 
+    if "lines" in patch:
+        if touch_line_um or has_nonempty_line_um or ("used_materials" in patch):
+            nu.used_materials_json = None
+    elif "used_materials" in patch:
+        nu.used_materials_json = _lines_json_dumps(um_parsed) if um_parsed else None
+
     if "pattern_a" in patch:
         nu.pattern_a = patch["pattern_a"]
     if "pattern_b" in patch:
@@ -1263,8 +1643,14 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
         _up = patch.get("user_pattern")
         nu.user_pattern = "B" if (_up is not None and str(_up).strip().upper() == "B") else None
 
-    if nu.planned_value is not None and nu.actual_value is not None:
+    if (
+        getattr(nu, "planned_registered_at", None) is not None
+        and nu.planned_value is not None
+        and nu.actual_value is not None
+    ):
         nu.diff_value = nu.actual_value - nu.planned_value
+    else:
+        nu.diff_value = None
 
     sync_planned_at_with_planned_facts(nu)
     _audit_x_save(nu, settings, f"POST /work/{unit_id}/actual", "pre_commit")
@@ -1295,6 +1681,7 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
     im = _norm_input_mode(settings)
@@ -1315,13 +1702,26 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
             include_due_date=True,
             include_line_id=True,
             include_product_code=True,
+            include_used_materials=True,
+            allow_missing_main_qty=True,
         )
         if err:
             raise HTTPException(status_code=422, detail=err)
+        if not lines:
+            raise HTTPException(
+                status_code=422,
+                detail="商品名（または作業名）が入力されている行がありません",
+            )
         _merge_due_from_previous(lines, old_parsed)
+        for ln in lines:
+            if isinstance(ln, dict):
+                ln.pop("line_memo", None)
+                ums = ln.get("used_materials")
+                if isinstance(ums, list) and len(ums) == 0:
+                    ln.pop("used_materials", None)
         nu.planned_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
-            nu.planned_value = sum(x["value"] for x in lines)
+            nu.planned_value = _sum_line_values_optional(lines)
             if im == "logistics":
                 nu.planned_work_label = _join_line_labels(lines)
                 nu.planned_work_type = None
@@ -1342,6 +1742,8 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
         nu.planned_work_type = _opt_str(body.planned_work_type)
         nu.planned_work_label = _opt_str(body.planned_work_label)
         nu.planned_item_name = _opt_str(body.planned_item_name)
+
+    nu.planned_registered_at = datetime.utcnow()
 
     if nu.planned_value is not None and nu.actual_value is not None:
         nu.diff_value = nu.actual_value - nu.planned_value
@@ -1368,6 +1770,7 @@ def merge_planned_due(
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
 
@@ -1438,6 +1841,8 @@ def recalc_missing_boundary(
     """
     append-only 方針のため無効化。派生フラグは読み取り時に算出する。
     """
+    if company_id is not None and str(company_id).strip():
+        validate_company_id(db, company_id)
     logger.info(
         "[measureos.work.recalc_missing_boundary] skipped append_only company_id=%r",
         company_id,
@@ -1490,6 +1895,7 @@ def debug_set_business_date(
     src = db.get(models.WorkUnit, body.id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, src)
     raise_if_closed(src)
     try:
         new_d = date_type.fromisoformat(body.business_date.strip())
@@ -1609,6 +2015,7 @@ def patch_office_reflection(
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    validate_unit_company_id(db, unit)
     raise_if_closed(unit)
 
     rs = body.reflection_status

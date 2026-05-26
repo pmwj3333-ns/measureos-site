@@ -9,6 +9,7 @@ from app import models
 from app.database import get_db
 from app.schemas import ShipmentImportOut
 from app.services.shipment_csv import dedupe_by_product_code_and_due_date, parse_shipment_csv_text
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(prefix="/v2/shipment", tags=["v2-出荷予定"])
 
@@ -28,9 +29,7 @@ async def import_shipment_csv(
     company_id: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    cid = (company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = validate_company_id(db, company_id)
 
     raw = await file.read()
     text = _decode_upload(raw)

@@ -95,6 +95,29 @@
     margin-bottom: 12px;
   }
   .prio-breakdown div { margin-bottom: 2px; }
+  .prio-obs-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #eceff3;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .prio-cutoff-obs {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin: 4px 0 6px;
+  }
   .prio-due--urgent { color: #ff3b30; font-weight: 600; }
 
   .action-pill {
@@ -249,11 +272,23 @@
       if (!Number.isFinite(prodNum)) prodNum = 0;
       var stockNum = Number(stock);
       if (!Number.isFinite(stockNum)) stockNum = 0;
+      var safetyUnset = it.safety_stock_unset === true;
+      var safetyNum = it.safety_stock_value != null ? Number(it.safety_stock_value) : 0;
+      if (!Number.isFinite(safetyNum) || safetyNum < 0) safetyNum = 0;
+      var usable =
+        it.usable_stock_qty != null && it.usable_stock_qty !== ""
+          ? Number(it.usable_stock_qty)
+          : Math.max(0, stockNum - safetyNum);
+      if (!Number.isFinite(usable)) usable = Math.max(0, stockNum - safetyNum);
       out.push({
         tier: tier,
         name: String(it.label || "").trim() || "（無名）",
         ship_value: ship,
         stock_qty: stockNum,
+        safety_stock_value: safetyNum,
+        safety_stock_unset: safetyUnset,
+        usable_stock_qty: usable,
+        is_after_cutoff: it.is_after_cutoff === true,
         prod_value: prod,
         prodNum: prodNum,
         unit: u,
@@ -314,6 +349,9 @@
         cardMod +
         '">' +
         badgeHtml(it.tier) +
+        (it.is_after_cutoff
+          ? '<div class="prio-cutoff-obs">⚠ 締切後投入</div>'
+          : "") +
         '<div class="prio-title">' +
         esc(it.name) +
         "</div>" +
@@ -322,12 +360,27 @@
         esc(it.unit) +
         "</div>" +
         '<div class="prio-breakdown">' +
-        "<div>出荷：" +
+        "<div>現在在庫：" +
+        esc(String(it.stock_qty)) +
+        esc(it.unit) +
+        (it.safety_stock_unset
+          ? '<span class="prio-obs-badge">基準在庫未設定</span>'
+          : "") +
+        "</div>" +
+        "<div>基準在庫：" +
+        (it.safety_stock_unset ? "—" : esc(String(it.safety_stock_value))) +
+        esc(it.unit) +
+        "</div>" +
+        "<div>使用可能：" +
+        esc(String(it.usable_stock_qty)) +
+        esc(it.unit) +
+        "</div>" +
+        "<div>出荷予定：" +
         esc(String(it.ship_value)) +
         esc(it.unit) +
         "</div>" +
-        "<div>在庫：" +
-        esc(String(it.stock_qty)) +
+        "<div>不足：" +
+        esc(String(it.prod_value)) +
         esc(it.unit) +
         "</div>" +
         "<div>納期：" +

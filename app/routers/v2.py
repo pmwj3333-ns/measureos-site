@@ -14,6 +14,7 @@ from app.services.package_rules import (
     is_phase2_enabled,
     package_label,
 )
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(prefix="/v2", tags=["v2-設定"])
 
@@ -70,6 +71,7 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
 
 @router.put("/company/{company_id}/leaders", summary="班長マスタを保存（v2・社労士 v2 専用）")
 def v2_put_leaders(company_id: str, body: V2LeadersPut, db: Session = Depends(get_db)):
+    validate_company_id(db, company_id)
     parts: List[str] = []
     for e in body.leaders:
         n = (e.name or "").strip()

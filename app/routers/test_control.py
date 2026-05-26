@@ -20,6 +20,7 @@ from app.services.test_clock import (
     parse_iso_to_naive_utc,
     set_reference_utc_naive,
 )
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(prefix="/test", tags=["v2-テスト専用・擬似時刻"])
 
@@ -97,7 +98,7 @@ def test_recompute(body: TestRecomputeBody, db: Session = Depends(get_db)):
     _require_test_clock()
     from app.routers.work import _get_or_create_settings
 
-    cid = body.company_id.strip()
+    cid = validate_company_id(db, body.company_id)
     settings = _get_or_create_settings(cid, db)
 
     n_red = 0

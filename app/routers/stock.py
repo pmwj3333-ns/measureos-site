@@ -9,6 +9,7 @@ from app import models
 from app.database import get_db
 from app.schemas import StockImportOut
 from app.services.stock_csv import dedupe_by_product_code, parse_stock_csv_text
+from app.services.company_validator import validate_company_id
 
 router = APIRouter(prefix="/v2/stock", tags=["v2-在庫"])
 
@@ -28,9 +29,7 @@ async def import_stock_csv(
     company_id: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    cid = (company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = validate_company_id(db, company_id)
 
     raw = await file.read()
     text = _decode_upload(raw)

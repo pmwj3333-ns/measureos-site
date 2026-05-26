@@ -93,12 +93,13 @@
           <th>ID</th>
           <th>商品名（label）</th>
           <th>product_code</th>
+          <th>基準在庫</th>
           <th>状態</th>
           <th>操作</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="5" class="hint">company_id を入力して読み込み</td></tr>
+          <tr><td colspan="6" class="hint">company_id を入力して読み込み</td></tr>
       </tbody>
     </table>
   </div>
@@ -162,20 +163,25 @@
   function renderRows(rows) {
     const tb = $("tbody");
     if (!rows.length) {
-      tb.innerHTML = "<tr><td colspan=\"5\" class=\"hint\">データなし</td></tr>";
+      tb.innerHTML = "<tr><td colspan=\"6\" class=\"hint\">データなし</td></tr>";
       return;
     }
     tb.innerHTML = rows.map((r) => {
       const inactive = r.is_active === false;
       const codeVal = r.product_code != null ? String(r.product_code) : "";
+      const ssVal =
+        r.safety_stock_value != null && r.safety_stock_value !== ""
+          ? String(r.safety_stock_value)
+          : "";
       return (
         "<tr class=\"" + (inactive ? "inactive" : "") + "\" data-id=\"" + r.id + "\">" +
         "<td>" + esc(r.id) + "</td>" +
         "<td>" + esc(r.label) + "</td>" +
         "<td><input class=\"code-inp\" type=\"text\" data-code-input value=\"" + esc(codeVal) + "\" placeholder=\"空なら null\" /></td>" +
+        "<td><input class=\"code-inp\" type=\"number\" min=\"0\" step=\"1\" data-safety-input value=\"" + esc(ssVal) + "\" placeholder=\"未設定\" style=\"max-width:88px\" /></td>" +
         "<td>" + (inactive ? "無効" : "有効") + "</td>" +
         "<td><div class=\"row-actions\">" +
-        "<button type=\"button\" data-save>コード保存</button>" +
+        "<button type=\"button\" data-save>保存</button>" +
         (inactive
           ? "<button type=\"button\" class=\"secondary\" data-active>有効化</button>"
           : "<button type=\"button\" class=\"secondary\" data-inactive>無効化</button>") +
@@ -189,13 +195,27 @@
       const inactiveBtn = tr.querySelector("[data-inactive]");
       const activeBtn = tr.querySelector("[data-active]");
       const codeInp = tr.querySelector("[data-code-input]");
+      const safetyInp = tr.querySelector("[data-safety-input]");
       if (saveBtn) {
         saveBtn.addEventListener("click", async () => {
           saveBtn.disabled = true;
           setMsg("");
           try {
             const raw = codeInp ? String(codeInp.value || "").trim() : "";
-            await patchRow(id, { product_code: raw || null });
+            const body = { product_code: raw || null };
+            if (safetyInp) {
+              const ssRaw = String(safetyInp.value || "").trim();
+              if (ssRaw === "") {
+                body.safety_stock_value = null;
+              } else {
+                const ssN = Number(ssRaw);
+                if (!Number.isFinite(ssN) || ssN < 0 || Math.floor(ssN) !== ssN) {
+                  throw new Error("基準在庫は0以上の整数で入力してください");
+                }
+                body.safety_stock_value = ssN;
+              }
+            }
+            await patchRow(id, body);
             setMsg("保存しました（ID " + id + "）", "ok");
             await load();
           } catch (e) {

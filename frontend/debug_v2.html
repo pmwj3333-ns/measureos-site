@@ -333,6 +333,7 @@
           <th>started_at</th>
           <th>actual_value</th>
           <th title="actual_lines（要約・最大2件＋他N件）">実績内容</th>
+          <th title="used_materials（使用物ログ）">使用物</th>
           <th>actual_at</th>
           <th>created_at</th>
           <th>user_pattern</th>
@@ -379,9 +380,9 @@
   let pollTimer = null;
   const AUTO_MS = 3000;
   const LS_AUTO = "debug_v2_auto_refresh";
-  /** フェーズ2 ON で列27（judgement 期限あり）。OFF で26。読み込み後は getDebugCols().length で上書き。 */
+  /** フェーズ2 ON で列28（judgement 期限あり）。OFF で27。読み込み後は getDebugCols().length で上書き。 */
   let phase2Enabled = false;
-  let debugTableColCount = 26;
+  let debugTableColCount = 27;
 
   function getDebugCols() {
     const all = [
@@ -402,6 +403,7 @@
       "started_at",
       "actual_value",
       "actual_content",
+      "used_materials",
       "actual_at",
       "created_at",
       "user_pattern",
@@ -484,6 +486,19 @@
     }
   }
 
+  function legacyTopLevelUsedMaterials(r) {
+    if (!r || typeof r !== "object") return [];
+    if (Array.isArray(r.used_materials) && r.used_materials.length) return r.used_materials;
+    const raw = r.used_materials_json;
+    if (raw == null || !String(raw).trim()) return [];
+    try {
+      const p = JSON.parse(String(raw));
+      return Array.isArray(p) ? p : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   /**
    * API の planned_lines / actual_lines（または *_lines_json）から正規化した行配列。
    * 空のときは planned_item_name 等のレガシー1行にフォールバック。
@@ -503,7 +518,12 @@
         const name = lineDisplayName(L);
         const v = L.value;
         if (v == null || !Number.isFinite(Number(v))) continue;
-        out.push({ name: name || "（無名）", value: Number(v) });
+        const o = { name: name || "（無名）", value: Number(v) };
+        if (kind === "actual") {
+          const ums = L.used_materials;
+          if (Array.isArray(ums) && ums.length) o.used_materials = ums;
+        }
+        out.push(o);
       }
     }
     if (out.length) return out;
@@ -521,8 +541,12 @@
         lineDisplayName({ label: row.actual_item_name }) ||
         lineDisplayName({ label: row.actual_work_label }) ||
         lineDisplayName({ label: row.actual_work_type });
-      if (name && av != null && Number.isFinite(Number(av)))
-        return [{ name, value: Number(av) }];
+      if (name && av != null && Number.isFinite(Number(av))) {
+        const o = { name, value: Number(av) };
+        const leg = legacyTopLevelUsedMaterials(row);
+        if (leg.length) o.used_materials = leg;
+        return [o];
+      }
     }
     return [];
   }
@@ -582,13 +606,38 @@
     if (!lines.length) {
       return '<td class="cell-lines"><span class="lines-short">' + esc(short) + "</span></td>";
     }
+    function oneUmInner(m) {
+      const seg = [];
+      if (m.label != null && String(m.label).trim()) seg.push(String(m.label).trim());
+      if (m.value != null && Number.isFinite(Number(m.value))) {
+        let s = String(Number(m.value));
+        if (m.unit != null && String(m.unit).trim()) s += String(m.unit).trim();
+        seg.push(s);
+      } else if (m.unit != null && String(m.unit).trim()) {
+        seg.push(String(m.unit).trim());
+      }
+      if (m.lot_no != null && String(m.lot_no).trim()) seg.push("lot " + String(m.lot_no).trim());
+      return seg.length ? seg.join(" · ") : "—";
+    }
     const full = lines
-      .map(
-        (L) =>
+      .map((L) => {
+        let block =
           "<li>" +
-          esc((L.name || "（無名）") + " " + qtyWithUnit(L.value, unit)) +
-          "</li>"
-      )
+          "<strong>" +
+          esc(L.name || "（無名）") +
+          "</strong> " +
+          esc(qtyWithUnit(L.value, unit));
+        const ums = L.used_materials;
+        if (Array.isArray(ums) && ums.length) {
+          block +=
+            '<ul class="lines-um-nested">' +
+            ums
+              .map((m) => "<li>" + esc(oneUmInner(m)) + "</li>")
+              .join("") +
+            "</ul>";
+        }
+        return block + "</li>";
+      })
       .join("");
     return (
       '<td class="cell-lines">' +
@@ -597,6 +646,75 @@
       "</div>" +
       '<details class="lines-detail"><summary>明細（全' +
       lines.length +
+      "件）</summary>" +
+      '<ul class="lines-full">' +
+      full +
+      "</ul></details></td>"
+    );
+  }
+
+  function normalizedUsedMaterialsRow(r) {
+    const lines = normalizedLines(r, "actual");
+    const flat = [];
+    for (const L of lines) {
+      const ums = L.used_materials;
+      if (!Array.isArray(ums)) continue;
+      for (const m of ums) {
+        if (m && typeof m === "object") flat.push(m);
+      }
+    }
+    if (flat.length) return flat;
+    return legacyTopLevelUsedMaterials(r);
+  }
+
+  function usedMaterialsCellHtml(r) {
+    const arr = normalizedUsedMaterialsRow(r);
+    if (!arr.length) {
+      return '<td class="cell-lines"><span class="lines-short">—</span></td>';
+    }
+    const parts = [];
+    for (let i = 0; i < Math.min(LINES_PREVIEW_MAX, arr.length); i++) {
+      const m = arr[i];
+      const seg = [];
+      if (m.label != null && String(m.label).trim()) seg.push(String(m.label).trim());
+      if (m.value != null && Number.isFinite(Number(m.value))) {
+        let s = String(Number(m.value));
+        if (m.unit != null && String(m.unit).trim()) s += String(m.unit).trim();
+        seg.push(s);
+      } else if (m.unit != null && String(m.unit).trim()) {
+        seg.push(String(m.unit).trim());
+      }
+      if (m.lot_no != null && String(m.lot_no).trim()) seg.push("lot " + String(m.lot_no).trim());
+      parts.push(seg.length ? seg.join(" ") : "—");
+    }
+    const short = parts.map((s) => esc(s)).join(" / ");
+    const rest = arr.length - LINES_PREVIEW_MAX;
+    const shortFinal =
+      rest > 0 ? short + " / 他" + rest + "件" : short;
+    const full = arr
+      .map((m) => {
+        const seg = [];
+        if (m.label != null && String(m.label).trim()) seg.push(esc(String(m.label).trim()));
+        if (m.value != null && Number.isFinite(Number(m.value))) {
+          let s = esc(String(Number(m.value)));
+          if (m.unit != null && String(m.unit).trim())
+            s += esc(String(m.unit).trim());
+          seg.push(s);
+        } else if (m.unit != null && String(m.unit).trim()) {
+          seg.push(esc(String(m.unit).trim()));
+        }
+        if (m.lot_no != null && String(m.lot_no).trim())
+          seg.push("lot " + esc(String(m.lot_no).trim()));
+        return "<li>" + (seg.length ? seg.join(" · ") : "—") + "</li>";
+      })
+      .join("");
+    return (
+      '<td class="cell-lines">' +
+      '<div class="lines-short">' +
+      shortFinal +
+      "</div>" +
+      '<details class="lines-detail"><summary>明細（全' +
+      arr.length +
       "件）</summary>" +
       '<ul class="lines-full">' +
       full +
@@ -920,6 +1038,7 @@
               if (k === "status") return statusCellHtml(r);
               if (k === "planned_content") return plannedLinesCellHtml(r);
               if (k === "actual_content") return actualLinesCellHtml(r);
+              if (k === "used_materials") return usedMaterialsCellHtml(r);
               return "<td>" + esc(dispCell(k, r[k])) + "</td>";
             })
             .join("");

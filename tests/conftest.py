@@ -17,6 +17,10 @@ from starlette.testclient import TestClient  # noqa: E402
 from app import models  # noqa: E402
 from app.database import SessionLocal, engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.services.company_validator import (  # noqa: E402
+    backfill_company_master_from_legacy,
+    seed_known_test_companies,
+)
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -25,6 +29,12 @@ models.Base.metadata.create_all(bind=engine)
 def _reset_db_tables():
     models.Base.metadata.drop_all(bind=engine)
     models.Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        backfill_company_master_from_legacy(db)
+        seed_known_test_companies(db)
+    finally:
+        db.close()
     yield
 
 

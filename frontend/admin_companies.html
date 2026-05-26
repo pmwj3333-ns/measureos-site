@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEASURE OS — 会社マスタ管理</title>
+<style>
+  body { font-family: sans-serif; font-size: 14px; margin: 16px; max-width: 900px; }
+  h1 { font-size: 1.1rem; }
+  .sub { color: #555; font-size: 0.85rem; margin-bottom: 12px; }
+  label { display: block; font-size: 0.75rem; color: #666; margin-bottom: 2px; }
+  input[type="text"] { padding: 6px 8px; width: 220px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 12px 0; }
+  button { padding: 6px 12px; cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+  th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+  th { background: #eee; }
+  tr.inactive { color: #888; background: #fafafa; }
+  #msg { margin-top: 8px; font-size: 0.85rem; }
+  #msg.err { color: #c00; }
+  #msg.ok { color: #060; }
+  a { color: #06c; }
+</style>
+</head>
+<body>
+  <p><a href="/">トップ</a> · <a href="/office/v2">事務 v2</a></p>
+  <h1>会社マスタ（company_master）</h1>
+  <p class="sub">登録済み company_id の管理用です。現場・事務の自由入力はまだ変更していません（第2段階で API 検証予定）。</p>
+
+  <div class="bar">
+    <div>
+      <label for="new-id">company_id（識別子）</label>
+      <input type="text" id="new-id" autocomplete="off" />
+    </div>
+    <div>
+      <label for="new-name">company_name（表示名）</label>
+      <input type="text" id="new-name" autocomplete="off" />
+    </div>
+    <button type="button" id="btn-add">追加</button>
+    <button type="button" id="btn-reload">一覧更新</button>
+    <label style="margin-bottom:6px;"><input type="checkbox" id="active-only" /> 有効のみ</label>
+  </div>
+  <p id="msg"></p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>id</th>
+        <th>company_id</th>
+        <th>company_name</th>
+        <th>状態</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="5">読み込み中…</td></tr>
+    </tbody>
+  </table>
+
+<script>
+(function () {
+  const tbody = document.getElementById("tbody");
+  const msg = document.getElementById("msg");
+
+  function show(t, ok) {
+    msg.textContent = t || "";
+    msg.className = ok ? "ok" : t ? "err" : "";
+  }
+
+  async function api(path, opts) {
+    const r = await fetch(path, opts);
+    const text = await r.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) {}
+    if (!r.ok) {
+      const d = data && data.detail;
+      const detail = typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg || x).join(", ") : "エラー " + r.status;
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  async function load() {
+    show("", false);
+    const activeOnly = document.getElementById("active-only").checked;
+    const q = activeOnly ? "?active_only=true" : "";
+    try {
+      const rows = await api("/admin/companies" + q);
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5">登録なし</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map((r) => {
+        const active = r.is_active !== false;
+        return (
+          '<tr class="' + (active ? "" : "inactive") + '">' +
+          "<td>" + r.id + "</td>" +
+          "<td>" + escapeHtml(r.company_id) + "</td>" +
+          "<td>" + escapeHtml(r.company_name) + "</td>" +
+          "<td>" + (active ? "有効" : "無効") + "</td>" +
+          '<td><button type="button" data-id="' + r.id + '" data-active="' + (active ? "1" : "0") + '">' +
+          (active ? "無効にする" : "有効にする") +
+          "</button></td></tr>"
+        );
+      }).join("");
+    } catch (e) {
+      show(String(e.message || e), false);
+      tbody.innerHTML = '<tr><td colspan="5">読み込み失敗</td></tr>';
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  document.getElementById("btn-reload").addEventListener("click", load);
+  document.getElementById("active-only").addEventListener("change", load);
+
+  document.getElementById("btn-add").addEventListener("click", async () => {
+    const company_id = document.getElementById("new-id").value.trim();
+    const company_name = document.getElementById("new-name").value.trim();
+    if (!company_id || !company_name) {
+      show("company_id と company_name を入力してください", false);
+      return;
+    }
+    try {
+      await api("/admin/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id, company_name }),
+      });
+      document.getElementById("new-id").value = "";
+      document.getElementById("new-name").value = "";
+      show("追加しました", true);
+      await load();
+    } catch (e) {
+      show(String(e.message || e), false);
+    }
+  });
+
+  tbody.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("button[data-id]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    const nextActive = btn.getAttribute("data-active") !== "1";
+    try {
+      await api("/admin/companies/" + id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      show(nextActive ? "有効にしました" : "無効にしました", true);
+      await load();
+    } catch (e) {
+      show(String(e.message || e), false);
+    }
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

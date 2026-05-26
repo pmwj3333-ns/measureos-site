@@ -4,36 +4,63 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
-  <title>MEASURE OS｜班長マスタ（v2）</title>
+  <title>MEASURE OS｜管理者（v2）</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
+      background: #f4f6f9;
+      color: #1a1a1a;
       min-height: 100vh;
       line-height: 1.5;
+      font-size: 14px;
     }
     header {
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      padding: 18px 20px;
-      border-bottom: 1px solid #334155;
+      background: #1e3a5f;
+      color: #fff;
+      padding: 14px 20px;
     }
     header h1 { font-size: 1.05rem; font-weight: 700; }
+    header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; }
     .badge {
       display: inline-block;
       margin-top: 6px;
       font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #38bdf8;
-      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.75);
+    }
+    .sr-tabs {
+      display: flex;
+      gap: 0;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 18px;
+      border-bottom: 1px solid #dde2e8;
+      background: #fff;
+    }
+    .sr-tab {
+      padding: 12px 18px;
+      border: none;
+      background: transparent;
+      color: #5c6570;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .sr-tab.is-active {
+      color: #1e3a5f;
+      border-bottom-color: #1e3a5f;
     }
     .wrap {
       max-width: 1120px;
       margin: 0 auto;
       padding: 20px 18px 40px;
     }
+    .panel-hidden { display: none !important; }
     .layout-top {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -48,12 +75,12 @@
       }
     }
     .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 14px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
       padding: 18px 20px;
       margin-bottom: 14px;
-      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.35), 0 8px 28px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
     }
     .layout-top .card {
       margin-bottom: 0;
@@ -65,62 +92,55 @@
     .card-leaders {
       margin-bottom: 0;
       margin-top: 0;
-      padding-top: 18px;
-      border-top: 1px solid rgba(51, 65, 85, 0.65);
-      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.35), 0 10px 32px rgba(0, 0, 0, 0.2);
     }
-    .card-rules {
-      flex: 1;
-    }
+    .card-rules { flex: 1; }
     .rules-block + .rules-block {
       margin-top: 20px;
       padding-top: 20px;
-      border-top: 1px solid rgba(71, 85, 105, 0.75);
+      border-top: 1px solid #e8ecf0;
     }
     .rules-block h2 {
       font-size: 0.92rem;
       margin-bottom: 10px;
-      letter-spacing: 0.02em;
-      color: #f1f5f9;
+      color: #1e3a5f;
     }
-    .card h2 { font-size: 0.95rem; margin-bottom: 10px; color: #f8fafc; }
-    label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px; }
-    input[type="text"] {
+    .card h2 { font-size: 0.95rem; margin-bottom: 10px; color: #1e3a5f; }
+    label { display: block; font-size: 0.75rem; color: #5c6570; margin-bottom: 6px; }
+    input[type="text"],
+    input[type="time"] {
       width: 100%;
-      padding: 11px 12px;
-      border-radius: 10px;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: #f1f5f9;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #c5ccd4;
+      background: #fff;
+      color: #1a1a1a;
       font-size: 0.95rem;
       font-family: inherit;
     }
     input[type="number"] {
       width: 100%;
       max-width: 160px;
-      padding: 11px 12px;
-      border-radius: 10px;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: #f1f5f9;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #c5ccd4;
+      background: #fff;
+      color: #1a1a1a;
       font-size: 0.95rem;
       font-family: inherit;
     }
-    input[type="number"]:focus { outline: none; border-color: #38bdf8; }
-    input:focus { outline: none; border-color: #38bdf8; }
+    input:focus, select:focus { outline: none; border-color: #1e3a5f; }
     select {
       width: 100%;
       max-width: 420px;
-      padding: 11px 12px;
-      border-radius: 10px;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: #f1f5f9;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #c5ccd4;
+      background: #fff;
+      color: #1a1a1a;
       font-size: 0.95rem;
       font-family: inherit;
       cursor: pointer;
     }
-    select:focus { outline: none; border-color: #38bdf8; }
     .row-line {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
@@ -128,36 +148,24 @@
       align-items: center;
       margin-bottom: 5px;
       padding-bottom: 5px;
-      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      border-bottom: 1px solid #eef1f4;
     }
     .row-line label {
       font-size: 0.6875rem;
       font-weight: 500;
-      letter-spacing: 0.04em;
-      color: #94a3b8;
-      opacity: 0.88;
+      color: #5c6570;
       margin-bottom: 4px;
     }
-    .row-line input[type="text"] {
-      padding: 9px 10px;
-      font-size: 0.9rem;
-      border-radius: 9px;
-    }
-    .row-line:last-of-type {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: none;
-    }
-    @media (max-width: 520px) {
-      .row-line { grid-template-columns: 1fr; }
-    }
+    .row-line input[type="text"] { padding: 9px 10px; font-size: 0.9rem; }
+    .row-line:last-of-type { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    @media (max-width: 520px) { .row-line { grid-template-columns: 1fr; } }
     .btn-remove {
-      border: none;
-      background: #334155;
-      color: #94a3b8;
+      border: 1px solid #dde2e8;
+      background: #fafbfc;
+      color: #6b7280;
       width: 36px;
       height: 36px;
-      border-radius: 9px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 1.05rem;
       justify-self: end;
@@ -166,32 +174,28 @@
       width: 100%;
       padding: 10px 12px;
       margin-top: 8px;
-      border-radius: 10px;
-      border: 1px dashed #475569;
-      background: transparent;
-      color: #38bdf8;
+      border-radius: 6px;
+      border: 1px dashed #c5ccd4;
+      background: #fafbfc;
+      color: #1e3a5f;
       font-weight: 600;
       font-size: 0.88rem;
       cursor: pointer;
       font-family: inherit;
     }
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
     .card-leaders .actions {
       margin-top: 14px;
       padding-top: 14px;
-      border-top: 1px solid rgba(51, 65, 85, 0.5);
+      border-top: 1px solid #eef1f4;
     }
     .btn-primary {
       flex: 1;
       min-width: 140px;
-      padding: 12px 16px;
+      padding: 11px 16px;
       border: none;
-      border-radius: 12px;
-      background: #0ea5e9;
+      border-radius: 6px;
+      background: #1e3a5f;
       color: #fff;
       font-weight: 700;
       font-size: 0.95rem;
@@ -199,11 +203,11 @@
       font-family: inherit;
     }
     .btn-secondary {
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: 1px solid #475569;
-      background: #334155;
-      color: #e2e8f0;
+      padding: 11px 16px;
+      border-radius: 6px;
+      border: 1px solid #c5ccd4;
+      background: #fff;
+      color: #1e3a5f;
       font-weight: 600;
       font-size: 0.9rem;
       cursor: pointer;
@@ -212,29 +216,26 @@
     .msg {
       margin-top: 10px;
       padding: 9px 12px;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 0.8rem;
       line-height: 1.45;
       display: none;
     }
     .msg.ok {
       display: block;
-      color: #94d4b8;
-      background: rgba(16, 185, 129, 0.045);
-      border: 1px solid rgba(52, 211, 153, 0.16);
+      color: #166534;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
     }
     .msg.ng {
       display: block;
-      color: #f0b4b4;
-      background: rgba(248, 113, 113, 0.055);
-      border: 1px solid rgba(248, 113, 113, 0.22);
+      color: #991b1b;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
     }
-    .hint { font-size: 0.78rem; color: #64748b; margin-top: 10px; line-height: 1.5; }
-    .card-leaders > .hint {
-      margin-top: 12px;
-      padding-top: 2px;
-    }
-    .hint a { color: #38bdf8; }
+    .hint { font-size: 0.78rem; color: #6b7280; margin-top: 10px; line-height: 1.5; }
+    .card-leaders > .hint { margin-top: 12px; }
+    .hint a { color: #1e3a5f; }
     .label-block { margin-top: 4px; margin-bottom: 9px; }
     .label-after-gap { margin-top: 12px; }
     .work-mode-fieldset {
@@ -251,36 +252,199 @@
       gap: 10px;
       cursor: pointer;
       font-size: 0.9rem;
-      color: #e2e8f0;
+      color: #374151;
       margin-bottom: 0;
     }
     .work-mode-fieldset input[type="radio"] {
-      accent-color: #0ea5e9;
+      accent-color: #1e3a5f;
       width: 1.05rem;
       height: 1.05rem;
     }
-    .boundary-preview {
+    .boundary-preview { font-size: 0.82rem; color: #6b7280; margin-top: 8px; }
+    .boundary-preview strong { color: #1e3a5f; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .boundary-mismatch { margin-top: 8px; color: #92400e; }
+
+    /* Package A 観測 */
+    .observe-intro {
       font-size: 0.82rem;
-      color: #94a3b8;
-      margin-top: 8px;
+      color: #5c6570;
+      margin-bottom: 14px;
+      line-height: 1.55;
     }
-    .boundary-preview strong {
-      color: #38bdf8;
+    .observe-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .btn-observe {
+      padding: 9px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #1e3a5f;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .observe-meta { font-size: 0.75rem; color: #6b7280; }
+    .observe-section { margin-bottom: 22px; }
+    .observe-section h2 {
+      font-size: 0.9rem;
+      color: #1e3a5f;
+      margin-bottom: 10px;
       font-weight: 700;
+    }
+    .observe-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .observe-stat {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.05);
+    }
+    .observe-stat-label {
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-bottom: 6px;
+      line-height: 1.35;
+    }
+    .observe-stat-value {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #1e3a5f;
       font-variant-numeric: tabular-nums;
     }
-    .boundary-mismatch {
-      margin-top: 8px;
-      color: #fbbf24;
+    .observe-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.05);
+    }
+    .observe-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .observe-table th,
+    .observe-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eef1f4;
+      vertical-align: top;
+    }
+    .observe-table th {
+      background: #fafbfc;
+      color: #5c6570;
+      font-weight: 600;
+      font-size: 0.72rem;
+      white-space: nowrap;
+    }
+    .observe-table tr:last-child td { border-bottom: none; }
+    .observe-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eef4fb;
+      color: #1e3a5f;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .observe-priority-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .observe-empty {
+      padding: 16px;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 0.82rem;
+    }
+    .observe-target-card {
+      margin-bottom: 16px;
+      padding: 16px 18px;
+    }
+    .observe-target-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 20px;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .observe-target-kicker {
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
+    }
+    .observe-target-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .observe-target-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .observe-target-controls select {
+      min-width: min(280px, 100%);
+      max-width: 360px;
+    }
+    .btn-observe-nav {
+      padding: 9px 12px;
+      border: 1px solid #c5ccd4;
+      border-radius: 6px;
+      background: #fff;
+      color: #1e3a5f;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1;
+    }
+    .btn-observe-nav:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>班長マスタ登録</h1>
-    <span class="badge">フェーズ1 · v2 専用（旧 sr.html 不使用）</span>
+    <h1>MEASURE OS — 管理者</h1>
+    <p>班長マスタ・会社設定 / Package A 現場観測</p>
+    <span class="badge">v2 · 観測OS</span>
   </header>
+  <nav class="sr-tabs" aria-label="画面切替">
+    <button type="button" class="sr-tab is-active" id="tab-settings" data-panel="panel-settings">設定</button>
+    <button type="button" class="sr-tab" id="tab-observe" data-panel="panel-observe">Package A 観測</button>
+  </nav>
   <div class="wrap">
+    <div id="panel-settings">
     <div class="layout-top">
       <div class="card">
         <h2>会社（company_id）</h2>
@@ -370,6 +534,81 @@
         <a id="link-field" href="#">/genba/v2?company=…</a>
         から開いてください。
       </p>
+    </div>
+    </div>
+
+    <div id="panel-observe" class="panel-hidden">
+      <div class="card observe-target-card">
+        <div class="observe-target-head">
+          <div>
+            <div class="observe-target-kicker">観測対象会社</div>
+            <div class="observe-target-name" id="observe-target-label">（未選択）</div>
+          </div>
+          <div class="observe-target-controls">
+            <label for="observe-company-select" class="sr-only">観測対象会社を選択</label>
+            <select id="observe-company-select" aria-label="観測対象会社を選択">
+              <option value="">— 会社を選択 —</option>
+            </select>
+            <button type="button" class="btn-observe-nav" id="btn-observe-prev" title="前の会社">←</button>
+            <button type="button" class="btn-observe-nav" id="btn-observe-next" title="次の会社">→</button>
+          </div>
+        </div>
+      </div>
+      <p class="observe-intro">
+        Package A — 現場内部状態を観測します（制御・入力禁止・AI分析は行いません）。
+        複数会社・拠点の巡回観測は、上の切替または ← → で行えます。
+      </p>
+      <div class="observe-bar">
+        <button type="button" class="btn-observe" id="btn-observe-refresh">観測を更新</button>
+        <span id="observe-generated-at" class="observe-meta"></span>
+      </div>
+      <div id="observe-msg" class="msg"></div>
+
+      <section class="observe-section">
+        <h2>1. 現場状態サマリー</h2>
+        <div class="observe-summary-grid" id="observe-summary"></div>
+      </section>
+
+      <section class="observe-section">
+        <h2>2. 最新異常一覧</h2>
+        <div class="observe-table-wrap">
+          <table class="observe-table">
+            <thead>
+              <tr>
+                <th>時刻</th>
+                <th>班長</th>
+                <th>工程</th>
+                <th>種類</th>
+                <th>内容</th>
+              </tr>
+            </thead>
+            <tbody id="observe-anomalies"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="observe-section">
+        <h2>3. 工程別観測</h2>
+        <div class="observe-table-wrap">
+          <table class="observe-table">
+            <thead>
+              <tr>
+                <th>工程</th>
+                <th>青件数</th>
+                <th>青率</th>
+                <th>締切後投入</th>
+                <th>未完了数</th>
+              </tr>
+            </thead>
+            <tbody id="observe-process"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="observe-section">
+        <h2>4. 第7条状態</h2>
+        <div class="observe-priority-grid" id="observe-priority"></div>
+      </section>
     </div>
   </div>
 
@@ -683,6 +922,278 @@
   }
   updateBoundaryPreview();
   updateFieldLink();
+
+  /* --- Package A 観測タブ --- */
+  const SUMMARY_LABELS = [
+    ["blue_count", "青件数"],
+    ["after_cutoff_count", "締切後投入件数"],
+    ["prev_day_incomplete_count", "前営業日未完了件数"],
+    ["planned_unstarted_count", "未着手予告件数"],
+    ["diff_anomaly_count", "実績差異件数"],
+    ["exception_input_count", "例外入力件数"],
+  ];
+  let observeCompanies = [];
+
+  function formatObserveTargetLabel(cid, name) {
+    const id = String(cid || "").trim();
+    const nm = String(name || "").trim();
+    if (!id) return "（未選択）";
+    return nm ? id + "（" + nm + "）" : id;
+  }
+
+  function fillObserveCompanySelect() {
+    const sel = $("observe-company-select");
+    if (!sel) return;
+    const cid = $("company-id").value.trim();
+    const parts = ['<option value="">— 会社を選択 —</option>'];
+    for (const c of observeCompanies) {
+      const id = String(c.company_id || "").trim();
+      if (!id) continue;
+      const nm = String(c.company_name || "").trim();
+      const label = nm ? id + " — " + nm : id;
+      parts.push(
+        '<option value="' + escapeAttr(id) + '">' + escapeHtml(label) + "</option>",
+      );
+    }
+    sel.innerHTML = parts.join("");
+    if (cid && !observeCompanies.some((c) => c.company_id === cid)) {
+      const opt = document.createElement("option");
+      opt.value = cid;
+      opt.textContent = cid;
+      sel.appendChild(opt);
+    }
+    if (cid) sel.value = cid;
+    updateObserveNavButtons();
+  }
+
+  function updateObserveNavButtons() {
+    const prev = $("btn-observe-prev");
+    const next = $("btn-observe-next");
+    const enabled = observeCompanies.length > 1;
+    if (prev) prev.disabled = !enabled;
+    if (next) next.disabled = !enabled;
+  }
+
+  async function loadObserveCompanyList() {
+    const byId = new Map();
+    try {
+      const rows = await api("GET", "/admin/companies?active_only=true");
+      for (const r of rows || []) {
+        const id = String(r.company_id || "").trim();
+        if (!id) continue;
+        byId.set(id, String(r.company_name || "").trim());
+      }
+    } catch (_) { /* 一覧未取得でも観測は続行 */ }
+    try {
+      const legacy = await api("GET", "/v2/companies");
+      for (const r of legacy || []) {
+        const id = String(r.company_id || "").trim();
+        if (!id || byId.has(id)) continue;
+        byId.set(id, "");
+      }
+    } catch (_) { /* ok */ }
+    observeCompanies = [...byId.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], "ja"))
+      .map(([company_id, company_name]) => ({ company_id, company_name }));
+    fillObserveCompanySelect();
+  }
+
+  async function resolveCompanyName(cid) {
+    const id = String(cid || "").trim();
+    if (!id) return "";
+    const hit = observeCompanies.find((c) => c.company_id === id);
+    if (hit && hit.company_name) return hit.company_name;
+    try {
+      const co = await api("GET", "/v2/company/" + encodeURIComponent(id));
+      return String(co.company_name || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  async function updateObserveTargetLabel() {
+    const el = $("observe-target-label");
+    if (!el) return;
+    const cid = $("company-id").value.trim();
+    if (!cid) {
+      el.textContent = "（未選択）";
+      return;
+    }
+    const name = await resolveCompanyName(cid);
+    el.textContent = formatObserveTargetLabel(cid, name);
+    const hit = observeCompanies.find((c) => c.company_id === cid);
+    if (hit && !hit.company_name && name) hit.company_name = name;
+  }
+
+  async function setObserveCompany(cid, opts) {
+    const options = opts || {};
+    const reload = options.reload !== false;
+    const c = String(cid || "").trim();
+    if (!c) {
+      $("observe-target-label").textContent = "（未選択）";
+      return;
+    }
+    $("company-id").value = c;
+    rememberCompanyContext(c);
+    updateFieldLink();
+    fillObserveCompanySelect();
+    const sel = $("observe-company-select");
+    if (sel) sel.value = c;
+    await updateObserveTargetLabel();
+    if (reload) await loadObserveDashboard({ skipTargetRefresh: true });
+  }
+
+  function cycleObserveCompany(dir) {
+    if (!observeCompanies.length) return;
+    const cid = $("company-id").value.trim();
+    const ids = observeCompanies.map((c) => c.company_id);
+    let idx = ids.indexOf(cid);
+    if (idx < 0) idx = 0;
+    else idx = (idx + dir + ids.length) % ids.length;
+    setObserveCompany(ids[idx]);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function showObserveMsg(ok, text) {
+    const m = $("observe-msg");
+    if (!m) return;
+    m.className = "msg " + (ok ? "ok" : "ng");
+    m.textContent = text;
+  }
+
+  function hideObserveMsg() {
+    const m = $("observe-msg");
+    if (!m) return;
+    m.className = "msg";
+    m.textContent = "";
+  }
+
+  function switchTab(panelId) {
+    const settings = $("panel-settings");
+    const observe = $("panel-observe");
+    const tabSettings = $("tab-settings");
+    const tabObserve = $("tab-observe");
+    const isObserve = panelId === "panel-observe";
+    if (settings) settings.classList.toggle("panel-hidden", isObserve);
+    if (observe) observe.classList.toggle("panel-hidden", !isObserve);
+    if (tabSettings) tabSettings.classList.toggle("is-active", !isObserve);
+    if (tabObserve) tabObserve.classList.toggle("is-active", isObserve);
+    if (isObserve) {
+      loadObserveCompanyList()
+        .then(() => updateObserveTargetLabel())
+        .then(() => loadObserveDashboard({ skipTargetRefresh: true }));
+    }
+  }
+
+  function renderObserveDashboard(data) {
+    const summaryEl = $("observe-summary");
+    const anomEl = $("observe-anomalies");
+    const procEl = $("observe-process");
+    const priEl = $("observe-priority");
+    const metaEl = $("observe-generated-at");
+    if (!summaryEl || !data) return;
+
+    const s = data.summary || {};
+    summaryEl.innerHTML = SUMMARY_LABELS.map(([key, label]) =>
+      `<div class="observe-stat"><div class="observe-stat-label">${escapeHtml(label)}</div>` +
+      `<div class="observe-stat-value">${escapeHtml(String(s[key] != null ? s[key] : 0))}</div></div>`
+    ).join("");
+
+    const rows = data.recent_anomalies || [];
+    if (anomEl) {
+      anomEl.innerHTML = rows.length
+        ? rows.map((r) =>
+            `<tr><td>${escapeHtml(r.time_label || "—")}</td>` +
+            `<td>${escapeHtml(r.leader || "")}</td>` +
+            `<td>${escapeHtml(r.process_id || "")}</td>` +
+            `<td><span class="observe-pill">${escapeHtml(r.kind || "")}</span></td>` +
+            `<td>${escapeHtml(r.content || "")}</td></tr>`
+          ).join("")
+        : `<tr><td colspan="5" class="observe-empty">該当する観測はありません</td></tr>`;
+    }
+
+    const prows = data.process_observation || [];
+    if (procEl) {
+      procEl.innerHTML = prows.length
+        ? prows.map((p) =>
+            `<tr><td>${escapeHtml(p.process_id || "")}</td>` +
+            `<td>${escapeHtml(String(p.blue_count != null ? p.blue_count : 0))}</td>` +
+            `<td>${escapeHtml(String(p.blue_rate != null ? p.blue_rate : 0))}%</td>` +
+            `<td>${escapeHtml(String(p.after_cutoff_count != null ? p.after_cutoff_count : "—"))}</td>` +
+            `<td>${escapeHtml(String(p.incomplete_count != null ? p.incomplete_count : 0))}</td></tr>`
+          ).join("")
+        : `<tr><td colspan="5" class="observe-empty">工程データがありません</td></tr>`;
+    }
+
+    const ps = data.priority_status || {};
+    if (priEl) {
+      priEl.innerHTML = [
+        ["不足件数", ps.shortage_count],
+        ["締切後投入件数", ps.after_cutoff_count],
+        ["基準在庫未設定件数", ps.safety_unset_count],
+        ["優先度集中状態", ps.concentration_label || "—"],
+      ].map(([label, val]) =>
+        `<div class="observe-stat"><div class="observe-stat-label">${escapeHtml(label)}</div>` +
+        `<div class="observe-stat-value" style="font-size:1.1rem">${escapeHtml(String(val != null ? val : 0))}</div></div>`
+      ).join("");
+    }
+
+    if (metaEl) {
+      const gen = data.generated_at ? String(data.generated_at) : "";
+      const biz = data.current_business_date ? String(data.current_business_date) : "";
+      metaEl.textContent =
+        (gen ? "更新: " + gen.replace("T", " ").replace("Z", " UTC") : "") +
+        (biz ? " · 業務日 " + biz : "");
+    }
+  }
+
+  async function loadObserveDashboard(opts) {
+    const options = opts || {};
+    hideObserveMsg();
+    const cid = $("company-id").value.trim();
+    if (!cid) {
+      showObserveMsg(false, "観測対象会社を選択してください");
+      $("observe-target-label").textContent = "（未選択）";
+      return;
+    }
+    const btn = $("btn-observe-refresh");
+    if (btn) btn.disabled = true;
+    try {
+      const data = await api(
+        "GET",
+        "/v2/sr/observe-dashboard?company_id=" + encodeURIComponent(cid),
+      );
+      renderObserveDashboard(data);
+      if (!options.skipTargetRefresh) await updateObserveTargetLabel();
+      showObserveMsg(true, "観測データを読み込みました");
+    } catch (e) {
+      showObserveMsg(false, String(e.message || e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  $("tab-settings").addEventListener("click", () => switchTab("panel-settings"));
+  $("tab-observe").addEventListener("click", () => switchTab("panel-observe"));
+  $("btn-observe-refresh").addEventListener("click", () => loadObserveDashboard());
+  $("observe-company-select").addEventListener("change", () => {
+    const v = $("observe-company-select").value.trim();
+    if (v) setObserveCompany(v);
+  });
+  $("btn-observe-prev").addEventListener("click", () => cycleObserveCompany(-1));
+  $("btn-observe-next").addEventListener("click", () => cycleObserveCompany(1));
+
+  const qsTab = new URLSearchParams(location.search).get("tab");
+  if (qsTab === "observe" || qsTab === "package-a") {
+    switchTab("panel-observe");
+  }
 })();
 </script>
 </body>

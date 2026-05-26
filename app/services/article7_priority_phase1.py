@@ -8,7 +8,7 @@ company_settings で閾値を変える拡張は未実装（定数のみ）。
 2. 不足数 shortage <= 0 なら low
 3. それ以外は score = shortage_rate * due_weight で判定
 
-shortage = max(ship_qty - stock_qty, 0)
+shortage = max(ship_qty - stock_qty, 0)（shortage_qty 指定時はその値を優先）
 ship_qty > 0 のとき shortage_rate = shortage / ship_qty、それ以外は 0
 小数は丸めない。
 """
@@ -64,6 +64,7 @@ def compute_article7_priority_phase1(
     stock_qty: object,
     due_date_iso: Optional[str],
     today: Optional[date] = None,
+    shortage_qty: Optional[object] = None,
 ) -> Tuple[PriorityLevel, float]:
     """
     Returns:
@@ -75,7 +76,10 @@ def compute_article7_priority_phase1(
     today_d = today if today is not None else jst_today_date()
     ship = _finite_nonneg(ship_qty)
     stock = _finite_nonneg(stock_qty)
-    shortage = max(ship - stock, 0.0)
+    if shortage_qty is not None:
+        shortage = _finite_nonneg(shortage_qty)
+    else:
+        shortage = max(ship - stock, 0.0)
 
     due_d = _parse_due_iso(due_date_iso)
 

@@ -9,10 +9,12 @@ from sqlalchemy import text
 from app.database import SessionLocal, engine
 from app import models
 from app.routers import (
+    admin_companies,
     priority,
     product_master,
     settings,
     shipment,
+    sr_observe,
     stock,
     v2 as v2_routes,
     test_control,
@@ -116,6 +118,10 @@ def _sqlite_migrate():
                 )
             if "actual_memo" not in wu:
                 conn.execute(text("ALTER TABLE work_unit ADD COLUMN actual_memo VARCHAR"))
+            if "used_materials_json" not in wu:
+                conn.execute(
+                    text("ALTER TABLE work_unit ADD COLUMN used_materials_json VARCHAR")
+                )
             conn.execute(
                 text(
                     "UPDATE work_unit SET reflection_status = 'pending' "
@@ -160,6 +166,26 @@ def _sqlite_migrate():
             ):
                 if col not in wu:
                     conn.execute(text(f"ALTER TABLE work_unit ADD COLUMN {col} {typ}"))
+            wu_pr = cols("work_unit")
+            if wu_pr is not None and "planned_registered_at" not in wu_pr:
+                conn.execute(
+                    text("ALTER TABLE work_unit ADD COLUMN planned_registered_at DATETIME")
+                )
+                conn.execute(
+                    text(
+                        "UPDATE work_unit SET planned_registered_at = planned_at "
+                        "WHERE planned_registered_at IS NULL AND planned_at IS NOT NULL"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "UPDATE work_unit SET planned_registered_at = COALESCE(created_at, updated_at) "
+                        "WHERE planned_registered_at IS NULL AND planned_at IS NULL "
+                        "AND planned_lines_json IS NOT NULL "
+                        "AND TRIM(planned_lines_json) != '' "
+                        "AND TRIM(planned_lines_json) != '[]'"
+                    )
+                )
         except Exception:
             pass
         # work_unit_status_history: models.WorkUnitStatusHistory と同一 DDL（create_all 後の冪等救済）
@@ -271,6 +297,19 @@ def _sqlite_migrate():
                             "WHERE status IS NULL OR TRIM(COALESCE(status, '')) = ''"
                         )
                     )
+                pi6 = cols("priority_item")
+                if pi6 and "is_after_cutoff" not in pi6:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE priority_item ADD COLUMN is_after_cutoff BOOLEAN DEFAULT 0"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "UPDATE priority_item SET is_after_cutoff = 0 "
+                            "WHERE is_after_cutoff IS NULL"
+                        )
+                    )
         except Exception:
             pass
         try:
@@ -296,6 +335,31 @@ def _sqlite_migrate():
                     "ON product_master (company_id)"
                 )
             )
+            pm_cols = cols("product_master")
+            if pm_cols is not None and "safety_stock_value" not in pm_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE product_master ADD COLUMN safety_stock_value INTEGER"
+                    )
+                )
+        except Exception:
+            pass
+        try:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS company_master (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        company_id VARCHAR NOT NULL,
+                        company_name VARCHAR NOT NULL,
+                        is_active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME,
+                        updated_at DATETIME,
+                        CONSTRAINT uq_company_master_company_id UNIQUE (company_id)
+                    )
+                    """
+                )
+            )
         except Exception:
             pass
 
@@ -303,6 +367,17 @@ def _sqlite_migrate():
 # テーブルを自動作成（既存テーブルはスキップ）
 models.Base.metadata.create_all(bind=engine)
 _sqlite_migrate()
+
+try:
+    from app.services.company_validator import backfill_company_master_from_legacy
+
+    _bf_db = SessionLocal()
+    try:
+        backfill_company_master_from_legacy(_bf_db)
+    finally:
+        _bf_db.close()
+except Exception:
+    pass
 
 app = FastAPI(title="MEASURE OS", version="2.0")
 
@@ -315,6 +390,8 @@ app.include_router(stock.router)
 app.include_router(product_master.router)
 app.include_router(shipment.router)
 app.include_router(test_control.router, prefix="/v2")
+app.include_router(admin_companies.router)
+app.include_router(sr_observe.router)
 
 # uvicorn の cwd に依存しない（/static/debug.html 等）
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -469,6 +546,11 @@ def shipment_import_v2_screen():
 )
 def product_master_v2_screen():
     return _file_response_or_404("product_master_v2.html")
+
+
+@app.get("/admin/companies/ui", summary="会社マスタ管理（簡易画面）")
+def admin_companies_ui_screen():
+    return _file_response_or_404("admin_companies.html")
 
 
 @app.get("/dev")
