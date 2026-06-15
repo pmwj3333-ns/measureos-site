@@ -114,10 +114,6 @@
     · <a href="/office/v2">事務 v2</a>
   </div>
   <div class="bar">
-    <div>
-      <label for="company">company_id</label>
-      <input type="text" id="company" name="company_id" placeholder="例: demo" autocomplete="off">
-    </div>
     <button type="button" class="secondary btn-rebuild-priority">第7条を再計算</button>
   </div>
 
@@ -163,6 +159,42 @@ let fileRef = null;
 
 document.addEventListener("DOMContentLoaded", function () {
   var $ = function (id) { return document.getElementById(id); };
+  var sessionCompanyId = "";
+
+  function initSessionCompanyFromBootstrap() {
+    var boot =
+      typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
+        ? window.__MO_BOOTSTRAP_COMPANY__.trim()
+        : "";
+    sessionCompanyId = boot;
+  }
+
+  function redirectToOfficeLogin() {
+    window.location.replace(
+      "/office/v2?return_to=" + encodeURIComponent("/stock/import/v2")
+    );
+  }
+
+  initSessionCompanyFromBootstrap();
+  if (!sessionCompanyId) {
+    void (async function bootWhenBootstrapMissing() {
+      try {
+        var res = await fetch("/v2/office/session", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          var data = await res.json();
+          if (String(data.company_id || "").trim()) {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (_) { /* fall through */ }
+      redirectToOfficeLogin();
+    })();
+    return;
+  }
 
   const input = document.getElementById("csv-file");
 
@@ -491,43 +523,6 @@ document.addEventListener("DOMContentLoaded", function () {
     reader.readAsText(file, "UTF-8");
   }
 
-  function param(key, fb) {
-    var v = new URLSearchParams(location.search).get(key);
-    return v != null && String(v).trim() !== "" ? v.trim() : fb;
-  }
-
-  /** company_id 変更時: 別会社のCSVを誤投入しないようファイル・プレビューを捨てる */
-  function resetCsvStateOnCompanyChange() {
-    fileRef = null;
-    parsedState = null;
-    if (input) input.value = "";
-    var tb = $("csv-preview-body");
-    if (tb) tb.innerHTML = "";
-    var wrap = $("csv-preview-wrap");
-    if (wrap) wrap.hidden = true;
-    var imp = $("btn-import");
-    if (imp) imp.disabled = true;
-    var cap = $("csv-preview-caption");
-    if (cap) {
-      cap.textContent = "プレビュー（取り込み前に内容を確認してください）";
-      cap.className = "hint";
-    }
-    setMsg("", "");
-    updateFileStatusUi();
-  }
-
-  $("company").value = param("company", "");
-
-  var companyEl = $("company");
-  var companyIdPrevious = (companyEl.value || "").trim();
-  companyEl.addEventListener("change", function () {
-    var v = (companyEl.value || "").trim();
-    if (v !== companyIdPrevious) {
-      resetCsvStateOnCompanyChange();
-      companyIdPrevious = v;
-    }
-  });
-
   input.addEventListener("change", function (e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -579,9 +574,9 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   document.querySelector(".btn-rebuild-priority").addEventListener("click", async function () {
-    var company = ($("company").value || "").trim();
+    var company = sessionCompanyId;
     if (!company) {
-      setMsg("company_id を入力してください。", "err");
+      setMsg("会社セッションがありません。", "err");
       return;
     }
     setMsg("第7条を再計算しています…", "");
@@ -614,9 +609,9 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   $("btn-import").addEventListener("click", async function () {
-    var company = ($("company").value || "").trim();
+    var company = sessionCompanyId;
     if (!company) {
-      setMsg("company_id を入力してください。", "err");
+      setMsg("会社セッションがありません。", "err");
       return;
     }
     if (!fileRef) {
@@ -671,32 +666,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   updateFileStatusUi();
 });
-</script>
-<script>
-(function () {
-  const params = new URLSearchParams(location.search);
-
-  const company =
-    params.get("company") ||
-    params.get("company_id") ||
-    localStorage.getItem("company_id");
-
-  // 自動セット
-  if (company) {
-    const input = document.querySelector('input[name="company_id"]');
-    if (input) input.value = company;
-  }
-
-  // 保存
-  const input = document.querySelector('input[name="company_id"]');
-  if (!input) return;
-
-  input.addEventListener("change", () => {
-    if (input.value) {
-      localStorage.setItem("company_id", input.value);
-    }
-  });
-})();
 </script>
 </body>
 </html>

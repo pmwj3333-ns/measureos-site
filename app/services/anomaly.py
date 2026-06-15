@@ -3,7 +3,7 @@
 設計書（measure-os-article-5-spec.md）準拠：
   - 未入力（is_missing）
   - 順序不備（is_invalid_flow）
-  - 数値乖離（is_diff_anomaly）
+  - 結果不備（is_diff_anomaly）
 
 WorkUnit のサマリフラグのうち is_invalid_flow / is_diff_anomaly を更新しつつ、
 WorkAnomaly テーブルに個別の異常種別を記録する。
@@ -24,7 +24,7 @@ class AnomalyType:
     TARGET_MISSING   = "target_missing"    # 対象未選択の行がある
     QUANTITY_MISSING = "quantity_missing"  # 数量未入力の行がある
     FORECAST_MISSING = "forecast_missing"  # 予告なしで実績
-    FORECAST_DIFF    = "forecast_diff"     # 予告との数値乖離
+    FORECAST_DIFF    = "forecast_diff"     # 予告との結果差異
     START_MISSING    = "start_missing"     # 着手なしで実績
 
 
@@ -66,7 +66,7 @@ def detect_and_update(
     if has_qty_missing:
         detected_types.append(AnomalyType.QUANTITY_MISSING)
 
-    # ── 4. 数値乖離チェック（設計書: is_diff_anomaly）────────────
+    # ── 4. 結果不備チェック（設計書: is_diff_anomaly）────────────
     # 判定式: |actual - planned| > tolerance_value（絶対値・対称判定）
     # UI 表示は「±{tolerance_value}」として社労士・現場に提示する。
     #

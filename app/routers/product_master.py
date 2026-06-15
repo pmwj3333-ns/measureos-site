@@ -14,6 +14,8 @@ from app.schemas import (
     ProductMasterPatchIn,
 )
 from app.services.company_validator import validate_company_id
+from app.services.product_master import ensure_product_master_row
+from app.services.production_mode import normalize_production_mode
 
 router = APIRouter(prefix="/v2/product-master", tags=["v2-商品マスタ"])
 
@@ -26,6 +28,7 @@ def _row_to_out(r: models.ProductMaster) -> ProductMasterOut:
         label=(r.label or "").strip(),
         is_active=bool(getattr(r, "is_active", True)),
         safety_stock_value=getattr(r, "safety_stock_value", None),
+        production_mode=normalize_production_mode(getattr(r, "production_mode", None)),
         created_at=r.created_at.isoformat() if r.created_at else None,
         updated_at=r.updated_at.isoformat() if r.updated_at else None,
     )
@@ -79,30 +82,13 @@ def create_product_master(body: ProductMasterCreateIn, db: Session = Depends(get
     return _row_to_out(row)
 
 
-@router.post("/ensure", summary="ラベルが無ければマスタに1件作成（product_code は null）")
+@router.post("/ensure", summary="ラベルが無ければマスタに1件作成（product_code は null・既存は更新しない）")
 def ensure_product_master(body: ProductMasterEnsureIn, db: Session = Depends(get_db)):
     cid = validate_company_id(db, body.company_id)
     lb = (body.label or "").strip()
     if not lb:
         raise HTTPException(status_code=422, detail="label が空です")
-    now = datetime.utcnow()
-    ex = (
-        db.query(models.ProductMaster)
-        .filter(models.ProductMaster.company_id == cid)
-        .filter(models.ProductMaster.label == lb)
-        .first()
-    )
-    if ex:
-        return _row_to_out(ex)
-    row = models.ProductMaster(
-        company_id=cid,
-        label=lb,
-        product_code=None,
-        is_active=True,
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(row)
+    row = ensure_product_master_row(cid, lb, db)
     db.commit()
     db.refresh(row)
     return _row_to_out(row)
@@ -178,6 +164,9 @@ def patch_product_master(row_id: int, body: ProductMasterPatchIn, db: Session = 
                     detail="safety_stock_value は0以上の整数で指定してください",
                 )
             row.safety_stock_value = ss
+
+    if "production_mode" in patch and patch["production_mode"] is not None:
+        row.production_mode = normalize_production_mode(patch["production_mode"])
 
     row.updated_at = now
     db.commit()

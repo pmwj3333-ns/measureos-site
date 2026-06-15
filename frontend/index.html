@@ -369,7 +369,7 @@
     if (data.started_at)     lines.push(`着手時刻（JST）：${fmtDateTimeJST(data.started_at)}`);
     if (data.actual_value != null)  lines.push(`実績数量：${data.actual_value}`);
     if (data.diff_value != null)    lines.push(`差分：${data.diff_value}`);
-    if (data.is_diff_anomaly)       lines.push(`⚠️ 数値乖離あり`);
+    if (data.is_diff_anomaly)       lines.push(`⚠️ 結果不備あり`);
     if (data.status)         lines.push(`ステータス：${statusLabel[data.status] || data.status}`);
     if (data.memo)           lines.push(`メモ：${data.memo}`);
     el.innerHTML = lines.join("<br>");
@@ -465,7 +465,7 @@
         <div class="anomaly-item">
           <strong>ID: ${u.id}</strong>　業務: ${u.task_id}　工程: ${u.process_id}　担当: ${u.user_id}<br>
           営業日: ${u.business_date}　予告: ${u.planned_value ?? "未入力"}　実績: ${u.actual_value ?? "未入力"}　差分: ${u.diff_value ?? "-"}<br>
-          ${u.is_missing ? "⚠️ 未入力あり　" : ""}${u.is_diff_anomaly ? "⚠️ 数値乖離　" : ""}
+          ${u.is_missing ? "⚠️ 未入力あり　" : ""}${u.is_diff_anomaly ? "⚠️ 結果不備　" : ""}
           ${u.memo ? `メモ: ${u.memo}` : ""}
         </div>
       `).join("");

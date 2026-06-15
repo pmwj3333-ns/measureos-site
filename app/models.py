@@ -25,6 +25,7 @@ class CompanyMaster(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(String, nullable=False)
     company_name = Column(String, nullable=False)
+    company_password_hash = Column(String, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
@@ -50,6 +51,26 @@ class CompanySettings(Base):
     package_code       = Column(String, nullable=False, default="A")
     # 互換用（package_code 優先。新規は package_code のみで判定）
     phase2_enabled     = Column(Boolean, nullable=True, default=False)
+    # Package A: 基本営業曜日 JSON [1=月..7=日]。未設定時は月〜金
+    default_working_weekdays = Column(String, nullable=True)
+
+
+class WorkingCalendar(Base):
+    """Package A: 営業日の例外上書き（通常曜日は company_settings）。"""
+
+    __tablename__ = "working_calendar"
+    __table_args__ = (
+        Index("ix_working_calendar_company_id", "company_id"),
+        UniqueConstraint(
+            "company_id", "target_date", name="uq_working_calendar_company_date"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    target_date = Column(Date, nullable=False)
+    is_working_day = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, nullable=True)
 
 
 class CompanyCalendar(Base):
@@ -99,6 +120,8 @@ class WorkUnit(Base):
     pattern_a       = Column(Boolean, nullable=True)
     pattern_b       = Column(Boolean, nullable=True)
     user_pattern    = Column(String, nullable=True)
+    # 第5条: 現場 A/B 中分類（JSON: {"process":[...],"result":[...]}）
+    anomaly_classification_json = Column(String, nullable=True)
 
     status          = Column(String, nullable=True, default="normal")
     system_pattern = Column(String, nullable=True)
@@ -123,7 +146,7 @@ class WorkUnit(Base):
 
 
 class ProductMaster(Base):
-    """第5条・商品マスタ（会社単位）。現場は商品名で入力し、裏で product_code を紐づけ可能。"""
+    """第5条・会社商品辞書（蓄積型・CSV 非同期）。現場は商品名で入力し、裏で product_code を紐づけ可能。"""
 
     __tablename__ = "product_master"
     __table_args__ = (
@@ -138,6 +161,8 @@ class ProductMaster(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     # 第7条・基準在庫（安全在庫）。NULL=未設定（計算時 0、観測バッジ用に未設定扱い）
     safety_stock_value = Column(Integer, nullable=True)
+    # 第7条・製造区分: manufacture=自社製造 / purchase=商社・仕入（表示分離のみ）
+    production_mode = Column(String, nullable=False, default="manufacture")
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -222,3 +247,43 @@ class OfficeClosedWorkUnitSuppress(Base):
 
     peer_unit_id = Column(Integer, ForeignKey("work_unit.id"), primary_key=True)
     created_at = Column(DateTime, nullable=True)
+
+
+class OpsPortfolioWeeklySnapshot(Base):
+    """運営ダッシュボード週次スナップショット（Phase 2 基盤・レポート生成は未実装）。"""
+
+    __tablename__ = "ops_portfolio_weekly_snapshot"
+    __table_args__ = (
+        Index("ix_ops_portfolio_weekly_snapshot_company_id", "company_id"),
+        Index("ix_ops_portfolio_weekly_snapshot_generated_at", "generated_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    blue_count = Column(Integer, nullable=False, default=0)
+    blue_rate = Column(Float, nullable=False, default=0.0)
+    danger_score = Column(Integer, nullable=False, default=0)
+    prev_day_incomplete_count = Column(Integer, nullable=False, default=0)
+    after_cutoff_count = Column(Integer, nullable=False, default=0)
+    generated_at = Column(DateTime, nullable=False)
+
+
+class MonthlyReport(Base):
+    """社労士向け月報（自動集計サマリー + コメント保存）。"""
+
+    __tablename__ = "monthly_reports"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "target_month",
+            name="uq_monthly_reports_company_month",
+        ),
+        Index("ix_monthly_reports_company_id", "company_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(String, nullable=False)
+    target_month = Column(String, nullable=False)
+    generated_summary = Column(String, nullable=False, default="")
+    consultant_comment = Column(String, nullable=True, default="")
+    created_at = Column(DateTime, nullable=False)

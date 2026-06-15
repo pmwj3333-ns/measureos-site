@@ -70,7 +70,7 @@ class V2LeadersPut(BaseModel):
     )
     tolerance_value: Optional[int] = Field(
         default=None,
-        description="数値乖離の許容差（±）。省略時は tolerance_value を変更しない。",
+        description="結果不備判定の許容差（±）。省略時は tolerance_value を変更しない。",
     )
     package_code: Optional[str] = Field(
         default=None,
@@ -80,6 +80,40 @@ class V2LeadersPut(BaseModel):
         default=None,
         description="HH:MM。第7条・3条の受注締切。unset で変更しない。空文字でクリア。",
     )
+    company_password: Optional[str] = Field(
+        default=None,
+        description="会社パスワード（平文）。省略または空のときは変更しない。",
+    )
+
+
+class V2CompanyCreateIn(BaseModel):
+    company_name: str
+    package_code: str = "A"
+
+
+class V2CompanyCreateOut(BaseModel):
+    company_id: str
+    company_name: str
+    initial_password: str
+    package_code: str
+    has_password: bool = True
+
+
+class V2CompanyPasswordReissueOut(BaseModel):
+    company_id: str
+    initial_password: str
+    has_password: bool = True
+
+
+class OfficeLoginIn(BaseModel):
+    company_id: str
+    password: str
+
+
+class OfficeSessionOut(BaseModel):
+    company_id: str
+    company_name: str
+    authenticated: bool = True
 
 
 # ─── カレンダー ─────────────────────────────────────────────
@@ -135,6 +169,13 @@ class WorkLineIn(BaseModel):
     used_materials: Optional[List[UsedMaterialIn]] = None
 
 
+class AnomalyClassificationIn(BaseModel):
+    """第5条: 現場 A/B 中分類（Package A 任意）。"""
+
+    process: List[str] = Field(default_factory=list)
+    result: List[str] = Field(default_factory=list)
+
+
 class ActualIn(BaseModel):
     actual_value: Optional[float] = None
     actual_work_type: Optional[str] = None
@@ -145,6 +186,7 @@ class ActualIn(BaseModel):
     pattern_b: Optional[bool] = None
     # 現場チェック B のみ（"B" / null）。system_pattern とは独立
     user_pattern: Optional[str] = None
+    anomaly_classification: Optional[AnomalyClassificationIn] = None
     # 第7条逸脱（予定外ラベル）のときのみ必須。逸脱でないときは送らずサーバがクリアする。
     deviation_reason: Optional[str] = None
     # 現場・実績時のみ任意（誤入力説明・補足）
@@ -162,7 +204,7 @@ class PlannedIn(BaseModel):
 
 
 class StartedIn(BaseModel):
-    """POST /work/{id}/start 用。正式予告（planned_registered_at 無し）のときだけ lines を受理し着手時点の予告スナップショットを保存する。"""
+    """POST /work/{id}/start 用。planned_registered_at 必須（予告フェーズ通過後のみ着手可）。body.lines は互換用で通常は送らない。"""
 
     lines: Optional[List[WorkLineIn]] = None
 
@@ -240,6 +282,8 @@ class PriorityItemOut(BaseModel):
         None,
         description="prod_value - article5_completed_qty（超過時は負。作成済み ✔ は残り<=0 で判定）。",
     )
+    # product_master.production_mode を参照（表示分離用・不足計算は共通）
+    production_mode: str = "manufacture"
 
 
 class PriorityItemsOut(BaseModel):
@@ -286,6 +330,7 @@ class ProductMasterOut(BaseModel):
     label: str
     is_active: bool = True
     safety_stock_value: Optional[int] = None
+    production_mode: str = "manufacture"
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -307,6 +352,7 @@ class ProductMasterPatchIn(BaseModel):
     label: Optional[str] = None
     is_active: Optional[bool] = None
     safety_stock_value: Optional[int] = None
+    production_mode: Optional[Literal["manufacture", "purchase"]] = None
 
 
 class StockImportOut(BaseModel):
@@ -384,6 +430,7 @@ class WorkUnitOut(BaseModel):
     pattern_a:           Optional[bool] = None
     pattern_b:           Optional[bool] = None
     user_pattern:        Optional[str] = None  # 現場申告 B のみ（未申告は null）。system_pattern とは独立
+    anomaly_classification: Optional[AnomalyClassificationIn] = None
     system_pattern:      str = ""  # 第5条フェーズ1・サーバ確定 A*/B*（user_pattern とは独立）
     status:              str = "normal"
     judgement_red_deadline_at: Optional[str] = None  # フェーズ2かつ blue 時: 2回目 judgement 境界（ISO）
@@ -447,6 +494,23 @@ class PackageAObservePriorityStatusOut(BaseModel):
     safety_unset_count: int = 0
     concentration_label: str = ""
     open_item_count: int = 0
+    manufacture_shortage_count: int = 0
+    purchase_shortage_count: int = 0
+
+
+class FieldClassificationBreakdownRowOut(BaseModel):
+    code: str
+    label: str
+    count: int
+
+
+class FieldClassificationBreakdownOut(BaseModel):
+    note: str = ""
+    display_mode: str = "empty"
+    process: List[FieldClassificationBreakdownRowOut] = Field(default_factory=list)
+    result: List[FieldClassificationBreakdownRowOut] = Field(default_factory=list)
+    auto_process: Optional[FieldClassificationBreakdownRowOut] = None
+    auto_result: Optional[FieldClassificationBreakdownRowOut] = None
 
 
 class PackageAObserveDashboardOut(BaseModel):
@@ -457,3 +521,195 @@ class PackageAObserveDashboardOut(BaseModel):
     recent_anomalies: List[PackageAObserveAnomalyRowOut]
     process_observation: List[PackageAObserveProcessRowOut]
     priority_status: PackageAObservePriorityStatusOut
+    field_classification_breakdown: FieldClassificationBreakdownOut = Field(
+        default_factory=FieldClassificationBreakdownOut
+    )
+
+
+class PackageAObservePortfolioCompanyOut(BaseModel):
+    company_id: str
+    company_name: str
+    blue_count: int = 0
+    blue_rate: float = 0.0
+    last_activity_at: Optional[str] = None
+    status: str = "normal"
+    danger_score: int = 0
+    weekly_report_target: bool = False
+    prev_day_incomplete_count: int = 0
+    after_cutoff_count: int = 0
+    planned_unstarted_count: int = 0
+    diff_anomaly_count: int = 0
+    exception_input_count: int = 0
+
+
+class PackageAObservePortfolioTotalsOut(BaseModel):
+    company_count: int = 0
+    danger_count: int = 0
+    watch_count: int = 0
+    normal_count: int = 0
+
+
+class PackageAObservePortfolioBlueRateItemOut(BaseModel):
+    company_id: str
+    company_name: str
+    blue_rate: float = 0.0
+    blue_count: int = 0
+
+
+class PackageAObservePortfolioDangerScoreItemOut(BaseModel):
+    company_id: str
+    company_name: str
+    danger_score: int = 0
+    blue_count: int = 0
+    prev_day_incomplete_count: int = 0
+
+
+class PackageAObservePortfolioPrevDayIncompleteItemOut(BaseModel):
+    company_id: str
+    company_name: str
+    prev_day_incomplete_count: int = 0
+
+
+class PackageAObservePortfolioAfterCutoffItemOut(BaseModel):
+    company_id: str
+    company_name: str
+    after_cutoff_count: int = 0
+
+
+class PackageAObservePortfolioStaleUpdateItemOut(BaseModel):
+    company_id: str
+    company_name: str
+    last_activity_at: Optional[str] = None
+    stale_days: Optional[int] = None
+
+
+class PackageAObservePortfolioObservationOut(BaseModel):
+    top_danger_score: List[PackageAObservePortfolioDangerScoreItemOut] = []
+    top_prev_day_incomplete: List[PackageAObservePortfolioPrevDayIncompleteItemOut] = []
+    top_after_cutoff: List[PackageAObservePortfolioAfterCutoffItemOut] = []
+    top_blue_rate: List[PackageAObservePortfolioBlueRateItemOut] = []
+    stale_updates: List[PackageAObservePortfolioStaleUpdateItemOut] = []
+
+
+class PackageAObservePortfolioOut(BaseModel):
+    companies: List[PackageAObservePortfolioCompanyOut]
+    totals: PackageAObservePortfolioTotalsOut
+    observation: PackageAObservePortfolioObservationOut
+    generated_at: str
+
+
+class WorkingCalendarExceptionOut(BaseModel):
+    id: int
+    target_date: str
+    is_working_day: bool
+
+
+class WorkingCalendarDayOut(BaseModel):
+    date: str
+    weekday: int
+    is_working_day: bool
+    source: Literal["exception", "weekday", "fallback"]
+
+
+class WorkingCalendarMonthOut(BaseModel):
+    company_id: str
+    month: str
+    default_working_weekdays: List[int]
+    exceptions: List[WorkingCalendarExceptionOut]
+    days: List[WorkingCalendarDayOut]
+
+
+class WorkingCalendarExceptionIn(BaseModel):
+    target_date: str = Field(..., description="YYYY-MM-DD")
+    is_working_day: bool
+
+
+class WorkingDaysPatchIn(BaseModel):
+    company_id: str
+    default_working_weekdays: List[int] = Field(
+        ...,
+        min_length=1,
+        description="ISO 曜日 1=月 … 7=日",
+    )
+    exceptions: List[WorkingCalendarExceptionIn] = Field(default_factory=list)
+
+
+class WorkingDaysPatchOut(BaseModel):
+    ok: bool = True
+    company_id: str
+    default_working_weekdays: List[int]
+    exception_count: int
+
+
+# ─── 月報（sr/monthly）────────────────────────────────────────
+class MonthlyReportCountRowOut(BaseModel):
+    label: str
+    count: int
+
+
+class MonthlyReportAnomalyBreakdownRowOut(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class MonthlyReportAuditBreakdownRowOut(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class MonthlyReportMetricsOut(BaseModel):
+    total_work_count: int = 0
+    completed_count: int = 0
+    planned_registered_count: int = 0
+    actual_registered_count: int = 0
+    started_without_planned_count: int = 0
+    incomplete_count: int = 0
+    article7_count: int = 0
+    after_cutoff_count: int = 0
+    anomaly_count: int = 0
+    anomaly_breakdown: List[MonthlyReportAnomalyBreakdownRowOut] = Field(
+        default_factory=list
+    )
+    anomaly_breakdown_note: str = ""
+    audit_target_count: int = 0
+    audit_response_rate: float = 0.0
+    audit_breakdown: List[MonthlyReportAuditBreakdownRowOut] = Field(
+        default_factory=list
+    )
+    audit_breakdown_note: str = ""
+    by_process: List[MonthlyReportCountRowOut] = Field(default_factory=list)
+    by_leader: List[MonthlyReportCountRowOut] = Field(default_factory=list)
+    field_classification_breakdown: FieldClassificationBreakdownOut = Field(
+        default_factory=FieldClassificationBreakdownOut
+    )
+
+
+class MonthlyReportAggregateOut(BaseModel):
+    company_id: str
+    company_name: str
+    target_month: str
+    target_month_label: str
+    metrics: MonthlyReportMetricsOut
+    previous_metrics: Optional[MonthlyReportMetricsOut] = None
+    generated_summary: str
+    consultant_comment: str = ""
+    saved_report_id: Optional[int] = None
+    saved_at: Optional[str] = None
+
+
+class MonthlyReportSaveIn(BaseModel):
+    company_id: str
+    target_month: str = Field(..., description="YYYY-MM")
+    generated_summary: str = ""
+    consultant_comment: str = ""
+
+
+class MonthlyReportSaveOut(BaseModel):
+    id: int
+    company_id: str
+    target_month: str
+    generated_summary: str
+    consultant_comment: str = ""
+    created_at: str

@@ -45,36 +45,22 @@
   th { background: #f2f2f7; color: #636366; font-weight: 600; }
   tr.inactive td { color: #8e8e93; background: #fafafa; }
   td input.code-inp { width: 100%; max-width: 200px; }
+  td select.mode-sel { max-width: 140px; font-size: 0.8rem; padding: 6px 8px; border: 1px solid #c7c7cc; border-radius: 6px; }
   .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 </style>
 </head>
 <body>
   <p class="nav-links"><a href="/office/v2">事務 v2</a> · <a href="/priority/input/v2">第7条入力</a></p>
   <h1>商品マスタ</h1>
-  <p class="sub">現場の第5条実績で使う商品名の一覧です。商品コードを後から紐づけると、第7条との突合がコード優先になります。無効にした行は現場の候補に出ません。</p>
+  <p class="sub">会社の商品辞書です。CSV 取込で新商品だけ追加され、既存の設定（基準在庫・製造区分など）は保持されます。今回の CSV に無い過去商品も残ります。</p>
 
   <div class="bar">
     <div>
-      <label for="company">company_id</label>
-      <input
-        type="text"
-        id="company"
-        name="pm_company_key"
-        placeholder="例: demo_co"
-        style="width:220px"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        spellcheck="false"
-      />
-    </div>
-    <div>
       <label for="show-inactive">表示</label>
       <div style="padding-top:6px;">
-        <label><input type="checkbox" id="show-inactive" /> 無効行も含める</label>
+        <label><input type="checkbox" id="show-inactive" checked /> 無効行も含める（辞書全体）</label>
       </div>
     </div>
-    <button type="button" id="btn-load">読み込み</button>
   </div>
   <p id="msg" class="hint"></p>
 
@@ -93,13 +79,14 @@
           <th>ID</th>
           <th>商品名（label）</th>
           <th>product_code</th>
+          <th>製造区分</th>
           <th>基準在庫</th>
           <th>状態</th>
           <th>操作</th>
         </tr>
       </thead>
       <tbody id="tbody">
-          <tr><td colspan="6" class="hint">company_id を入力して読み込み</td></tr>
+          <tr><td colspan="7" class="hint">読み込み中…</td></tr>
       </tbody>
     </table>
   </div>
@@ -109,6 +96,23 @@
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
+  let productMasterSessionCompanyId = "";
+
+  function initProductMasterSessionCompanyFromBootstrap() {
+    const boot =
+      typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
+        ? window.__MO_BOOTSTRAP_COMPANY__.trim()
+        : "";
+    productMasterSessionCompanyId = boot;
+  }
+
+  function redirectToOfficeLogin() {
+    const path = window.location.pathname || "/product/master/v2";
+    window.location.replace(
+      "/office/v2?return_to=" + encodeURIComponent(path)
+    );
+  }
+
   function esc(s) {
     return String(s)
       .replace(/&/g, "&amp;")
@@ -163,7 +167,7 @@
   function renderRows(rows) {
     const tb = $("tbody");
     if (!rows.length) {
-      tb.innerHTML = "<tr><td colspan=\"6\" class=\"hint\">データなし</td></tr>";
+      tb.innerHTML = "<tr><td colspan=\"7\" class=\"hint\">データなし</td></tr>";
       return;
     }
     tb.innerHTML = rows.map((r) => {
@@ -173,11 +177,18 @@
         r.safety_stock_value != null && r.safety_stock_value !== ""
           ? String(r.safety_stock_value)
           : "";
+      const mode = String(r.production_mode || "manufacture").trim().toLowerCase();
+      const modeSel =
+        '<select class="mode-sel" data-mode-input aria-label="製造区分">' +
+        '<option value="manufacture"' + (mode === "manufacture" ? " selected" : "") + '>自社製造</option>' +
+        '<option value="purchase"' + (mode === "purchase" ? " selected" : "") + '>商社・仕入</option>' +
+        "</select>";
       return (
         "<tr class=\"" + (inactive ? "inactive" : "") + "\" data-id=\"" + r.id + "\">" +
         "<td>" + esc(r.id) + "</td>" +
         "<td>" + esc(r.label) + "</td>" +
         "<td><input class=\"code-inp\" type=\"text\" data-code-input value=\"" + esc(codeVal) + "\" placeholder=\"空なら null\" /></td>" +
+        "<td>" + modeSel + "</td>" +
         "<td><input class=\"code-inp\" type=\"number\" min=\"0\" step=\"1\" data-safety-input value=\"" + esc(ssVal) + "\" placeholder=\"未設定\" style=\"max-width:88px\" /></td>" +
         "<td>" + (inactive ? "無効" : "有効") + "</td>" +
         "<td><div class=\"row-actions\">" +
@@ -195,6 +206,7 @@
       const inactiveBtn = tr.querySelector("[data-inactive]");
       const activeBtn = tr.querySelector("[data-active]");
       const codeInp = tr.querySelector("[data-code-input]");
+      const modeSel = tr.querySelector("[data-mode-input]");
       const safetyInp = tr.querySelector("[data-safety-input]");
       if (saveBtn) {
         saveBtn.addEventListener("click", async () => {
@@ -203,6 +215,9 @@
           try {
             const raw = codeInp ? String(codeInp.value || "").trim() : "";
             const body = { product_code: raw || null };
+            if (modeSel) {
+              body.production_mode = String(modeSel.value || "manufacture").trim();
+            }
             if (safetyInp) {
               const ssRaw = String(safetyInp.value || "").trim();
               if (ssRaw === "") {
@@ -259,9 +274,9 @@
   }
 
   async function load() {
-    const cid = $("company").value.trim();
+    const cid = productMasterSessionCompanyId;
     if (!cid) {
-      setMsg("company_id を入力してください", "err");
+      setMsg("会社セッションがありません", "err");
       return;
     }
     const inc = $("show-inactive").checked ? "false" : "true";
@@ -274,7 +289,7 @@
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setMsg((data && data.detail) || res.statusText || String(res.status), "err");
-        $("tbody").innerHTML = "<tr><td colspan=\"5\" class=\"hint err\">取得できませんでした</td></tr>";
+        $("tbody").innerHTML = "<tr><td colspan=\"7\" class=\"hint err\">取得できませんでした</td></tr>";
         return;
       }
       const rows = Array.isArray(data) ? data : [];
@@ -285,12 +300,14 @@
     }
   }
 
-  $("btn-load").addEventListener("click", load);
+  $("show-inactive").addEventListener("change", () => {
+    void load();
+  });
   $("btn-add").addEventListener("click", async () => {
-    const cid = $("company").value.trim();
+    const cid = productMasterSessionCompanyId;
     const lb = $("new-label").value.trim();
     if (!cid) {
-      setMsg("company_id を入力してください", "err");
+      setMsg("会社セッションがありません", "err");
       return;
     }
     if (!lb) {
@@ -311,9 +328,28 @@
       btn.disabled = false;
     }
   });
-  const params = new URLSearchParams(location.search);
-  const qc = params.get("company_id") || params.get("company");
-  if (qc) $("company").value = qc.trim();
+  initProductMasterSessionCompanyFromBootstrap();
+  if (!productMasterSessionCompanyId) {
+    void (async function bootProductMasterWhenBootstrapMissing() {
+      try {
+        const res = await fetch("/v2/office/session", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const sessionCid = String(data.company_id || "").trim();
+          if (sessionCid) {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (_) { /* fall through */ }
+      redirectToOfficeLogin();
+    })();
+  } else {
+    void load();
+  }
 })();
 </script>
 </body>

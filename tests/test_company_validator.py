@@ -73,3 +73,40 @@ def test_stock_csv_import_validates_company(client: TestClient):
     )
     assert r.status_code == 422
     assert r.json()["detail"] == "company_id is not registered"
+
+
+def test_v2_put_leaders_auto_registers_company_master(client: TestClient):
+    cid = "sr_v2_auto_reg_co"
+    r = client.put(
+        f"/v2/company/{cid}/leaders",
+        json={
+            "leaders": [{"name": "班長A", "process": "組立"}],
+            "company_name": "自動登録テスト株式会社",
+            "package_code": "A",
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["company_id"] == cid
+    assert body["company_name"] == "自動登録テスト株式会社"
+    assert body["saved_count"] == 1
+
+    rows = client.get("/admin/companies").json()
+    master = next(x for x in rows if x["company_id"] == cid)
+    assert master["company_name"] == "自動登録テスト株式会社"
+    assert master["is_active"] is True
+
+
+def test_v2_put_leaders_rejects_inactive_company(client: TestClient):
+    cid = "sr_v2_inactive_save_co"
+    _register(client, cid, "無効保存テスト")
+    rid = next(x["id"] for x in client.get("/admin/companies").json() if x["company_id"] == cid)
+    r = client.patch(f"/admin/companies/{rid}", json={"is_active": False})
+    assert r.status_code == 200
+
+    r = client.put(
+        f"/v2/company/{cid}/leaders",
+        json={"leaders": [], "company_name": "無効保存テスト"},
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "company is inactive"

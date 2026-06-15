@@ -180,3 +180,129 @@ def collect_latest_slices(source_rows: Optional[List[dict]]) -> List[dict]:
             }
         )
     return out
+
+
+def latest_rows_by_natural_key(source_rows: Optional[List[dict]]) -> List[dict]:
+    """office_v2 latestRowsByNaturalKey と同一（id 最大で最新版）。"""
+    by_nk: Dict[str, dict] = {}
+    for r in source_rows or []:
+        if not r:
+            continue
+        nk = natural_key(r)
+        prev = by_nk.get(nk)
+        if not prev or int(r.get("id") or 0) > int(prev.get("id") or 0):
+            by_nk[nk] = r
+    return list(by_nk.values())
+
+
+def _has_timestamp(value: object) -> bool:
+    if value is None:
+        return False
+    return bool(str(value).strip())
+
+
+def is_completely_empty_shell(row: dict) -> bool:
+    return (
+        not _has_timestamp(row.get("planned_at"))
+        and not _has_timestamp(row.get("started_at"))
+        and not _has_timestamp(row.get("actual_at"))
+    )
+
+
+def is_successor_shell(row: dict, versions: List[dict]) -> bool:
+    if not is_completely_empty_shell(row):
+        return False
+    rid = int(row.get("id") or 0)
+    for v in versions:
+        if int(v.get("id") or 0) >= rid:
+            continue
+        if _has_timestamp(v.get("actual_at")):
+            return True
+    return False
+
+
+def is_audit_candidate(row: dict, versions: List[dict]) -> bool:
+    if is_completely_empty_shell(row):
+        return False
+    if is_successor_shell(row, versions):
+        return False
+    return True
+
+
+def select_audit_head_for_nk(versions: List[dict]) -> Optional[dict]:
+    if not versions:
+        return None
+    for row in sorted(versions, key=lambda r: int(r.get("id") or 0), reverse=True):
+        if is_audit_candidate(row, versions):
+            return row
+    return None
+
+
+def audit_heads_from_rows(source_rows: Optional[List[dict]]) -> List[dict]:
+    from collections import defaultdict
+
+    grouped: Dict[str, List[dict]] = defaultdict(list)
+    for r in source_rows or []:
+        if not r:
+            continue
+        grouped[natural_key(r)].append(r)
+    out: List[dict] = []
+    for versions in grouped.values():
+        head = select_audit_head_for_nk(versions)
+        if head is not None:
+            out.append(head)
+    return out
+
+
+def row_passes_office_anomaly_display(r: dict, *, effective_gt_bd: bool = True) -> bool:
+    """passesOfficeAnomalyDisplay のテスト用簡易版（持ち越しは effective_gt_bd で制御）。"""
+    st = str(r.get("status") or "").lower()
+    if st not in ("blue", "red"):
+        return False
+    if st == "red":
+        return True
+    if effective_gt_bd and not r.get("actual_at"):
+        bd = str(r.get("business_date") or "").strip()
+        if bd and bd < "2099-01-01":
+            return True
+    if r.get("is_unregistered_user") is True:
+        return True
+    if r.get("is_article7_deviation") is True or r.get("is_deviation") is True:
+        return True
+    if r.get("is_diff_anomaly") is True:
+        return True
+    if r.get("is_invalid_flow") is True:
+        return True
+    if r.get("is_missing") is True:
+        return True
+    if str(r.get("system_pattern") or "").strip():
+        return True
+    return False
+
+
+def collect_office_anomaly_rows(
+    source_rows: Optional[List[dict]],
+    *,
+    effective_gt_bd: bool = True,
+) -> List[dict]:
+    """
+    office_v2 collectOfficeAnomalySortedRows と同一。
+    Audit Head 1行/NK → closed 除外 → blue/red → passesOfficeAnomalyDisplay。
+    """
+    out: List[dict] = []
+    for row in audit_heads_from_rows(source_rows):
+        st = str(row.get("status") or "").lower()
+        if st == "closed":
+            continue
+        if st not in ("blue", "red"):
+            continue
+        if st == "blue" and not row_passes_office_anomaly_display(
+            row, effective_gt_bd=effective_gt_bd
+        ):
+            continue
+        out.append(row)
+    out.sort(
+        key=lambda r: (str(r.get("business_date") or ""), int(r.get("id") or 0)),
+        reverse=True,
+    )
+    return out

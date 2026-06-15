@@ -25,6 +25,7 @@ from app.services.status_history import (
     norm_work_unit_status,
 )
 from app.services.judgement_promote import (
+    carryover_implies_status_blue_unit,
     compute_red_deadline_jst,
     incomplete_implies_status_blue,
     next_work_end_boundary_jst,
@@ -42,6 +43,10 @@ from app.services.work_unit_clone import (
     clone_work_unit_row,
     strip_derived_columns_for_fact_snapshot,
     sync_planned_at_with_planned_facts,
+)
+from app.services.anomaly_classification import (
+    build_storage_from_request,
+    parse_classification_json,
 )
 from app.services.actual_revision import (
     compute_actual_revision_meta_for_unit,
@@ -588,6 +593,11 @@ def _has_meaningful_actual(unit: models.WorkUnit, settings: models.CompanySettin
     return v is not None and math.isfinite(float(v))
 
 
+def _is_empty_actual_report(unit: models.WorkUnit, settings: models.CompanySettings) -> bool:
+    """actual_at あり・実績内容なし（順序は成立、結果不備）。"""
+    return unit.actual_at is not None and not _has_meaningful_actual(unit, settings)
+
+
 def _phase1_completely_empty_legacy_triplet(unit: models.WorkUnit) -> bool:
     """
     フェーズ1: planned_value / started_at / actual_value がすべて未入力。
@@ -667,6 +677,7 @@ def _apply_minimal_judgement(
         hs = unit.started_at is not None
         ha = _has_actual_signal(unit, settings)
         ha_meaningful = _has_meaningful_actual(unit, settings)
+        empty_actual_report = _is_empty_actual_report(unit, settings)
 
         unreg = bool(getattr(unit, "is_unregistered_user", False))
         if unreg:
@@ -694,6 +705,11 @@ def _apply_minimal_judgement(
             return
 
         sys_a = ((not hp) and (hs or ha)) or ((not hs) and ha)
+        if empty_actual_report:
+            if hs:
+                sys_a = False
+            else:
+                sys_a = True
         b_no_planned_actual = (not hp) and ha
         b_tolerance = False
         if hp and ha:
@@ -705,13 +721,14 @@ def _apply_minimal_judgement(
                 b_tolerance = abs(dv) > tol
             except (TypeError, ValueError):
                 b_tolerance = False
-        sys_b = b_no_planned_actual or b_tolerance
+        b_empty_actual = empty_actual_report and hs
+        sys_b = b_no_planned_actual or b_tolerance or b_empty_actual
 
         parts: List[str] = []
         if sys_a:
             parts.append("A*")
-        # B* は is_diff_anomaly と同義（許容超過のみ）。予告なし実績は A* で表す。
-        if b_tolerance:
+        # B*: 許容超過 / 実績内容なし。予告なし実績は A* のみ。
+        if b_tolerance or b_empty_actual:
             parts.append("B*")
         if bool(getattr(unit, "is_article7_deviation", False)):
             parts.append("7条逸脱")
@@ -856,13 +873,14 @@ def _update_is_missing_summary(
 def _update_flags(unit: models.WorkUnit, settings: models.CompanySettings) -> None:
     """
     補助フラグ。
-    - is_diff_anomaly: 数値乖離のみ（予告・実績が揃い |actual−planned| > tolerance）。
-      system_pattern の B* は「予告なし+実績」も含むが、それは結果不備であり数値乖離ではない。
+    - is_diff_anomaly: 結果不備（数量差・実績内容なし）。
+      system_pattern の B* は「予告なし+実績」も含むが、is_diff_anomaly とは別分類。
     - is_invalid_flow: A*（プロセス不備）または 実績あり・着手なし
     """
     segs = [x.strip() for x in (unit.system_pattern or "").split(",") if x.strip()]
     hp = _has_planned_nonzero(unit, settings)
     ha = _has_actual_signal(unit, settings)
+    empty_actual_report = _is_empty_actual_report(unit, settings)
     b_tolerance = False
     if hp and ha:
         tol = int(settings.tolerance_value or 0)
@@ -873,11 +891,14 @@ def _update_flags(unit: models.WorkUnit, settings: models.CompanySettings) -> No
             b_tolerance = abs(dv) > tol
         except (TypeError, ValueError):
             b_tolerance = False
-    unit.is_diff_anomaly = b_tolerance
+    unit.is_diff_anomaly = b_tolerance or (
+        empty_actual_report and unit.started_at is not None
+    )
     # 順序不備: A*（プロセス不備）に該当、または 実績あり・着手なし
     unit.is_invalid_flow = bool(
         "A*" in segs
         or (_has_actual_signal(unit, settings) and unit.started_at is None)
+        or (empty_actual_report and unit.started_at is None)
     )
 
 
@@ -888,27 +909,25 @@ def _sync_status_blue_from_derived_flags(
     record_history: bool = True,
 ) -> None:
     """
-    フェーズ1（シャドウ応答）: status=blue は次のみ。
-      - is_invalid_flow
-      - is_diff_anomaly
-      - is_article7_deviation
+    フェーズ1（シャドウ応答）: status=blue は次。
+      - is_invalid_flow / is_diff_anomaly / is_article7_deviation（即時）
+      - actual_at なし かつ effective_date > business_date（持ち越し）
     is_missing / 未登録 / is_deviation 単体では blue にしない。
     closed/red は変更しない。
-    planned_value・started_at・actual_value がすべて未入力なら必ず normal。
     """
-    _ = db
     _ = record_history
     st = (unit.status or "").strip().lower()
     if st in ("closed", "red"):
-        return
-    if _phase1_completely_empty_legacy_triplet(unit):
-        unit.status = "normal"
         return
     if (
         bool(getattr(unit, "is_invalid_flow", False))
         or bool(getattr(unit, "is_diff_anomaly", False))
         or bool(getattr(unit, "is_article7_deviation", False))
     ):
+        unit.status = "blue"
+        return
+    settings = _get_or_create_settings(unit.company_id, db)
+    if carryover_implies_status_blue_unit(unit, settings):
         unit.status = "blue"
         return
     unit.status = "normal"
@@ -1058,6 +1077,9 @@ def _unit_to_out(
         "pattern_a":          unit.pattern_a,
         "pattern_b":          unit.pattern_b,
         "user_pattern":       getattr(unit, "user_pattern", None) or None,
+        "anomaly_classification": parse_classification_json(
+            getattr(unit, "anomaly_classification_json", None)
+        ),
         "system_pattern":     getattr(shadow, "system_pattern", None) or "",
         "status":             st_out,
         "judgement_red_deadline_at": judgement_red_deadline_at,
@@ -1422,6 +1444,8 @@ def mark_started(
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
     validate_unit_company_id(db, src)
     raise_if_closed(src)
+    if getattr(src, "planned_registered_at", None) is None:
+        raise HTTPException(status_code=422, detail="先に予告登録を行ってください")
     settings = _get_or_create_settings(src.company_id, db)
     nu = clone_work_unit_row(src)
     strip_derived_columns_for_fact_snapshot(nu)
@@ -1631,17 +1655,45 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
     elif "used_materials" in patch:
         nu.used_materials_json = _lines_json_dumps(um_parsed) if um_parsed else None
 
-    if "pattern_a" in patch:
-        nu.pattern_a = patch["pattern_a"]
-    if "pattern_b" in patch:
-        nu.pattern_b = patch["pattern_b"]
-
-    # 現場申告（B のみ）。system_pattern とは独立。B 未チェックでクリア
-    if "pattern_b" in patch:
-        nu.user_pattern = "B" if patch.get("pattern_b") else None
-    elif "user_pattern" in patch:
-        _up = patch.get("user_pattern")
-        nu.user_pattern = "B" if (_up is not None and str(_up).strip().upper() == "B") else None
+    if "anomaly_classification" in patch:
+        ac_body = body.anomaly_classification
+        ac_raw = ac_body.model_dump() if ac_body is not None else {}
+        parent_a = patch["pattern_a"] if "pattern_a" in patch else None
+        parent_b = patch["pattern_b"] if "pattern_b" in patch else None
+        json_blob, pattern_a, pattern_b, user_pattern = build_storage_from_request(
+            ac_raw,
+            parent_process=parent_a,
+            parent_result=parent_b,
+        )
+        nu.anomaly_classification_json = json_blob
+        nu.pattern_a = pattern_a
+        nu.pattern_b = pattern_b
+        nu.user_pattern = user_pattern
+    else:
+        if "pattern_a" in patch:
+            nu.pattern_a = patch["pattern_a"]
+        if "pattern_b" in patch:
+            nu.pattern_b = patch["pattern_b"]
+        if "pattern_b" in patch:
+            nu.user_pattern = "B" if patch.get("pattern_b") else None
+        elif "user_pattern" in patch:
+            _up = patch.get("user_pattern")
+            nu.user_pattern = "B" if (_up is not None and str(_up).strip().upper() == "B") else None
+        if "pattern_a" in patch or "pattern_b" in patch:
+            pa = bool(nu.pattern_a)
+            pb = bool(nu.pattern_b)
+            if not pa and not pb:
+                nu.anomaly_classification_json = None
+            else:
+                blob, pa2, pb2, up = build_storage_from_request(
+                    {},
+                    parent_process=pa,
+                    parent_result=pb,
+                )
+                nu.anomaly_classification_json = blob
+                nu.pattern_a = pa2
+                nu.pattern_b = pb2
+                nu.user_pattern = up
 
     if (
         getattr(nu, "planned_registered_at", None) is not None
@@ -1707,20 +1759,15 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
         )
         if err:
             raise HTTPException(status_code=422, detail=err)
-        if not lines:
-            raise HTTPException(
-                status_code=422,
-                detail="商品名（または作業名）が入力されている行がありません",
-            )
-        _merge_due_from_previous(lines, old_parsed)
-        for ln in lines:
-            if isinstance(ln, dict):
-                ln.pop("line_memo", None)
-                ums = ln.get("used_materials")
-                if isinstance(ums, list) and len(ums) == 0:
-                    ln.pop("used_materials", None)
-        nu.planned_lines_json = _lines_json_dumps(lines) if lines else None
         if lines:
+            _merge_due_from_previous(lines, old_parsed)
+            for ln in lines:
+                if isinstance(ln, dict):
+                    ln.pop("line_memo", None)
+                    ums = ln.get("used_materials")
+                    if isinstance(ums, list) and len(ums) == 0:
+                        ln.pop("used_materials", None)
+            nu.planned_lines_json = _lines_json_dumps(lines)
             nu.planned_value = _sum_line_values_optional(lines)
             if im == "logistics":
                 nu.planned_work_label = _join_line_labels(lines)
@@ -1731,6 +1778,7 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
                 nu.planned_work_label = None
                 nu.planned_work_type = None
         else:
+            # Package A: 予告内容未定でも planned_registered_at でフェーズ通過を記録
             nu.planned_value = None
             nu.planned_lines_json = None
             nu.planned_item_name = None

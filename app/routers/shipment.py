@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 from app.schemas import ShipmentImportOut
+from app.services.product_master import ensure_product_master_entries
 from app.services.shipment_csv import dedupe_by_product_code_and_due_date, parse_shipment_csv_text
 from app.services.company_validator import validate_company_id
 
@@ -57,6 +58,7 @@ async def import_shipment_csv(
                     created_at=now,
                 )
             )
+        ensure_product_master_entries(cid, rows_deduped, db)
         db.commit()
     except Exception:
         db.rollback()

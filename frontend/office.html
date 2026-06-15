@@ -293,7 +293,7 @@
 
     const flags = [];
     if (u.is_missing)    flags.push(`<span class="flag flag-missing">未入力あり</span>`);
-    if (u.is_diff_anomaly) flags.push(`<span class="flag flag-diff">数値乖離</span>`);
+    if (u.is_diff_anomaly) flags.push(`<span class="flag flag-diff">結果不備</span>`);
     if (u.anomaly_type_a)  flags.push(`<span class="flag flag-a">A：プロセス不備</span>`);
     if (u.anomaly_type_b)  flags.push(`<span class="flag flag-b">B：結果不備</span>`);
 

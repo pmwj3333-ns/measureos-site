@@ -2,19 +2,53 @@
 会社の package_code（A〜D）に応じた条文フェーズと、派生フラグ（フェーズ2・赤系）。
 
 表向きは Package のみ。条文×フェーズの詳細は get_enabled_phases の辞書で保持。
+DB に legacy の D が残っていても、UI 表示は C として扱う。
 """
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List
 
 from app import models
 
 PACKAGE_LABELS: Dict[str, str] = {
-    "A": "\u8a18\u9332\u57fa\u76e4",
-    "B": "\u904b\u7528\u53ef\u8996\u5316",
-    "C": "\u7d71\u5236\u30fb\u5f37\u5236",
-    "D": "\u7d4c\u55b6\u6d3b\u7528",
+    "A": "現場可観測基盤",
+    "B": "可観測運用制御",
+    "C": "構造分析・経営最適化",
 }
+
+PACKAGE_TAGLINES: Dict[str, str] = {
+    "A": "現場を観測する",
+    "B": "観測可能なまま現場を安定化する",
+    "C": "現場構造を理解・分析・最適化する",
+}
+
+PACKAGE_DESCRIPTIONS: Dict[str, str] = {
+    "A": "現場を止めずに、何が起きているかを観測可能にする。",
+    "B": "観測可能性を壊さずに、現場運用を安定化する。",
+    "C": "観測ログから、構造改善・分析・AI支援へ接続する。",
+}
+
+PACKAGE_BULLETS: Dict[str, List[str]] = {
+    "A": ["異常を隠さない", "まず残す", "現場の流れを観測する"],
+    "B": ["崩れを放置しない", "例外を正式な流れとして扱う", "負荷と遅れを可視化する"],
+    "C": ["属人化分析", "ボトルネック分析", "緊急依存分析", "AI分析基盤"],
+}
+
+PACKAGE_TARGETS: Dict[str, str] = {
+    "A": "第1条A / 第3条A / 第5条A / 第7条A",
+    "B": "第1〜7条 Bフェーズ",
+    "C": "第1〜7条 Cフェーズ",
+}
+
+
+def package_display_code(package_code: str) -> str:
+    """UI 用。legacy D は C として表示。"""
+    pc = (package_code or "A").strip().upper()
+    if pc == "D":
+        return "C"
+    if pc in PACKAGE_LABELS:
+        return pc
+    return "A"
 
 
 def get_company_package(settings: models.CompanySettings | None) -> str:
@@ -67,7 +101,25 @@ def is_phase2_enabled(settings: models.CompanySettings | None) -> bool:
 
 
 def package_label(package_code: str) -> str:
-    return PACKAGE_LABELS.get(
-        (package_code or "A").strip().upper(),
-        PACKAGE_LABELS["A"],
+    return PACKAGE_LABELS.get(package_display_code(package_code), PACKAGE_LABELS["A"])
+
+
+def package_tagline(package_code: str) -> str:
+    return PACKAGE_TAGLINES.get(package_display_code(package_code), PACKAGE_TAGLINES["A"])
+
+
+def package_description(package_code: str) -> str:
+    return PACKAGE_DESCRIPTIONS.get(
+        package_display_code(package_code),
+        PACKAGE_DESCRIPTIONS["A"],
     )
+
+
+def package_bullets(package_code: str) -> List[str]:
+    return list(
+        PACKAGE_BULLETS.get(package_display_code(package_code), PACKAGE_BULLETS["A"])
+    )
+
+
+def package_targets(package_code: str) -> str:
+    return PACKAGE_TARGETS.get(package_display_code(package_code), PACKAGE_TARGETS["A"])

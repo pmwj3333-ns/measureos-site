@@ -35,6 +35,50 @@ def validate_company_id(db: Session, company_id: Optional[str]) -> str:
     return cid
 
 
+def ensure_company_registered(
+    db: Session,
+    company_id: Optional[str],
+    company_name: Optional[str] = None,
+) -> str:
+    """
+    company_master に未登録なら自動作成する（sr/v2 保存用）。
+    無効会社は 403。空 company_id は 422。
+    """
+    cid = normalize_company_id(company_id)
+    if not cid:
+        raise HTTPException(status_code=422, detail="company_id is not registered")
+
+    row = (
+        db.query(models.CompanyMaster)
+        .filter(models.CompanyMaster.company_id == cid)
+        .first()
+    )
+    cname = normalize_company_id(company_name) or cid
+    now = datetime.utcnow()
+
+    if row is None:
+        db.add(
+            models.CompanyMaster(
+                company_id=cid,
+                company_name=cname,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        db.flush()
+        return cid
+
+    if not bool(getattr(row, "is_active", True)):
+        raise HTTPException(status_code=403, detail="company is inactive")
+
+    if cname and cname != normalize_company_id(row.company_name):
+        row.company_name = cname
+        row.updated_at = now
+
+    return cid
+
+
 def validate_unit_company_id(db: Session, unit: models.WorkUnit) -> str:
     """work_unit 行の company_id を検証する。"""
     return validate_company_id(db, getattr(unit, "company_id", None))

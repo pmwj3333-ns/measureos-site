@@ -22,25 +22,133 @@
   }
   header h1 { font-size: 1.05rem; font-weight: 700; }
   header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; }
-  .main {
-    display: grid;
-    grid-template-columns: 1fr min(380px, 38vw);
-    gap: 0;
+  .header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-office-logout {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .btn-office-logout:hover { background: rgba(255, 255, 255, 0.2); }
+  .office-login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f6f9;
+    padding: 24px;
+  }
+  .office-login-screen[hidden] { display: none !important; }
+  #office-app[hidden] { display: none !important; }
+  .office-login-card {
+    width: min(400px, 100%);
+    background: #fff;
+    border: 1px solid #dde2e8;
+    border-radius: 10px;
+    padding: 28px 24px 24px;
+    box-shadow: 0 8px 24px rgba(30, 58, 95, 0.08);
+  }
+  .office-login-card h1 {
+    font-size: 1.15rem;
+    color: #1e3a5f;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .office-login-card label { margin-bottom: 6px; }
+  .office-login-card input[type="text"],
+  .office-login-card input[type="password"] {
+    width: 100%;
+    margin-bottom: 14px;
+  }
+  .office-login-card input[type="password"] {
+    padding: 8px 12px;
+    border: 1px solid #c5ccd4;
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+  }
+  .btn-office-login {
+    width: 100%;
+    background: #1e3a5f;
+    color: #fff;
+    margin-top: 4px;
+    padding: 10px 14px;
+  }
+  .btn-office-login:disabled { opacity: 0.55; cursor: not-allowed; }
+  .office-login-error {
+    color: #b91c1c;
+    font-size: 0.82rem;
+    margin-top: 12px;
+    text-align: center;
+  }
+  .office-login-error[hidden] { display: none !important; }
+  .office-shell {
+    display: flex;
+    flex-direction: column;
     min-height: calc(100vh - 72px);
+    background: #fff;
+  }
+  .office-toolbar {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #e8ecf0;
+  }
+  .audit-workspace {
+    display: grid;
+    grid-template-columns: 1fr min(400px, 40vw);
+    flex: 1;
+    min-height: min(520px, 58vh);
+    border-bottom: 2px solid #e8ecf0;
   }
   @media (max-width: 1000px) {
-    .main { grid-template-columns: 1fr; }
+    .audit-workspace {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
   }
-  .panel {
-    padding: 16px 20px 32px;
+  .audit-list-panel {
+    padding: 16px 20px;
     border-right: 1px solid #dde2e8;
     background: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .audit-list-panel .office-section-title { margin-top: 0; }
+  .wrap-audit-attention {
+    flex: 1;
+    min-height: 200px;
+    max-height: none;
+    overflow: auto;
+    border-color: #fecaca;
   }
   .detail-panel {
     background: #fafbfc;
-    padding: 16px 20px 32px;
-    border-left: 1px solid #e8ecf0;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
   }
+  .reference-zone {
+    padding: 16px 20px 32px;
+    background: #f8fafc;
+  }
+  .office-reference-intro {
+    margin-top: 0;
+    margin-bottom: 4px;
+    color: #64748b;
+  }
+  .reference-zone .office-section-title { margin-top: 16px; }
+  .reference-zone .office-section-title:first-of-type { margin-top: 8px; }
   .bar {
     display: flex;
     flex-wrap: wrap;
@@ -99,7 +207,7 @@
     max-height: min(420px, 55vh);
     overflow: auto;
   }
-  /* 未着手予告：待機情報としてコンパクト＋内部スクロール */
+  /* 予告：待機情報としてコンパクト＋内部スクロール */
   .wrap-planned-compact {
     max-height: min(240px, 32vh);
     overflow: auto;
@@ -112,13 +220,10 @@
     padding: 5px 8px;
     line-height: 1.3;
   }
-  /* 実績一覧：行高・可読性 */
+  /* 実績一覧（参考情報）：コンパクト表示 */
   .wrap-latest-hero {
-    max-height: min(520px, 62vh);
+    max-height: min(320px, 38vh);
     overflow: auto;
-    border-width: 2px;
-    border-color: #c7d2fe;
-    box-shadow: 0 1px 0 rgba(30, 58, 95, 0.06);
   }
   .office-table-latest {
     font-size: 0.8rem;
@@ -222,14 +327,19 @@
     letter-spacing: 0.02em;
   }
   .office-section-title:first-of-type { margin-top: 6px; }
-  /* 実績「最新のみ」：観測の主役として見出しを一段強化 */
-  .office-section-title--latest-primary {
+  /* 監査エリア：要注意一覧 */
+  .office-section-title--audit-primary {
     font-size: 1.02rem;
     font-weight: 800;
     line-height: 1.55;
-    margin-top: 22px;
     padding-bottom: 4px;
-    border-bottom: 2px solid #c7d2fe;
+    border-bottom: 2px solid #fca5a5;
+  }
+  /* 参考情報（予告・実績） */
+  .office-section-title--reference {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #475569;
   }
   .detail-title {
     font-size: 0.8rem;
@@ -336,14 +446,62 @@
     color: #991b1b;
     background: #fef2f2;
   }
+  .office-anomaly-cls-group {
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .office-anomaly-cls-list {
+    margin: 4px 0 0;
+    padding-left: 0.2em;
+    list-style: none;
+  }
+  .office-anomaly-cls-empty {
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 0.78rem;
+  }
+  .office-anomaly-cls-auto {
+    font-size: 0.9rem;
+    color: #374151;
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
+<div id="office-login-screen" class="office-login-screen">
+  <form id="office-login-form" class="office-login-card" autocomplete="off">
+    <h1>MEASURE OS ログイン</h1>
+    <label for="login-company-id">ログインID</label>
+    <input
+      type="text"
+      id="login-company-id"
+      name="office-login-company-id"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+    />
+    <label for="login-company-password">パスワード</label>
+    <input
+      type="password"
+      id="login-company-password"
+      name="office-login-password"
+      autocomplete="off"
+    />
+    <button type="button" class="btn-office-login" id="btn-office-login">ログイン</button>
+    <p id="login-error" class="office-login-error" hidden>ログインIDまたはパスワードが正しくありません</p>
+  </form>
+</div>
+
+<div id="office-app" hidden>
 <header>
-  <h1>事務 — 業務観測</h1>
+  <div class="header-top-row">
+    <h1>事務 — 業務観測</h1>
+    <button type="button" class="btn-office-logout" id="btn-office-logout">ログアウト</button>
+  </div>
   <p>
     <span id="office-header-phase-hint"></span>
-    上流から<strong>未着手予告・実績の流れ</strong>を観測し、下段の<strong>要注意（青・赤）</strong>で監査します。同一キー・同一商品の最新実績が正（在庫反映）で、過去行は履歴です。
+    上段の<strong>要注意（青・赤）</strong>で監査し、<strong>確認済みにする</strong>まで1画面で完結します。下段の予告・実績は参考情報です。同一キー・同一商品の最新実績が正（在庫反映）で、過去行は履歴です。
     通知は<strong>訂正</strong>に限定します（一覧の赤字列・詳細・実績見出しのバッジ）。通常報告は一覧で確認するだけです（メール・音・ブラウザ通知はありません）。
     <a href="/debug/v2" style="color:#fff;">debug</a>
     · <a href="/priority/v2" style="color:#fff;">優先度（第7条）</a>
@@ -351,12 +509,12 @@
   </p>
 </header>
 
-<div class="main">
-  <div class="panel">
+<div class="office-shell">
+  <div class="office-toolbar">
     <div class="bar">
       <div>
-        <label for="company">会社ID（現場画面と共有）</label>
-        <input type="text" id="company" placeholder="URL または前回の値が入ります" autocomplete="off" />
+        <label for="company">会社ID（session）</label>
+        <input type="text" id="company" placeholder="ログイン中の会社ID" autocomplete="off" />
       </div>
       <div style="align-self: flex-end;">
         <button type="button" class="btn-load" id="btn-load">読み込み</button>
@@ -373,11 +531,52 @@
     <p id="office-attention-summary" class="office-attn-summary office-attn-summary--clear" aria-live="polite">
       要注意なし
     </p>
+  </div>
 
-    <h2 class="office-section-title">未着手予告一覧</h2>
-    <p class="hint">
-      <strong>正式予告済み</strong>（<span class="mono">planned_registered_at</span> あり）かつ<strong>尚未着手</strong>（<span class="mono">started_at</span> なし）の作業です。異常監査とは別の<strong>観測用</strong>一覧です。
-    </p>
+  <div class="audit-workspace">
+    <section class="audit-list-panel" aria-label="要注意一覧">
+      <h2 class="office-section-title office-section-title--audit-primary">要注意（青・赤）</h2>
+      <p class="hint">判定ロジックはサーバのままです（一覧では要点のみ）。行を選ぶと右の詳細で確認し、<strong>確認済みにする</strong>まで進めます。</p>
+      <div class="wrap-table wrap-scroll wrap-audit-attention">
+        <table>
+          <thead>
+            <tr>
+              <th>営業日</th>
+              <th>班長</th>
+              <th>予告→実績（概要）</th>
+              <th>要点</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-anomaly">
+            <tr><td colspan="5" class="detail-empty">会社ID を入力して読み込み</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="detail-panel" id="office-detail-panel" aria-label="詳細・監査対応">
+      <div class="detail-head">
+        <div class="detail-title">詳細・監査対応</div>
+        <span id="detail-context" class="detail-context" hidden></span>
+      </div>
+      <div id="detail-empty" class="detail-empty">要注意一覧から行を選択してください。</div>
+      <div id="detail-body" hidden>
+        <div id="detail-actions" class="detail-actions" hidden>
+          <button type="button" class="btn-office-ack-close" id="btn-office-attention-close">
+            確認済みにする
+          </button>
+        </div>
+        <dl class="dl" id="detail-dl"></dl>
+      </div>
+    </aside>
+  </div>
+
+  <div class="reference-zone" aria-label="参考情報">
+    <p class="hint office-reference-intro">参考情報 — 監査とは別枠の観測用一覧です。</p>
+
+    <h2 class="office-section-title office-section-title--reference">予告</h2>
+    <p class="hint">正式に予告登録された作業の一覧です。予告と実績の流れを確認するための参考情報です。</p>
     <div class="wrap-table wrap-scroll wrap-planned-compact">
       <table class="office-table-planned-unstarted">
         <thead>
@@ -395,7 +594,7 @@
       </table>
     </div>
 
-    <h2 class="office-section-title office-section-title--latest-primary">
+    <h2 class="office-section-title office-section-title--reference">
       実績（最新のみ）
       <span id="office-badge-revision-latest" class="office-section-revision-badge" hidden>訂正あり</span>
     </h2>
@@ -416,45 +615,12 @@
         </tbody>
       </table>
     </div>
-
-    <h2 class="office-section-title">要注意（青・赤）</h2>
-    <p class="hint">判定ロジックはサーバのままです（一覧では要点のみ）。監査・確認はこの下段で行います。</p>
-    <div class="wrap-table wrap-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>営業日</th>
-            <th>班長</th>
-            <th>予告→実績（概要）</th>
-            <th>要点</th>
-            <th>状態</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-anomaly">
-          <tr><td colspan="5" class="detail-empty">会社ID を入力して読み込み</td></tr>
-        </tbody>
-      </table>
-    </div>
   </div>
-
-  <aside class="detail-panel" id="office-detail-panel">
-    <div class="detail-head">
-      <div class="detail-title">詳細</div>
-      <span id="detail-context" class="detail-context" hidden></span>
-    </div>
-    <div id="detail-empty" class="detail-empty">一覧から行を選択してください。</div>
-    <div id="detail-body" hidden>
-      <div id="detail-actions" class="detail-actions" hidden>
-        <button type="button" class="btn-office-ack-close" id="btn-office-attention-close">
-          確認済みにする
-        </button>
-      </div>
-      <dl class="dl" id="detail-dl"></dl>
-    </div>
-  </aside>
+</div>
 </div>
 
 <script src="/static/format-jst-datetime.js"></script>
+<script src="/static/anomaly-classification.js"></script>
 <script>
 /*
  * ─── 手動 QA（実績「最新のみ」・product_key 単位）────────────────────────────
@@ -482,6 +648,7 @@
  *    - 訂正は商品A のみ「商品A：10 → 20（訂正）」。商品B の行には訂正が付かない。
  *
  * 参考: collectLatestActualRows は natural_key × product_key で最新を保持する。
+ *       collectOfficeAnomalySortedRows は Audit Head 1行/NK に絞ってから要注意判定する。
  *       status が blue/red の実績行は実績一覧に含めず、要注意のみに表示する（バグ再発防止）。
  *
  * ─── 画面内通知（訂正のみ）──────────────────────────────────────────────────
@@ -504,6 +671,169 @@
   let selected = null;
   let selectedSection = null;
   let phase2Enabled = false;
+  let sessionCompanyId = "";
+  let dayBoundaryTime = "00:00";
+
+  function showLoginScreen() {
+    $("office-login-screen").hidden = false;
+    $("office-app").hidden = true;
+  }
+
+  function showOfficeApp() {
+    $("office-login-screen").hidden = true;
+    $("office-app").hidden = false;
+  }
+
+  function showLoginError(show) {
+    const el = $("login-error");
+    if (el) el.hidden = !show;
+  }
+
+  function clearOfficeCompanyStorage() {
+    try {
+      localStorage.removeItem(LS_SHARED_COMPANY_ID);
+    } catch (_) { /* ignore */ }
+    try {
+      sessionStorage.removeItem(LS_SHARED_COMPANY_ID);
+    } catch (_) { /* ignore */ }
+  }
+
+  function fieldLeaderStorageKeyUser(companyId) {
+    return "field_v2_last_user:" + String(companyId || "").trim();
+  }
+
+  function fieldLeaderStorageKeyProc(companyId) {
+    return "field_v2_last_leader_proc:" + String(companyId || "").trim();
+  }
+
+  /** logout 時: 現 company の field 班長復元のみ削除（他 company は触らない） */
+  function clearFieldLeaderStorageForCompany(companyId) {
+    const cid = String(companyId || "").trim();
+    if (!cid) return;
+    try {
+      localStorage.removeItem(fieldLeaderStorageKeyUser(cid));
+      localStorage.removeItem(fieldLeaderStorageKeyProc(cid));
+    } catch (_) { /* ignore */ }
+  }
+
+  function resetLoginForm() {
+    const idEl = $("login-company-id");
+    const pwEl = $("login-company-password");
+    if (idEl) idEl.value = "";
+    if (pwEl) pwEl.value = "";
+    showLoginError(false);
+  }
+
+  function clearLoginPassword() {
+    const pwEl = $("login-company-password");
+    if (pwEl) pwEl.value = "";
+  }
+
+  function handleLoginFailure() {
+    showLoginError(true);
+    clearLoginPassword();
+  }
+
+  /** logout / 未ログイン boot 時: session・フォーム・storage を完全初期化 */
+  function resetOfficeCompanyContext() {
+    sessionCompanyId = "";
+    if (companyEl) companyEl.value = "";
+    clearOfficeCompanyStorage();
+    resetLoginForm();
+  }
+
+  async function fetchOfficeSession() {
+    const res = await fetch("/v2/office/session", { credentials: "same-origin" });
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  function readSafeReturnToFromUrl() {
+    const raw = (new URLSearchParams(window.location.search).get("return_to") || "").trim();
+    if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) {
+      return "";
+    }
+    return raw.split("#")[0];
+  }
+
+  function navigateAfterLoginIfReturnTo() {
+    const returnTo = readSafeReturnToFromUrl();
+    if (returnTo) {
+      window.location.replace(returnTo);
+      return true;
+    }
+    return false;
+  }
+
+  async function applySessionToOffice(sess) {
+    sessionCompanyId = String(sess.company_id || "").trim();
+    if (sessionCompanyId) {
+      companyEl.value = sessionCompanyId;
+      persistSharedCompanyFromOffice();
+    }
+    showOfficeApp();
+    await load();
+  }
+
+  async function submitOfficeLogin() {
+    const cid = ($("login-company-id").value || "").trim();
+    const pwd = $("login-company-password").value || "";
+    showLoginError(false);
+    const btn = $("btn-office-login");
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch("/v2/office/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company_id: cid, password: pwd }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        handleLoginFailure();
+        return;
+      }
+      resetLoginForm();
+      if (navigateAfterLoginIfReturnTo()) {
+        return;
+      }
+      await applySessionToOffice(data);
+    } catch (_) {
+      handleLoginFailure();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function logoutOffice() {
+    let cid = sessionCompanyId;
+    if (!cid) {
+      const sess = await fetchOfficeSession();
+      cid = sess && sess.company_id ? String(sess.company_id).trim() : "";
+    }
+    try {
+      await fetch("/v2/office/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+    } catch (_) { /* best-effort */ }
+    clearFieldLeaderStorageForCompany(cid);
+    resetOfficeCompanyContext();
+    showLoginScreen();
+  }
+
+  async function bootOffice() {
+    const sess = await fetchOfficeSession();
+    if (sess && sess.company_id) {
+      if (navigateAfterLoginIfReturnTo()) {
+        return;
+      }
+      await applySessionToOffice(sess);
+    } else {
+      resetOfficeCompanyContext();
+      showLoginScreen();
+    }
+  }
 
   function persistSharedCompanyFromOffice() {
     const v = companyEl.value.trim();
@@ -915,7 +1245,7 @@
       const u = seg.toUpperCase();
       let ja = null;
       if (u.indexOf("A") === 0) ja = "手順不備";
-      else if (u.indexOf("B") === 0) ja = "数値乖離";
+      else if (u.indexOf("B") === 0) ja = "結果不備";
       else if (String(seg).indexOf("7条") === 0 || seg === "7条逸脱") ja = "7条逸脱";
       if (ja && !seen.has(ja)) {
         seen.add(ja);
@@ -982,10 +1312,34 @@
     return st === "normal" || st === "closed";
   }
 
+  function effectiveCalendarDateLocal(now, boundaryStr) {
+    const m = String(boundaryStr || "00:00").trim().match(/^(\d{1,2}):(\d{2})$/);
+    const bh = m ? parseInt(m[1], 10) : 0;
+    const bm = m ? parseInt(m[2], 10) : 0;
+    const boundaryMinutes = bh * 60 + bm;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const d = new Date(now.getTime());
+    if (nowMinutes < boundaryMinutes) {
+      d.setDate(d.getDate() - 1);
+    }
+    const pad = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  function rowCarryoverImpliesStatusBlue(r) {
+    if (!r || r.actual_at) return false;
+    if ((r.status || "").toLowerCase() === "closed") return false;
+    const bd = String(r.business_date || "").trim();
+    if (!bd) return false;
+    const effective = effectiveCalendarDateLocal(new Date(), dayBoundaryTime);
+    return effective > bd;
+  }
+
   function passesOfficeAnomalyDisplay(r) {
     const st = (r.status || "").toLowerCase();
     if (st !== "blue" && st !== "red") return false;
     if (st === "red") return true;
+    if (rowCarryoverImpliesStatusBlue(r)) return true;
     if (r.is_unregistered_user === true) return true;
     if (r.is_article7_deviation === true || r.is_deviation === true) return true;
     if (r.is_diff_anomaly === true) return true;
@@ -1002,10 +1356,85 @@
     return String(r.system_pattern || "").indexOf("7条逸脱") !== -1;
   }
 
+  function hasTimestampField(value) {
+    return value != null && String(value).trim() !== "";
+  }
+
+  /** 完全空シェル: planned_at / started_at / actual_at がすべて null */
+  function isCompletelyEmptyShell(r) {
+    if (!r) return false;
+    return (
+      !hasTimestampField(r.planned_at) &&
+      !hasTimestampField(r.started_at) &&
+      !hasTimestampField(r.actual_at)
+    );
+  }
+
+  /** 574 実績後の 575 型: 完全空シェルかつ同一 NK に actual_at ありの先行 revision がある */
+  function isSuccessorShell(r, versions) {
+    if (!isCompletelyEmptyShell(r)) return false;
+    const rid = Number(r.id) || 0;
+    for (const v of versions || []) {
+      if (!v) continue;
+      if ((Number(v.id) || 0) >= rid) continue;
+      if (hasTimestampField(v.actual_at)) return true;
+    }
+    return false;
+  }
+
+  function isAuditCandidate(r, versions) {
+    if (!r) return false;
+    if (isCompletelyEmptyShell(r)) return false;
+    if (isSuccessorShell(r, versions)) return false;
+    return true;
+  }
+
+  function selectAuditHeadForNk(versions) {
+    if (!versions || !versions.length) return null;
+    const sorted = versions.slice().sort(function (a, b) {
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    });
+    for (let i = 0; i < sorted.length; i++) {
+      if (isAuditCandidate(sorted[i], versions)) return sorted[i];
+    }
+    return null;
+  }
+
+  /** Audit Head: 監査・観測用代表行（Editing Head = id 最大とは別） */
+  function auditHeadsFromRows(sourceRows) {
+    const grouped = new Map();
+    for (const r of sourceRows || []) {
+      if (!r) continue;
+      const nk = naturalKey(r);
+      if (!grouped.has(nk)) grouped.set(nk, []);
+      grouped.get(nk).push(r);
+    }
+    const out = [];
+    for (const versions of grouped.values()) {
+      const head = selectAuditHeadForNk(versions);
+      if (head) out.push(head);
+    }
+    return out;
+  }
+
+  /**
+   * 同一 naturalKey では id 最大の1行のみ（append-only で古い行が残る場合の重複防止）。
+   * 予告参考・実績参考など Editing Head 向け。
+   */
+  function latestRowsByNaturalKey(sourceRows) {
+    const byNk = new Map();
+    for (const r of sourceRows || []) {
+      if (!r) continue;
+      const nk = naturalKey(r);
+      const prev = byNk.get(nk);
+      if (!prev || Number(r.id) > Number(prev.id)) byNk.set(nk, r);
+    }
+    return [...byNk.values()];
+  }
+
   function collectOfficeAnomalySortedRows(sourceRows) {
     const out = [];
-    for (const row of sourceRows || []) {
-      if (!row) continue;
+    for (const row of auditHeadsFromRows(sourceRows)) {
       const st = (row.status || "").toLowerCase();
       if (st === "closed") continue;
       if (st !== "blue" && st !== "red") continue;
@@ -1542,7 +1971,7 @@
       ctx.hidden = false;
       if (selectedSection === "planned") {
         if (panel) panel.classList.add("detail-panel--ctx-planned");
-        ctx.textContent = "一覧：未着手予告";
+        ctx.textContent = "一覧：予告";
       } else if (selectedSection === "latest") {
         if (panel) panel.classList.add("detail-panel--ctx-latest");
         ctx.textContent = "一覧：実績（最新のみ）";
@@ -1602,6 +2031,18 @@
         (dr
           ? esc(dr).replace(/\n/g, "<br/>")
           : "—") +
+        "</dd>";
+    }
+
+    const clsBlock =
+      window.MO_ANOMALY_CLASSIFICATION &&
+      MO_ANOMALY_CLASSIFICATION.formatDetailBlock(r, esc);
+    if (clsBlock && clsBlock.html) {
+      html +=
+        "<dt>" +
+        esc(clsBlock.sectionLabel || "現場分類") +
+        "</dt><dd>" +
+        clsBlock.html +
         "</dd>";
     }
 
@@ -1721,7 +2162,10 @@
   }
 
   async function load() {
-    const cid = companyEl.value.trim();
+    const cid = (sessionCompanyId || companyEl.value).trim();
+    if (sessionCompanyId && companyEl.value.trim() !== sessionCompanyId) {
+      companyEl.value = sessionCompanyId;
+    }
     showErr("");
     showOk("");
     if (!cid) {
@@ -1739,7 +2183,6 @@
       return;
     }
     persistSharedCompanyFromOffice();
-    history.replaceState(null, "", "?company=" + encodeURIComponent(cid));
 
     const btnLoad = $("btn-load");
     btnLoad.disabled = true;
@@ -1750,6 +2193,7 @@
         if (cr.ok) {
           const cj = await cr.json();
           phase2Enabled = cj.phase2_enabled === true;
+          dayBoundaryTime = String(cj.day_boundary_time || "00:00").trim() || "00:00";
         }
       } catch (_) {}
 
@@ -1823,7 +2267,7 @@
       showOk(
         "読み込み済み（要注意 " +
           filteredAttn.length +
-          "／未着手予告 " +
+          "／予告 " +
           filteredPlannedUnstarted.length +
           "／最新実績キー " +
           filteredLatest.length +
@@ -1876,16 +2320,24 @@
   companyEl.addEventListener("change", persistSharedCompanyFromOffice);
   companyEl.addEventListener("blur", persistSharedCompanyFromOffice);
 
-  const urlCo = param("company") || param("company_id");
-  if (urlCo) {
-    localStorage.setItem(LS_SHARED_COMPANY_ID, urlCo);
-    companyEl.value = urlCo;
-  } else {
-    const stored = (localStorage.getItem(LS_SHARED_COMPANY_ID) || "").trim();
-    if (stored) companyEl.value = stored;
-  }
+  $("btn-office-login").addEventListener("click", () => {
+    void submitOfficeLogin();
+  });
+  $("office-login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    void submitOfficeLogin();
+  });
+  $("login-company-password").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") void submitOfficeLogin();
+  });
+  $("login-company-id").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") void submitOfficeLogin();
+  });
+  $("btn-office-logout").addEventListener("click", () => {
+    void logoutOffice();
+  });
 
-  if (companyEl.value.trim()) load();
+  void bootOffice();
 })();
 </script>
 </body>

@@ -1,24 +1,31 @@
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.database import SessionLocal, engine
+from app.services.company_validator import normalize_company_id
+from app.services.return_to import build_office_login_url
 from app import models
 from app.routers import (
     admin_companies,
+    office_session,
     priority,
     product_master,
     settings,
     shipment,
     sr_observe,
+    sr_monthly,
     stock,
     v2 as v2_routes,
     test_control,
     work,
+    working_calendar,
 )
 
 
@@ -64,6 +71,37 @@ def _sqlite_migrate():
             if "order_cutoff_time" not in cs:
                 conn.execute(
                     text("ALTER TABLE company_settings ADD COLUMN order_cutoff_time TIME")
+                )
+            if "default_working_weekdays" not in cs:
+                conn.execute(
+                    text(
+                        "ALTER TABLE company_settings ADD COLUMN default_working_weekdays VARCHAR"
+                    )
+                )
+        except Exception:
+            pass
+        try:
+            wc = cols("working_calendar")
+            if not wc:
+                conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS working_calendar (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            company_id VARCHAR NOT NULL,
+                            target_date DATE NOT NULL,
+                            is_working_day BOOLEAN NOT NULL,
+                            created_at DATETIME,
+                            UNIQUE(company_id, target_date)
+                        )
+                        """
+                    )
+                )
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_working_calendar_company_id "
+                        "ON working_calendar (company_id)"
+                    )
                 )
         except Exception:
             pass
@@ -121,6 +159,12 @@ def _sqlite_migrate():
             if "used_materials_json" not in wu:
                 conn.execute(
                     text("ALTER TABLE work_unit ADD COLUMN used_materials_json VARCHAR")
+                )
+            if "anomaly_classification_json" not in wu:
+                conn.execute(
+                    text(
+                        "ALTER TABLE work_unit ADD COLUMN anomaly_classification_json VARCHAR"
+                    )
                 )
             conn.execute(
                 text(
@@ -342,6 +386,19 @@ def _sqlite_migrate():
                         "ALTER TABLE product_master ADD COLUMN safety_stock_value INTEGER"
                     )
                 )
+            if pm_cols is not None and "production_mode" not in pm_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE product_master ADD COLUMN production_mode VARCHAR "
+                        "NOT NULL DEFAULT 'manufacture'"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "UPDATE product_master SET production_mode = 'manufacture' "
+                        "WHERE production_mode IS NULL OR TRIM(production_mode) = ''"
+                    )
+                )
         except Exception:
             pass
         try:
@@ -362,9 +419,37 @@ def _sqlite_migrate():
             )
         except Exception:
             pass
-
-
-# テーブルを自動作成（既存テーブルはスキップ）
+        try:
+            conn.execute(
+                text(
+                    "ALTER TABLE company_master ADD COLUMN company_password_hash TEXT"
+                )
+            )
+        except Exception:
+            pass
+        try:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS monthly_reports (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        company_id VARCHAR NOT NULL,
+                        target_month VARCHAR NOT NULL,
+                        generated_summary VARCHAR NOT NULL DEFAULT '',
+                        consultant_comment VARCHAR,
+                        created_at DATETIME NOT NULL,
+                        CONSTRAINT uq_monthly_reports_company_month UNIQUE (company_id, target_month)
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_monthly_reports_company_id ON monthly_reports (company_id)"
+                )
+            )
+        except Exception:
+            pass
 models.Base.metadata.create_all(bind=engine)
 _sqlite_migrate()
 
@@ -381,9 +466,18 @@ except Exception:
 
 app = FastAPI(title="MEASURE OS", version="2.0")
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get(
+        "MEASUREOS_SESSION_SECRET",
+        "dev-measureos-session-secret-do-not-use-in-production",
+    ),
+)
+
 app.include_router(settings.router)
 app.include_router(work.router)
 app.include_router(v2_routes.router)
+app.include_router(office_session.router)
 app.include_router(work.router, prefix="/v2", tags=["v2-作業"])
 app.include_router(priority.router)
 app.include_router(stock.router)
@@ -392,6 +486,8 @@ app.include_router(shipment.router)
 app.include_router(test_control.router, prefix="/v2")
 app.include_router(admin_companies.router)
 app.include_router(sr_observe.router)
+app.include_router(sr_monthly.router)
+app.include_router(working_calendar.router)
 
 # uvicorn の cwd に依存しない（/static/debug.html 等）
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -426,8 +522,60 @@ def _field_users_raw_for_company(company_id: str) -> str:
         db.close()
 
 
-def _field_v2_html_response(request: Request) -> HTMLResponse:
-    """班長 raw を </head> 直前に埋め込む（?company= 時）。HTMLコメント・overlay 文言に依存しない。"""
+def _unauthenticated_login_redirect(request: Request) -> RedirectResponse:
+    return RedirectResponse(
+        url=build_office_login_url(str(request.url.path)),
+        status_code=307,
+        headers={
+            **_NO_CACHE,
+            "Vary": "Cookie",
+        },
+    )
+
+
+def _inject_script_into_html(html: str, script_body: str) -> str:
+    inject = f"<script>{script_body}</script>\n"
+    lowered = html.lower()
+    head_i = lowered.find("</head>")
+    if head_i != -1:
+        return html[:head_i] + inject + html[head_i:]
+    body_i = lowered.find("<body")
+    if body_i != -1:
+        gt = html.find(">", body_i)
+        if gt != -1:
+            return html[: gt + 1] + inject + html[gt + 1 :]
+    return inject + html
+
+
+
+def _session_bootstrap_html_response(request: Request, html_name: str):
+    """session company を注入。未ログイン時は office_v2 へ return_to 付き redirect。"""
+    company = normalize_company_id(request.session.get("company_id"))
+    if not company:
+        return _unauthenticated_login_redirect(request)
+
+    path = _FRONTEND_DIR / html_name
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"frontend に {html_name} がありません（期待パス: {path}）",
+        )
+    html = path.read_text(encoding="utf-8")
+    script = f"window.__MO_BOOTSTRAP_COMPANY__={json.dumps(company)};"
+    html = _inject_script_into_html(html, script)
+    return HTMLResponse(content=html, headers=_NO_CACHE)
+
+
+def _priority_v2_html_response(request: Request):
+    return _session_bootstrap_html_response(request, "priority_view.html")
+
+
+def _field_v2_html_response(request: Request):
+    """session company を注入。未ログイン時は office_v2 へ return_to 付き redirect。"""
+    company = normalize_company_id(request.session.get("company_id"))
+    if not company:
+        return _unauthenticated_login_redirect(request)
+
     path = _FRONTEND_DIR / "field_v2.html"
     if not path.is_file():
         raise HTTPException(
@@ -435,32 +583,12 @@ def _field_v2_html_response(request: Request) -> HTMLResponse:
             detail=f"frontend に field_v2.html がありません（期待パス: {path}）",
         )
     html = path.read_text(encoding="utf-8")
-    company = (
-        request.query_params.get("company") or request.query_params.get("company_id") or ""
-    ).strip()
-    raw = _field_users_raw_for_company(company) if company else ""
-    if company:
-        inject = (
-            "<script>"
-            f"window.__MO_FIELD_USERS_RAW__={json.dumps(raw)};"
-            f"window.__MO_BOOTSTRAP_COMPANY__={json.dumps(company)};"
-            "</script>\n"
-        )
-        lowered = html.lower()
-        head_i = lowered.find("</head>")
-        if head_i != -1:
-            html = html[:head_i] + inject + html[head_i:]
-        else:
-            body_i = lowered.find("<body")
-            if body_i != -1:
-                gt = html.find(">", body_i)
-                if gt != -1:
-                    gt += 1
-                    html = html[:gt] + inject + html[gt:]
-                else:
-                    html = inject + html
-            else:
-                html = inject + html
+    raw = _field_users_raw_for_company(company)
+    script = (
+        f"window.__MO_FIELD_USERS_RAW__={json.dumps(raw)};"
+        f"window.__MO_BOOTSTRAP_COMPANY__={json.dumps(company)};"
+    )
+    html = _inject_script_into_html(html, script)
     return HTMLResponse(content=html, headers=_NO_CACHE)
 
 
@@ -491,9 +619,19 @@ def field_v2_screen_ascii_alias(request: Request):
     return _field_v2_html_response(request)
 
 
+@app.get("/sr/v2/ops", summary="運営ダッシュボード（/sr/v2?tab=ops へ統合）")
+def sr_v2_ops_screen():
+    return RedirectResponse(url="/sr/v2?tab=ops", status_code=307)
+
+
 @app.get("/sr/v2", summary="社労士 v2（班長マスタ・フェーズ1 専用）")
 def sr_v2_screen():
     return _file_response_or_404("sr_v2.html")
+
+
+@app.get("/sr/monthly", summary="社労士 月報作成")
+def sr_monthly_screen():
+    return _file_response_or_404("sr_monthly.html")
 
 
 @app.get("/debug")
@@ -512,8 +650,8 @@ def office_v2_screen():
 
 
 @app.get("/priority/v2", summary="第7条・事務の優先指示一覧（表示のみ・現場は変更しない）")
-def priority_v2_screen():
-    return _file_response_or_404("priority_view.html")
+def priority_v2_screen(request: Request):
+    return _priority_v2_html_response(request)
 
 
 @app.get(
@@ -528,24 +666,24 @@ def priority_input_v2_screen():
     "/stock/import/v2",
     summary="在庫CSV取り込み（第7条ステップ①・投入のみ）",
 )
-def stock_import_v2_screen():
-    return _file_response_or_404("stock_import_v2.html")
+def stock_import_v2_screen(request: Request):
+    return _session_bootstrap_html_response(request, "stock_import_v2.html")
 
 
 @app.get(
     "/shipment/import/v2",
     summary="出荷予定CSV取り込み（第7条ステップ②・投入のみ）",
 )
-def shipment_import_v2_screen():
-    return _file_response_or_404("shipment_import_v2.html")
+def shipment_import_v2_screen(request: Request):
+    return _session_bootstrap_html_response(request, "shipment_import_v2.html")
 
 
 @app.get(
     "/product/master/v2",
     summary="商品マスタ（第5条・product_code 補完・事務向け）",
 )
-def product_master_v2_screen():
-    return _file_response_or_404("product_master_v2.html")
+def product_master_v2_screen(request: Request):
+    return _session_bootstrap_html_response(request, "product_master_v2.html")
 
 
 @app.get("/admin/companies/ui", summary="会社マスタ管理（簡易画面）")

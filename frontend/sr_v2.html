@@ -107,6 +107,7 @@
     .card h2 { font-size: 0.95rem; margin-bottom: 10px; color: #1e3a5f; }
     label { display: block; font-size: 0.75rem; color: #5c6570; margin-bottom: 6px; }
     input[type="text"],
+    input[type="password"],
     input[type="time"] {
       width: 100%;
       padding: 10px 12px;
@@ -129,6 +130,119 @@
       font-family: inherit;
     }
     input:focus, select:focus { outline: none; border-color: #1e3a5f; }
+    .company-id-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .company-id-row input[type="text"] {
+      flex: 1;
+      min-width: 0;
+    }
+    .btn-company-load {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      white-space: nowrap;
+    }
+    .company-id-block { margin-top: 16px; }
+    .company-id-display {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .company-new-actions { margin-top: 16px; }
+    .company-existing-new { margin-top: 12px; }
+    .company-existing-password { margin-top: 12px; }
+    .company-login-result {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+    }
+    .company-login-result-title {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      color: #166534;
+    }
+    .company-login-result-row { margin-bottom: 10px; }
+    .company-login-result-label {
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .company-login-result-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .btn-copy-login {
+      margin-top: 8px;
+      padding: 8px 14px;
+      border: 1px solid #166534;
+      border-radius: 6px;
+      background: #fff;
+      color: #166534;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-copy-login:hover { background: #ecfdf5; }
+    .company-search-wrap {
+      position: relative;
+      margin-top: 14px;
+    }
+    .company-search-wrap label {
+      margin-bottom: 6px;
+    }
+    .company-search-results {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 20;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #dde2e8;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(30, 58, 95, 0.08);
+    }
+    .company-search-results[hidden] {
+      display: none !important;
+    }
+    .company-search-item {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-bottom: 1px solid #eef1f4;
+      background: #fff;
+      color: #374151;
+      font-size: 0.82rem;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .company-search-item:last-child {
+      border-bottom: none;
+    }
+    .company-search-item:hover,
+    .company-search-item:focus {
+      background: #f8fbff;
+      outline: none;
+    }
+    .company-search-empty {
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
     select {
       width: 100%;
       max-width: 420px;
@@ -264,7 +378,333 @@
     .boundary-preview strong { color: #1e3a5f; font-weight: 700; font-variant-numeric: tabular-nums; }
     .boundary-mismatch { margin-top: 8px; color: #92400e; }
 
-    /* Package A 観測 */
+    /* Package 選択 */
+    .package-guide {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .package-guide-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 8px;
+      font-size: 0.74rem;
+      color: #6b7280;
+      line-height: 1.45;
+    }
+    .package-guide-row.is-selected {
+      color: #374151;
+    }
+    .package-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+    }
+    .package-pill-a {
+      color: #1e40af;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .package-pill-b {
+      color: #9a3412;
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+    .package-pill-c {
+      color: #991b1b;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .package-detail {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #e8ecf0;
+      background: #fafbfc;
+      font-size: 0.78rem;
+      color: #374151;
+      line-height: 1.55;
+    }
+    .package-detail-title {
+      font-weight: 700;
+      color: #1e3a5f;
+      margin-bottom: 6px;
+    }
+    .package-detail ul {
+      margin: 8px 0 0 1.1em;
+      padding: 0;
+    }
+    .package-detail li { margin-bottom: 2px; }
+    .package-detail-target {
+      margin-top: 8px;
+      font-size: 0.72rem;
+      color: #6b7280;
+    }
+
+    /* 運営ダッシュボード（L1） */
+    body.sr-mode-company-detail .sr-tabs { display: none; }
+    body.sr-mode-company-detail #panel-settings,
+    body.sr-mode-company-detail #panel-ops { display: none !important; }
+    body.sr-mode-company-detail #panel-observe {
+      display: block !important;
+    }
+    .ops-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .ops-summary-tile {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+    }
+    .ops-summary-tile-label {
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    .ops-summary-tile-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      font-variant-numeric: tabular-nums;
+    }
+    .ops-summary-tile--danger .ops-summary-tile-value { color: #991b1b; }
+    .ops-summary-tile--watch .ops-summary-tile-value { color: #92400e; }
+    .ops-summary-tile--normal .ops-summary-tile-value { color: #065f46; }
+    .ops-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .ops-meta-line { font-size: 0.75rem; color: #6b7280; }
+    .btn-ops-refresh {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      background: #1e3a5f;
+      color: #fff;
+    }
+    .btn-ops-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+    .ops-table-wrap {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: auto;
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+    }
+    .ops-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .ops-table th,
+    .ops-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e8ecf0;
+      vertical-align: middle;
+    }
+    .ops-table th {
+      background: #f8fafc;
+      color: #5c6570;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .ops-table tr:last-child td { border-bottom: none; }
+    .ops-table tr:hover td { background: #fafbfc; }
+    .ops-status-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .ops-status-badge--normal {
+      color: #065f46;
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+    }
+    .ops-status-badge--watch {
+      color: #92400e;
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+    .ops-status-badge--danger {
+      color: #991b1b;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .ops-btn-detail {
+      padding: 6px 10px;
+      border: 1px solid #c5ccd4;
+      border-radius: 6px;
+      background: #fff;
+      color: #1e3a5f;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .ops-btn-detail:hover { background: #eef4fb; border-color: #1e3a5f; }
+    .ops-empty {
+      padding: 28px 16px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+    .ops-section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      margin: 0 0 12px;
+    }
+    .ops-observe-section {
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .ops-observe-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .ops-observe-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+      min-height: 160px;
+    }
+    .ops-observe-card-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #5c6570;
+      margin: 0 0 10px;
+    }
+    .ops-observe-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .ops-observe-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f2f5;
+    }
+    .ops-observe-item:last-child { border-bottom: none; }
+    .ops-observe-item-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e3a5f;
+      margin-bottom: 2px;
+    }
+    .ops-observe-item-name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .ops-observe-item-name a:hover { text-decoration: underline; }
+    .ops-observe-item-status { margin-bottom: 4px; }
+    .ops-observe-item-meta {
+      font-size: 0.75rem;
+      color: #6b7280;
+      font-variant-numeric: tabular-nums;
+    }
+    .ops-observe-item-sub {
+      font-size: 0.68rem;
+      color: #9ca3af;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .ops-list-section { margin-top: 4px; }
+    .ops-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .ops-filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .ops-filter-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #5c6570;
+    }
+    .ops-filter-select {
+      padding: 6px 10px;
+      border: 1px solid #c5ccd4;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.8rem;
+      font-family: inherit;
+      color: #1e3a5f;
+    }
+    .ops-weekly-mark {
+      display: inline-block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      min-width: 1.2em;
+      text-align: center;
+    }
+    .ops-weekly-mark--none { color: #9ca3af; font-weight: 400; }
+    .ops-msg {
+      margin-bottom: 12px;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #991b1b;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+    }
+    .observe-detail-head { margin-bottom: 14px; }
+    .observe-detail-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e3a5f;
+      margin-bottom: 4px;
+    }
+    .observe-detail-company {
+      font-size: 0.82rem;
+      color: #5c6570;
+    }
+
+    /* Package A 観測（会社詳細） */
+    .observe-back-link {
+      display: inline-block;
+      margin-bottom: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #1e3a5f;
+      text-decoration: none;
+    }
+    .observe-back-link:hover { text-decoration: underline; }
     .observe-intro {
       font-size: 0.82rem;
       color: #5c6570;
@@ -321,6 +761,43 @@
       color: #1e3a5f;
       font-variant-numeric: tabular-nums;
     }
+    .observe-field-classification {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(30, 58, 95, 0.05);
+    }
+    .observe-field-classification h3 {
+      font-size: 0.82rem;
+      color: #374151;
+      margin: 12px 0 6px;
+      font-weight: 700;
+    }
+    .observe-field-classification h3:first-of-type { margin-top: 0; }
+    .observe-fc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .observe-fc-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 5px 0;
+      border-bottom: 1px dashed #e5e7eb;
+      font-size: 0.85rem;
+    }
+    .observe-fc-list li:last-child { border-bottom: none; }
+    .observe-fc-label { color: #374151; }
+    .observe-fc-count { font-weight: 600; color: #111827; font-variant-numeric: tabular-nums; }
+    .observe-fc-note {
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+    .observe-fc-empty { color: #6b7280; font-size: 0.85rem; }
     .observe-table-wrap {
       overflow-x: auto;
       border: 1px solid #e2e8f0;
@@ -431,25 +908,136 @@
       white-space: nowrap;
       border: 0;
     }
+
+    /* 営業日設定 */
+    .card-working-days { margin-bottom: 14px; }
+    .wd-section-title {
+      font-size: 0.88rem;
+      color: #1e3a5f;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .wd-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+    .wd-grid label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      font-size: 0.9rem;
+      color: #374151;
+      cursor: pointer;
+    }
+    .wd-grid input[type="checkbox"] { accent-color: #1e3a5f; }
+    .wd-exception-add {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .wd-exception-add input[type="date"] {
+      width: auto;
+      max-width: 180px;
+    }
+    .wd-exception-add select {
+      width: auto;
+      max-width: 140px;
+    }
+    .wd-exc-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #eef1f4;
+      font-size: 0.85rem;
+    }
+    .wd-exc-row:last-child { border-bottom: none; }
+    .wd-exc-date { font-variant-numeric: tabular-nums; color: #374151; min-width: 7.5rem; }
+    .cal-pill-working {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: #eef4fb;
+      color: #1e3a5f;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .cal-pill-off {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: #eef0f2;
+      color: #6b7280;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .wd-month-bar { margin-bottom: 10px; }
+    .wd-month-bar input[type="month"] {
+      padding: 8px 12px;
+      border: 1px solid #c5ccd4;
+      border-radius: 6px;
+      font-family: inherit;
+    }
+    .wd-month-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .wd-day-chip {
+      min-width: 4.6rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      text-align: center;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .wd-day-chip.is-working {
+      background: #eef4fb;
+      color: #1e3a5f;
+      border-color: #d6e4f5;
+    }
+    .wd-day-chip.is-off {
+      background: #f3f4f6;
+      color: #6b7280;
+      border-color: #e5e7eb;
+    }
+    .wd-day-chip small { display: block; opacity: 0.75; font-size: 0.65rem; }
+    .card-working-days .actions { margin-top: 14px; }
   </style>
 </head>
 <body>
   <header>
     <h1>MEASURE OS — 管理者</h1>
-    <p>班長マスタ・会社設定 / Package A 現場観測</p>
+    <p>班長マスタ・会社設定 / 運営ダッシュボード · <a href="/sr/monthly" style="color:#bfdbfe;">月報作成</a></p>
     <span class="badge">v2 · 観測OS</span>
   </header>
   <nav class="sr-tabs" aria-label="画面切替">
     <button type="button" class="sr-tab is-active" id="tab-settings" data-panel="panel-settings">設定</button>
-    <button type="button" class="sr-tab" id="tab-observe" data-panel="panel-observe">Package A 観測</button>
+    <button type="button" class="sr-tab" id="tab-ops" data-panel="panel-ops">運営ダッシュボード</button>
   </nav>
   <div class="wrap">
     <div id="panel-settings">
     <div class="layout-top">
       <div class="card">
-        <h2>会社（company_id）</h2>
-        <label for="company-id">company_id</label>
-        <input type="text" id="company-id" placeholder="例: x" autocomplete="off" />
+        <h2>会社</h2>
+        <div class="company-search-wrap" id="company-search-wrap">
+          <label for="company-search-input">既存会社を検索（ID・会社名）</label>
+          <input
+            type="text"
+            id="company-search-input"
+            placeholder="例: サンプル"
+            autocomplete="off"
+            aria-controls="company-search-results"
+            aria-expanded="false"
+          />
+          <div id="company-search-results" class="company-search-results" hidden role="listbox"></div>
+        </div>
         <label for="company_name" class="label-after-gap">会社名</label>
         <input
           type="text"
@@ -459,14 +1047,58 @@
         />
         <label for="package_code" class="label-after-gap">Package</label>
         <select id="package_code" aria-label="Package">
-          <option value="A">A — &#35352;&#37682;&#22522;&#30436;</option>
-          <option value="B">B — &#36939;&#29992;&#21487;&#35222;&#21270;</option>
-          <option value="C">C — &#32113;&#21046;&#12539;&#24375;&#21046;</option>
-          <option value="D">D — &#32076;&#21942;&#27963;&#29992;</option>
+          <option value="A">A — 現場可観測基盤</option>
+          <option value="B">B — 可観測運用制御</option>
+          <option value="C">C — 構造分析・経営最適化</option>
         </select>
+        <div class="package-guide" id="package-guide" aria-live="polite">
+          <p class="package-guide-row" data-pkg="A">
+            <span class="package-pill package-pill-a">Package A</span>
+            <span>👉 現場を観測する</span>
+          </p>
+          <p class="package-guide-row" data-pkg="B">
+            <span class="package-pill package-pill-b">Package B</span>
+            <span>👉 観測可能なまま現場を安定化する</span>
+          </p>
+          <p class="package-guide-row" data-pkg="C">
+            <span class="package-pill package-pill-c">Package C</span>
+            <span>👉 現場構造を理解・分析・最適化する</span>
+          </p>
+        </div>
+        <div id="package-detail" class="package-detail"></div>
         <p class="hint" style="margin-top:8px;">
-          &#22865;&#32004;&#12503;&#12521;&#12531;&#12395;&#24540;&#12376;&#12383;&#27231;&#33021;&#24133;&#12391;&#12377;&#65288;&#26465;&#25991;&#12539;&#12501;&#12455;&#12540;&#12474;&#30058;&#21495;&#12399;&#34920;&#31034;&#12375;&#12414;&#12379;&#12435;&#65289;&#12290;
+          契約・導入段階に応じた表示切替です（Package 自体は制御を行いません）。
         </p>
+        <input type="hidden" id="company-id" value="" />
+        <div id="company-id-block" class="company-id-block" hidden>
+          <label>ログインID</label>
+          <div id="company-id-display" class="company-id-display mono"></div>
+          <p class="hint">（変更不可）</p>
+        </div>
+        <div id="company-new-actions" class="company-new-actions">
+          <button type="button" class="btn-primary" id="btn-create-company">新規会社を作成</button>
+        </div>
+        <div id="company-existing-new" class="company-existing-new" hidden>
+          <button type="button" class="btn-secondary" id="btn-start-new-company">別の新規会社を作成</button>
+          <p class="hint" style="margin-top:8px;">
+            表示中の会社名を変更して「保存する」と、既存会社の更新になります。
+          </p>
+        </div>
+        <div id="company-existing-password" class="company-existing-password" hidden>
+          <button type="button" class="btn-secondary" id="btn-reissue-password">パスワード再発行</button>
+        </div>
+        <div id="company-login-result" class="company-login-result" hidden>
+          <h3 class="company-login-result-title" id="company-login-result-title">ログイン情報</h3>
+          <div class="company-login-result-row">
+            <div class="company-login-result-label">ログインID</div>
+            <div class="company-login-result-value" id="login-result-company-id"></div>
+          </div>
+          <div class="company-login-result-row">
+            <div class="company-login-result-label" id="login-result-password-label">初期パスワード</div>
+            <div class="company-login-result-value" id="login-result-password"></div>
+          </div>
+          <button type="button" class="btn-copy-login" id="btn-copy-login">ログイン情報をコピー</button>
+        </div>
       </div>
       <div class="card card-rules">
         <div class="rules-block">
@@ -507,7 +1139,7 @@
             autocomplete="off"
           />
           <p class="hint">
-            予告と実績の差がこの値を超えると、数値乖離として判定します
+            予告と実績の差がこの値を超えると、結果不備として判定します
           </p>
         </div>
         <div class="rules-block">
@@ -520,13 +1152,53 @@
         </div>
       </div>
     </div>
+    <div class="card card-working-days">
+      <h2>営業日設定</h2>
+      <p class="hint">
+        会社の営業日（稼働日）を定義します。Package A では定義・表示のみ行い、制御は行いません。
+      </p>
+      <div class="rules-block">
+        <div class="wd-section-title">1. 基本営業曜日</div>
+        <div class="wd-grid" id="wd-checkboxes">
+          <label><input type="checkbox" class="wd-cb" value="1" checked /> 月</label>
+          <label><input type="checkbox" class="wd-cb" value="2" checked /> 火</label>
+          <label><input type="checkbox" class="wd-cb" value="3" checked /> 水</label>
+          <label><input type="checkbox" class="wd-cb" value="4" checked /> 木</label>
+          <label><input type="checkbox" class="wd-cb" value="5" checked /> 金</label>
+          <label><input type="checkbox" class="wd-cb" value="6" /> 土</label>
+          <label><input type="checkbox" class="wd-cb" value="7" /> 日</label>
+        </div>
+      </div>
+      <div class="rules-block">
+        <div class="wd-section-title">2. 例外日設定</div>
+        <div class="wd-exception-add">
+          <input type="date" id="wd-exc-date" aria-label="例外日" />
+          <select id="wd-exc-type" aria-label="営業日種別">
+            <option value="0">非営業日</option>
+            <option value="1">営業日</option>
+          </select>
+          <button type="button" class="btn-secondary" id="wd-exc-add">追加</button>
+        </div>
+        <div id="wd-exception-list"></div>
+      </div>
+      <div class="rules-block">
+        <div class="wd-section-title">3. 月間プレビュー（営業日判定済）</div>
+        <div class="wd-month-bar">
+          <input type="month" id="wd-preview-month" aria-label="プレビュー月" />
+        </div>
+        <div class="wd-month-grid" id="wd-month-preview"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn-primary" id="btn-save-working-days">営業日設定を保存</button>
+      </div>
+      <div id="wd-msg" class="msg"></div>
+    </div>
     <div class="card card-leaders">
       <h2>班長リスト（名前＋工程）</h2>
       <div id="lines"></div>
       <button type="button" class="btn-row" id="btn-add">＋ 行を追加</button>
       <div class="actions">
         <button type="button" class="btn-primary" id="btn-save">保存する</button>
-        <button type="button" class="btn-secondary" id="btn-load">再読込</button>
       </div>
       <div id="msg" class="msg"></div>
       <p class="hint">
@@ -537,27 +1209,88 @@
     </div>
     </div>
 
-    <div id="panel-observe" class="panel-hidden">
-      <div class="card observe-target-card">
-        <div class="observe-target-head">
-          <div>
-            <div class="observe-target-kicker">観測対象会社</div>
-            <div class="observe-target-name" id="observe-target-label">（未選択）</div>
-          </div>
-          <div class="observe-target-controls">
-            <label for="observe-company-select" class="sr-only">観測対象会社を選択</label>
-            <select id="observe-company-select" aria-label="観測対象会社を選択">
-              <option value="">— 会社を選択 —</option>
-            </select>
-            <button type="button" class="btn-observe-nav" id="btn-observe-prev" title="前の会社">←</button>
-            <button type="button" class="btn-observe-nav" id="btn-observe-next" title="次の会社">→</button>
-          </div>
+    <div id="panel-ops" class="panel-hidden">
+      <div class="ops-summary-grid">
+        <div class="ops-summary-tile">
+          <div class="ops-summary-tile-label">契約会社数</div>
+          <div class="ops-summary-tile-value" id="ops-sum-company-count">—</div>
+        </div>
+        <div class="ops-summary-tile ops-summary-tile--normal">
+          <div class="ops-summary-tile-label">正常</div>
+          <div class="ops-summary-tile-value" id="ops-sum-normal-count">—</div>
+        </div>
+        <div class="ops-summary-tile ops-summary-tile--watch">
+          <div class="ops-summary-tile-label">要観察</div>
+          <div class="ops-summary-tile-value" id="ops-sum-watch-count">—</div>
+        </div>
+        <div class="ops-summary-tile ops-summary-tile--danger">
+          <div class="ops-summary-tile-label">危険</div>
+          <div class="ops-summary-tile-value" id="ops-sum-danger-count">—</div>
         </div>
       </div>
-      <p class="observe-intro">
-        Package A — 現場内部状態を観測します（制御・入力禁止・AI分析は行いません）。
-        複数会社・拠点の巡回観測は、上の切替または ← → で行えます。
+      <div class="ops-toolbar">
+        <span class="ops-meta-line" id="ops-generated-at"></span>
+        <button type="button" class="btn-ops-refresh" id="btn-ops-refresh">一覧を更新</button>
+      </div>
+      <div id="ops-msg" class="ops-msg" hidden></div>
+      <section class="ops-observe-section">
+        <h2 class="ops-section-title">運営観測</h2>
+        <div class="ops-observe-grid">
+          <div class="ops-observe-card">
+            <h3 class="ops-observe-card-title">危険度上位</h3>
+            <ul class="ops-observe-list" id="ops-observe-top-danger"></ul>
+          </div>
+          <div class="ops-observe-card">
+            <h3 class="ops-observe-card-title">更新停止</h3>
+            <ul class="ops-observe-list" id="ops-observe-stale"></ul>
+          </div>
+        </div>
+      </section>
+      <section class="ops-list-section">
+        <h2 class="ops-section-title">全社一覧</h2>
+        <div class="ops-filter-bar">
+          <div class="ops-filter-group">
+            <span class="ops-filter-label">状態</span>
+            <select class="ops-filter-select" id="ops-filter-status">
+              <option value="all">すべて</option>
+              <option value="normal">正常</option>
+              <option value="watch">要観察</option>
+              <option value="danger">危険</option>
+            </select>
+          </div>
+        </div>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>状態</th>
+              <th>危険度</th>
+              <th>company_id</th>
+              <th>company_name</th>
+              <th>青件数</th>
+              <th>青率</th>
+              <th>最終更新</th>
+              <th>詳細</th>
+            </tr>
+          </thead>
+          <tbody id="ops-tbody-companies">
+            <tr><td colspan="8" class="ops-empty">読み込み中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="hint">
+        状態: 正常（危険度0）/ 要観察（1〜9）/ 危険（10以上）。並び順: 危険度降順 → 青率降順。
+        詳細から会社の Package A 観測（会社詳細）へ進みます。
       </p>
+      </section>
+    </div>
+
+    <div id="panel-observe" class="panel-hidden">
+      <a class="observe-back-link" href="/sr/v2?tab=ops">← 運営ダッシュボードへ戻る</a>
+      <div class="observe-detail-head">
+        <h2 class="observe-detail-title">Package A 観測（会社詳細）</h2>
+        <p class="observe-detail-company" id="observe-company-heading">（読み込み中…）</p>
+      </div>
       <div class="observe-bar">
         <button type="button" class="btn-observe" id="btn-observe-refresh">観測を更新</button>
         <span id="observe-generated-at" class="observe-meta"></span>
@@ -567,6 +1300,17 @@
       <section class="observe-section">
         <h2>1. 現場状態サマリー</h2>
         <div class="observe-summary-grid" id="observe-summary"></div>
+      </section>
+
+      <section class="observe-section">
+        <h2 id="observe-field-classification-heading">現場分類（任意入力）</h2>
+        <div class="observe-field-classification">
+          <h3>プロセス不備</h3>
+          <ul class="observe-fc-list" id="observe-field-classification-process"></ul>
+          <h3>結果不備</h3>
+          <ul class="observe-fc-list" id="observe-field-classification-result"></ul>
+          <p class="observe-fc-note" id="observe-field-classification-note"></p>
+        </div>
       </section>
 
       <section class="observe-section">
@@ -612,10 +1356,18 @@
     </div>
   </div>
 
+<script src="/static/sr_v2_company_context.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
   const linesEl = $("lines");
+  const Ctx = window.SrV2CompanyContext || {};
+  const LS_LAST_COMPANY = Ctx.LS_LAST_COMPANY || "sr_v2_last_company";
+  const LS_KEYS_TO_CLEAR = Ctx.LS_KEYS_TO_CLEAR || [
+    LS_LAST_COMPANY,
+    "company_id",
+    "observe_company_id",
+  ];
 
   const MODE_TO_TIME = { day: "05:00", night: "07:00", h24: "08:00" };
   const TIME_TO_MODE = {
@@ -623,6 +1375,70 @@
     "07:00": "night",
     "08:00": "h24",
   };
+
+  const PACKAGE_UI = {
+    A: {
+      label: "現場可観測基盤",
+      tagline: "現場を観測する",
+      description: "現場を止めずに、何が起きているかを観測可能にする。",
+      bullets: ["異常を隠さない", "まず残す", "現場の流れを観測する"],
+      targets: "第1条A / 第3条A / 第5条A / 第7条A",
+      pillClass: "package-pill-a",
+    },
+    B: {
+      label: "可観測運用制御",
+      tagline: "観測可能なまま現場を安定化する",
+      description: "観測可能性を壊さずに、現場運用を安定化する。",
+      bullets: ["崩れを放置しない", "例外を正式な流れとして扱う", "負荷と遅れを可視化する"],
+      targets: "第1〜7条 Bフェーズ",
+      pillClass: "package-pill-b",
+    },
+    C: {
+      label: "構造分析・経営最適化",
+      tagline: "現場構造を理解・分析・最適化する",
+      description: "観測ログから、構造改善・分析・AI支援へ接続する。",
+      bullets: ["属人化分析", "ボトルネック分析", "緊急依存分析", "AI分析基盤"],
+      targets: "第1〜7条 Cフェーズ",
+      pillClass: "package-pill-c",
+    },
+  };
+
+  function packageSelectValue(rawCode) {
+    const pkg = String(rawCode || "A").trim().toUpperCase().slice(0, 1);
+    if (pkg === "D") return "C";
+    return Object.prototype.hasOwnProperty.call(PACKAGE_UI, pkg) ? pkg : "A";
+  }
+
+  function setPackageSelectValue(rawCode) {
+    $("package_code").value = packageSelectValue(rawCode);
+    updatePackageGuide();
+  }
+
+  function updatePackageGuide() {
+    const sel = packageSelectValue($("package_code").value);
+    document.querySelectorAll(".package-guide-row").forEach((row) => {
+      row.classList.toggle("is-selected", row.getAttribute("data-pkg") === sel);
+    });
+    const meta = PACKAGE_UI[sel] || PACKAGE_UI.A;
+    const detailEl = $("package-detail");
+    if (!detailEl) return;
+    const bullets = (meta.bullets || [])
+      .map((b) => "<li>" + b + "</li>")
+      .join("");
+    detailEl.innerHTML =
+      '<div class="package-detail-title">Package ' +
+      sel +
+      "｜" +
+      meta.label +
+      "</div>" +
+      "<p>" +
+      meta.description +
+      "</p>" +
+      (bullets ? "<ul>" + bullets + "</ul>" : "") +
+      '<p class="package-detail-target">対象: ' +
+      meta.targets +
+      "</p>";
+  }
 
   function normalizeTime(t) {
     if (t == null || t === "") return "";
@@ -752,26 +1568,366 @@
   }
 
   function updateFieldLink() {
-    const c = $("company-id").value.trim() || "x";
+    const c = $("company-id").value.trim();
     const a = $("link-field");
+    if (!c) {
+      a.href = "/genba/v2";
+      a.textContent = "/genba/v2?company=…";
+      return;
+    }
     a.href = "/genba/v2?company=" + encodeURIComponent(c);
     a.textContent = "/genba/v2?company=" + c;
   }
 
-  /** DB を正とする。ここには company_id のみ（班長・境界時刻は GET で復元） */
-  const LS_LAST_COMPANY = "sr_v2_last_company";
   /** blur 時に同じ会社を再 GET しない（編集中の上書き防止・無駄な通信抑制） */
   let lastFetchedCompanyId = "";
+  let companyLoadSeq = 0;
+
+  function clearStoredCompanyKeys() {
+    try {
+      for (const k of LS_KEYS_TO_CLEAR) {
+        localStorage.removeItem(k);
+      }
+    } catch (_) { /* ok */ }
+  }
+
+  function updateCompanyQuery(companyId) {
+    const c = String(companyId || "").trim();
+    const u = new URL(window.location.href);
+    if (c) {
+      u.searchParams.set("company", c);
+    } else {
+      u.searchParams.delete("company");
+      u.searchParams.delete("company_id");
+    }
+    const href = u.pathname + u.search + u.hash;
+    history.replaceState(null, "", href);
+  }
+
+  function syncUrlCompanyParam(cid) {
+    updateCompanyQuery(cid);
+  }
+
+  function getActiveCompanyId() {
+    return String($("company-id").value || "").trim();
+  }
+
+  /** URL のみが company truth。DOM / memory は参照しない。 */
+  function readUrlCompanyId() {
+    if (typeof Ctx.readCompanyFromSearch === "function") {
+      return Ctx.readCompanyFromSearch(location.search);
+    }
+    const qs = new URLSearchParams(location.search);
+    return (qs.get("company") || qs.get("company_id") || "").trim();
+  }
+
+  function initCompanyFromUrl() {
+    const urlCompany = readUrlCompanyId();
+    if (!urlCompany) {
+      resetCompanyContext();
+      return;
+    }
+    $("company-id").value = urlCompany;
+    updateCompanyQuery(urlCompany);
+    updateCompanyUiMode();
+    if (lastFetchedCompanyId !== urlCompany) {
+      load();
+    }
+  }
+
+  /** 入力中の company_id を URL ?company= に反映（URL に company がある場合のみ） */
+  function syncCompanyUrlFromState() {
+    const urlCompany = readUrlCompanyId();
+    if (!urlCompany) return;
+    updateCompanyQuery(getActiveCompanyId() || urlCompany);
+  }
+
+  function resetSettingsFormToEmpty() {
+    $("company_name").value = "";
+    setPackageSelectValue("A");
+    $("tolerance_value").value = "";
+    $("order_cutoff_time").value = "";
+    setWorkMode("day");
+    updateBoundaryPreview();
+    const mismatchEl = $("boundary-mismatch");
+    if (mismatchEl) {
+      mismatchEl.hidden = true;
+      mismatchEl.textContent = "";
+    }
+    linesEl.innerHTML = "";
+  }
+
+  let lastLoginClipboard = null;
+
+  function isEditingExistingCompany() {
+    const editingCompanyId = String(lastFetchedCompanyId || "").trim();
+    const activeCompanyId = getActiveCompanyId();
+    return Boolean(
+      editingCompanyId && activeCompanyId && editingCompanyId === activeCompanyId,
+    );
+  }
+
+  /** @deprecated 互換 alias — 編集モード判定は isEditingExistingCompany を使用 */
+  function isExistingCompanyLoaded() {
+    return isEditingExistingCompany();
+  }
+
+  function hasPendingCompanyLoad() {
+    if (isEditingExistingCompany()) return false;
+    const urlCompanyId = readUrlCompanyId();
+    const activeCompanyId = getActiveCompanyId();
+    return Boolean(urlCompanyId || activeCompanyId);
+  }
+
+  function hideLoginResult() {
+    const box = $("company-login-result");
+    if (box) box.hidden = true;
+    lastLoginClipboard = null;
+  }
+
+  function updateCompanyUiMode() {
+    const editing = isEditingExistingCompany();
+    const pendingLoad = hasPendingCompanyLoad();
+    const showExistingCompanyActions = editing || pendingLoad;
+    const idBlock = $("company-id-block");
+    const newActions = $("company-new-actions");
+    const existingNew = $("company-existing-new");
+    const reissue = $("company-existing-password");
+    if (idBlock) idBlock.hidden = !editing;
+    if (newActions) newActions.hidden = showExistingCompanyActions;
+    if (existingNew) existingNew.hidden = !showExistingCompanyActions;
+    if (reissue) reissue.hidden = !editing;
+    if (!editing) hideLoginResult();
+  }
+
+  function setCompanyIdState(cid) {
+    const c = String(cid || "").trim();
+    $("company-id").value = c;
+    const display = $("company-id-display");
+    if (display) display.textContent = c;
+    updateCompanyUiMode();
+  }
+
+  function showLoginResult(data, mode) {
+    const box = $("company-login-result");
+    const title = $("company-login-result-title");
+    const pwdLabel = $("login-result-password-label");
+    if (!box || !data) return;
+    const cid = String(data.company_id || "").trim();
+    const pwd = String(data.initial_password || "").trim();
+    if (title) {
+      title.textContent = "ログイン情報";
+    }
+    if (pwdLabel) {
+      pwdLabel.textContent = mode === "reissue" ? "パスワード" : "初期パスワード";
+    }
+    $("login-result-company-id").textContent = cid;
+    $("login-result-password").textContent = pwd;
+    box.hidden = false;
+    lastLoginClipboard = { company_id: cid, initial_password: pwd };
+  }
+
+  function buildLoginClipboardText(info) {
+    const cid = String((info && info.company_id) || "").trim();
+    const pwd = String((info && info.initial_password) || "").trim();
+    return (
+      "MEASURE OS ログイン情報\n\n" +
+      "ログインID:\n" +
+      cid +
+      "\n\n" +
+      "パスワード:\n" +
+      pwd
+    );
+  }
+
+  async function copyLoginInfo() {
+    if (!lastLoginClipboard) return;
+    const text = buildLoginClipboardText(lastLoginClipboard);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      showMsg(true, "ログイン情報をコピーしました");
+    } catch (e) {
+      showMsg(false, "コピーに失敗しました");
+    }
+  }
+
+  function prepareNewCompanyCreation() {
+    companyLoadSeq++;
+    const keepName = $("company_name").value.trim();
+    const keepPkg = packageSelectValue($("package_code").value);
+    resetCompanyContext();
+    if (keepName) $("company_name").value = keepName;
+    setPackageSelectValue(keepPkg);
+    hideLoginResult();
+    showMsg(true, "新規作成モードです。内容を確認して「新規会社を作成」を押してください");
+  }
+
+  async function createCompany() {
+    hideMsg();
+    hideLoginResult();
+    if (isEditingExistingCompany()) {
+      showMsg(
+        false,
+        "既存会社を編集中です。「別の新規会社を作成」から新規作成を開始してください",
+      );
+      return;
+    }
+    const cname = $("company_name").value.trim();
+    if (!cname) {
+      showMsg(false, "会社名を入力してください");
+      return;
+    }
+    const package_code = packageSelectValue($("package_code").value);
+    companyLoadSeq++;
+    setCompanyIdState("");
+    lastFetchedCompanyId = "";
+    updateCompanyQuery("");
+    try {
+      const data = await api("POST", "/v2/companies", {
+        company_name: cname,
+        package_code,
+      });
+      companyLoadSeq++;
+      lastFetchedCompanyId = data.company_id;
+      setCompanyIdState(data.company_id);
+      rememberCompanyContext(data.company_id);
+      if (data.company_name != null) {
+        $("company_name").value = String(data.company_name);
+      }
+      if (data.package_code) setPackageSelectValue(data.package_code);
+      showLoginResult(data, "create");
+      updateFieldLink();
+      showMsg(true, "新規会社を作成しました");
+      loadWorkingCalendar().catch(() => {});
+    } catch (e) {
+      showMsg(false, String(e.message || e));
+    }
+  }
+
+  async function reissueCompanyPassword() {
+    hideMsg();
+    const cid = getActiveCompanyId();
+    if (!cid) {
+      showMsg(false, "会社を選択してください");
+      return;
+    }
+    try {
+      const data = await api(
+        "POST",
+        "/v2/company/" + encodeURIComponent(cid) + "/password/reissue",
+      );
+      showLoginResult(data, "reissue");
+      showMsg(true, "パスワードを再発行しました");
+    } catch (e) {
+      showMsg(false, String(e.message || e));
+    }
+  }
 
   function rememberCompanyContext(cid) {
     const c = String(cid || "").trim();
-    if (!c) return;
+    if (!c) {
+      resetCompanyContext();
+      return;
+    }
+    updateCompanyQuery(c);
+  }
+
+  function closeCompanySearchDropdown() {
+    const box = $("company-search-results");
+    const inp = $("company-search-input");
+    if (box) {
+      box.hidden = true;
+      box.innerHTML = "";
+    }
+    if (inp) inp.setAttribute("aria-expanded", "false");
+  }
+
+  function resetCompanySearchUi() {
+    const inp = $("company-search-input");
+    if (inp) inp.value = "";
+    closeCompanySearchDropdown();
+  }
+
+  function formatCompanySearchLabel(companyId, companyName) {
+    if (typeof Ctx.formatCompanySearchLabel === "function") {
+      return Ctx.formatCompanySearchLabel(companyId, companyName);
+    }
+    const id = String(companyId || "").trim();
+    const nm = String(companyName || "").trim();
+    if (!id) return "";
+    return nm ? id + "｜" + nm : id;
+  }
+
+  async function fetchCompanySearchHits(query) {
+    const q = String(query || "").trim();
+    if (!q) return [];
+    const rows = await api(
+      "GET",
+      "/admin/companies/search?q=" + encodeURIComponent(q),
+    );
+    return (rows || [])
+      .filter((r) => r && r.is_active !== false)
+      .map((r) => ({
+        company_id: String(r.company_id || "").trim(),
+        company_name: String(r.company_name || "").trim(),
+      }))
+      .filter((r) => r.company_id);
+  }
+
+  async function renderCompanySearchResults() {
+    const inp = $("company-search-input");
+    const box = $("company-search-results");
+    if (!inp || !box) return;
+    const q = inp.value.trim();
+    if (!q) {
+      closeCompanySearchDropdown();
+      return;
+    }
+    let hits = [];
     try {
-      localStorage.setItem(LS_LAST_COMPANY, c);
-      const u = new URL(location.href);
-      u.searchParams.set("company", c);
-      history.replaceState(null, "", u.pathname + u.search + u.hash);
-    } catch (_) { /* ok */ }
+      hits = await fetchCompanySearchHits(q);
+    } catch (_) {
+      hits = [];
+    }
+    inp.setAttribute("aria-expanded", hits.length ? "true" : "false");
+    if (!hits.length) {
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="company-search-empty">該当する会社がありません</div>';
+      return;
+    }
+    box.innerHTML = hits
+      .map(
+        (c) =>
+          '<button type="button" class="company-search-item" role="option" data-company-id="' +
+          escapeAttr(c.company_id) +
+          '">' +
+          escapeHtml(formatCompanySearchLabel(c.company_id, c.company_name)) +
+          "</button>",
+      )
+      .join("");
+    box.hidden = false;
+  }
+
+  async function selectCompanyFromSearch(companyId) {
+    const c = String(companyId || "").trim();
+    if (!c) return;
+    companyLoadSeq++;
+    hideLoginResult();
+    closeCompanySearchDropdown();
+    resetCompanySearchUi();
+    $("company-id").value = c;
+    updateFieldLink();
+    await load();
   }
 
   async function api(method, path, body) {
@@ -791,20 +1947,24 @@
   }
 
   async function load() {
+    const seq = ++companyLoadSeq;
     hideMsg();
-    const cid = $("company-id").value.trim();
+    hideLoginResult();
+    const cid = getActiveCompanyId();
     if (!cid) {
-      showMsg(false, "company_id を入力してください");
+      if (seq === companyLoadSeq) resetCompanyContext();
       return;
     }
     try {
       const data = await api("GET", "/v2/company/" + encodeURIComponent(cid));
+      if (seq !== companyLoadSeq) return;
       $("company_name").value =
         data.company_name != null && data.company_name !== undefined
           ? String(data.company_name)
           : "";
-      const pkg = String(data.package_code || "A").trim().toUpperCase().slice(0, 1);
-      $("package_code").value = ["A", "B", "C", "D"].includes(pkg) ? pkg : "A";
+      setPackageSelectValue(data.package_code || data.package_display_code || "A");
+      lastFetchedCompanyId = cid;
+      setCompanyIdState(cid);
       renderFromFieldUsers(data.field_users || "");
       applyDayBoundaryFromApi(data.day_boundary_time);
       const tv = data.tolerance_value;
@@ -815,22 +1975,29 @@
         oct != null && String(oct).trim()
           ? normalizeTime(String(oct))
           : "";
-      lastFetchedCompanyId = cid;
-      rememberCompanyContext(cid);
+      updateCompanyQuery(cid);
       showMsg(true, "読み込みました");
       updateFieldLink();
+      syncObserveContextForCompany(cid).catch(() => { /* observe は best-effort */ });
+      loadWorkingCalendar().catch(() => { /* 営業日は別メッセージ */ });
     } catch (e) {
+      if (seq !== companyLoadSeq) return;
       showMsg(false, String(e.message || e));
     }
   }
 
   async function save() {
     hideMsg();
-    const cid = $("company-id").value.trim();
+    const cid = getActiveCompanyId();
     if (!cid) {
-      showMsg(false, "company_id を入力してください");
+      showMsg(false, "会社を選択するか、新規作成してください");
       return;
     }
+    if (!lastFetchedCompanyId) {
+      showMsg(false, "先に既存会社を読み込むか、新規作成してください");
+      return;
+    }
+    syncCompanyUrlFromState();
     const leaders = collectLeaders();
     try {
       const boundaryTime = MODE_TO_TIME[getSelectedWorkMode()] || "05:00";
@@ -848,24 +2015,23 @@
           return;
         }
       }
-      const pkgSel = String($("package_code").value || "A").trim().toUpperCase().slice(0, 1);
-      const package_code = ["A", "B", "C", "D"].includes(pkgSel) ? pkgSel : "A";
+      const package_code = packageSelectValue($("package_code").value);
       const orderCutoff = normalizeTime($("order_cutoff_time").value);
-      const data = await api("PUT", "/v2/company/" + encodeURIComponent(cid) + "/leaders", {
+      const payload = {
         leaders,
         day_boundary_time: boundaryTime,
         company_name: $("company_name").value.trim(),
         tolerance_value: tolerancePayload,
         package_code,
         order_cutoff_time: orderCutoff || "",
-      });
+      };
+      const data = await api("PUT", "/v2/company/" + encodeURIComponent(cid) + "/leaders", payload);
       applyDayBoundaryFromApi(data.day_boundary_time);
       if (data.company_name != null && data.company_name !== undefined) {
         $("company_name").value = String(data.company_name);
       }
-      if (data.package_code) {
-        const p = String(data.package_code).trim().toUpperCase().slice(0, 1);
-        if (["A", "B", "C", "D"].includes(p)) $("package_code").value = p;
+      if (data.package_code || data.package_display_code) {
+        setPackageSelectValue(data.package_code || data.package_display_code);
       }
       const tv = data.tolerance_value;
       $("tolerance_value").value =
@@ -897,112 +2063,286 @@
 
   $("btn-add").addEventListener("click", () => addLine());
   $("btn-save").addEventListener("click", save);
-  $("btn-load").addEventListener("click", load);
-  $("company-id").addEventListener("change", updateFieldLink);
-  $("company-id").addEventListener("input", updateFieldLink);
-  $("company-id").addEventListener("blur", () => {
-    const cid = $("company-id").value.trim();
-    if (!cid) return;
-    if (cid === lastFetchedCompanyId) return;
-    load();
+  $("btn-create-company").addEventListener("click", () => createCompany());
+  $("btn-start-new-company").addEventListener("click", () => prepareNewCompanyCreation());
+  $("btn-reissue-password").addEventListener("click", () => reissueCompanyPassword());
+  $("btn-copy-login").addEventListener("click", () => copyLoginInfo());
+
+  const companySearchInput = $("company-search-input");
+  const companySearchResults = $("company-search-results");
+  if (companySearchInput) {
+    companySearchInput.addEventListener("input", () => {
+      renderCompanySearchResults().catch(() => {
+        closeCompanySearchDropdown();
+      });
+    });
+  }
+  if (companySearchResults) {
+    companySearchResults.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".company-search-item");
+      if (!btn) return;
+      const cid = btn.getAttribute("data-company-id");
+      if (!cid) return;
+      selectCompanyFromSearch(cid).catch((e) => {
+        showMsg(false, String(e.message || e));
+      });
+    });
+  }
+  document.addEventListener("click", (ev) => {
+    const wrap = $("company-search-wrap");
+    if (!wrap || wrap.contains(ev.target)) return;
+    closeCompanySearchDropdown();
   });
 
-  const qs = new URLSearchParams(location.search);
-  const fromUrl = (qs.get("company") || qs.get("company_id") || "").trim();
-  let fromStore = "";
-  try {
-    fromStore = (localStorage.getItem(LS_LAST_COMPANY) || "").trim();
-  } catch (_) { /* ok */ }
-  const q = fromUrl || fromStore;
-  if (q) {
-    $("company-id").value = q;
-    load();
-  } else if (!linesEl.children.length) {
-    addLine();
-  }
-  updateBoundaryPreview();
-  updateFieldLink();
+  $("package_code").addEventListener("change", updatePackageGuide);
+  updatePackageGuide();
 
-  /* --- Package A 観測タブ --- */
+  /* --- 営業日設定 --- */
+  const WD_LABELS = { 1: "月", 2: "火", 3: "水", 4: "木", 5: "金", 6: "土", 7: "日" };
+  let workingExceptions = [];
+
+  function showWdMsg(ok, text) {
+    const m = $("wd-msg");
+    if (!m) return;
+    m.className = "msg " + (ok ? "ok" : "ng");
+    m.textContent = text;
+  }
+
+  function hideWdMsg() {
+    const m = $("wd-msg");
+    if (!m) return;
+    m.className = "msg";
+    m.textContent = "";
+  }
+
+  function renderWorkingWeekdays(days) {
+    const set = new Set((days || []).map((d) => Number(d)));
+    document.querySelectorAll(".wd-cb").forEach((cb) => {
+      cb.checked = set.has(Number(cb.value));
+    });
+  }
+
+  function collectWorkingWeekdays() {
+    const out = [];
+    document.querySelectorAll(".wd-cb:checked").forEach((cb) => {
+      out.push(Number(cb.value));
+    });
+    return out.sort((a, b) => a - b);
+  }
+
+  function renderExceptionList() {
+    const el = $("wd-exception-list");
+    if (!el) return;
+    if (!workingExceptions.length) {
+      el.innerHTML = '<p class="hint">例外日は未設定です</p>';
+      return;
+    }
+    const sorted = [...workingExceptions].sort((a, b) =>
+      String(a.target_date).localeCompare(String(b.target_date)),
+    );
+    el.innerHTML = sorted
+      .map((ex, i) => {
+        const pill = ex.is_working_day
+          ? '<span class="cal-pill-working">営業日</span>'
+          : '<span class="cal-pill-off">非営業日</span>';
+        return (
+          '<div class="wd-exc-row">' +
+          '<span class="wd-exc-date">' +
+          escapeHtml(ex.target_date) +
+          "</span>" +
+          pill +
+          '<button type="button" class="btn-remove wd-exc-del" data-date="' +
+          escapeAttr(ex.target_date) +
+          '" title="削除">×</button>' +
+          "</div>"
+        );
+      })
+      .join("");
+    el.querySelectorAll(".wd-exc-del").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const d = btn.getAttribute("data-date");
+        workingExceptions = workingExceptions.filter((x) => x.target_date !== d);
+        renderExceptionList();
+      });
+    });
+  }
+
+  function renderMonthPreview(days) {
+    const el = $("wd-month-preview");
+    if (!el) return;
+    if (!days || !days.length) {
+      el.innerHTML = '<p class="hint">プレビューがありません</p>';
+      return;
+    }
+    el.innerHTML = days
+      .map((d) => {
+        const dt = String(d.date || "");
+        const dayNum = dt.slice(8, 10).replace(/^0/, "");
+        const wd = WD_LABELS[d.weekday] || "";
+        const cls = d.is_working_day ? "is-working" : "is-off";
+        const label = d.is_working_day ? "営業" : "休";
+        return (
+          '<div class="wd-day-chip ' +
+          cls +
+          '"><strong>' +
+          escapeHtml(dayNum) +
+          "</strong><small>" +
+          escapeHtml(wd) +
+          " · " +
+          escapeHtml(label) +
+          "</small></div>"
+        );
+      })
+      .join("");
+  }
+
+  function currentPreviewMonth() {
+    const el = $("wd-preview-month");
+    if (el && el.value) return el.value;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    return y + "-" + m;
+  }
+
+  async function loadWorkingCalendar() {
+    hideWdMsg();
+    const cid = $("company-id").value.trim();
+    if (!cid) return;
+    const month = currentPreviewMonth();
+    const monthEl = $("wd-preview-month");
+    if (monthEl && !monthEl.value) monthEl.value = month;
+    try {
+      const data = await api(
+        "GET",
+        "/v2/working-calendar?company_id=" +
+          encodeURIComponent(cid) +
+          "&month=" +
+          encodeURIComponent(month),
+      );
+      renderWorkingWeekdays(data.default_working_weekdays || [1, 2, 3, 4, 5]);
+      workingExceptions = (data.exceptions || []).map((e) => ({
+        id: e.id,
+        target_date: e.target_date,
+        is_working_day: !!e.is_working_day,
+      }));
+      renderExceptionList();
+      renderMonthPreview(data.days || []);
+    } catch (e) {
+      showWdMsg(false, String(e.message || e));
+    }
+  }
+
+  async function saveWorkingCalendar() {
+    hideWdMsg();
+    const cid = $("company-id").value.trim();
+    if (!cid) {
+      showWdMsg(false, "company_id を入力してください");
+      return;
+    }
+    const weekdays = collectWorkingWeekdays();
+    if (!weekdays.length) {
+      showWdMsg(false, "基本営業曜日を1つ以上選択してください");
+      return;
+    }
+    try {
+      await api("PATCH", "/v2/company-settings/working-days", {
+        company_id: cid,
+        default_working_weekdays: weekdays,
+        exceptions: workingExceptions.map((e) => ({
+          target_date: e.target_date,
+          is_working_day: !!e.is_working_day,
+        })),
+      });
+      showWdMsg(true, "営業日設定を保存しました");
+      await loadWorkingCalendar();
+    } catch (e) {
+      showWdMsg(false, String(e.message || e));
+    }
+  }
+
+  $("wd-exc-add").addEventListener("click", () => {
+    const d = ($("wd-exc-date").value || "").trim();
+    if (!d) {
+      showWdMsg(false, "例外日の日付を入力してください");
+      return;
+    }
+    workingExceptions = workingExceptions.filter((x) => x.target_date !== d);
+    workingExceptions.push({
+      target_date: d,
+      is_working_day: $("wd-exc-type").value === "1",
+    });
+    hideWdMsg();
+    renderExceptionList();
+  });
+  $("btn-save-working-days").addEventListener("click", saveWorkingCalendar);
+  $("wd-preview-month").addEventListener("change", loadWorkingCalendar);
+
+  function resetWorkingCalendarUi() {
+    renderWorkingWeekdays([1, 2, 3, 4, 5]);
+    workingExceptions = [];
+    renderExceptionList();
+    renderMonthPreview([]);
+    hideWdMsg();
+    const monthEl = $("wd-preview-month");
+    if (monthEl) monthEl.value = "";
+  }
+
+  /* --- 運営ダッシュボード（L1） / Package A 観測（会社詳細 L2） --- */
   const SUMMARY_LABELS = [
     ["blue_count", "青件数"],
     ["after_cutoff_count", "締切後投入件数"],
     ["prev_day_incomplete_count", "前営業日未完了件数"],
     ["planned_unstarted_count", "未着手予告件数"],
-    ["diff_anomaly_count", "実績差異件数"],
+    ["diff_anomaly_count", "結果不備件数"],
     ["exception_input_count", "例外入力件数"],
   ];
-  let observeCompanies = [];
+  const OPS_STATUS_LABEL = {
+    normal: "正常",
+    watch: "要観察",
+    danger: "危険",
+  };
+  const OPS_DANGER_SCORE_WATCH_MIN = 1;
+  const OPS_DANGER_SCORE_DANGER_MIN = 10;
+  let opsPortfolioLoaded = false;
+  let opsPortfolioCompanies = [];
+  let opsStatusFilter = "all";
 
-  function formatObserveTargetLabel(cid, name) {
-    const id = String(cid || "").trim();
-    const nm = String(name || "").trim();
-    if (!id) return "（未選択）";
-    return nm ? id + "（" + nm + "）" : id;
+  function isCompanyDetailMode() {
+    return document.body.classList.contains("sr-mode-company-detail");
   }
 
-  function fillObserveCompanySelect() {
-    const sel = $("observe-company-select");
-    if (!sel) return;
-    const cid = $("company-id").value.trim();
-    const parts = ['<option value="">— 会社を選択 —</option>'];
-    for (const c of observeCompanies) {
-      const id = String(c.company_id || "").trim();
-      if (!id) continue;
-      const nm = String(c.company_name || "").trim();
-      const label = nm ? id + " — " + nm : id;
-      parts.push(
-        '<option value="' + escapeAttr(id) + '">' + escapeHtml(label) + "</option>",
-      );
-    }
-    sel.innerHTML = parts.join("");
-    if (cid && !observeCompanies.some((c) => c.company_id === cid)) {
-      const opt = document.createElement("option");
-      opt.value = cid;
-      opt.textContent = cid;
-      sel.appendChild(opt);
-    }
-    if (cid) sel.value = cid;
-    updateObserveNavButtons();
+  function readMainTabFromUrl() {
+    const tab = (new URLSearchParams(location.search).get("tab") || "").trim();
+    if (tab === "ops") return "ops";
+    if (tab === "observe" || tab === "package-a") return "observe";
+    return "settings";
   }
 
-  function updateObserveNavButtons() {
-    const prev = $("btn-observe-prev");
-    const next = $("btn-observe-next");
-    const enabled = observeCompanies.length > 1;
-    if (prev) prev.disabled = !enabled;
-    if (next) next.disabled = !enabled;
-  }
-
-  async function loadObserveCompanyList() {
-    const byId = new Map();
-    try {
-      const rows = await api("GET", "/admin/companies?active_only=true");
-      for (const r of rows || []) {
-        const id = String(r.company_id || "").trim();
-        if (!id) continue;
-        byId.set(id, String(r.company_name || "").trim());
+  function replaceMainShellUrl(tab, companyId) {
+    const u = new URL(window.location.href);
+    if (tab === "settings") {
+      u.searchParams.delete("tab");
+    } else if (tab === "ops") {
+      u.searchParams.set("tab", "ops");
+      u.searchParams.delete("company");
+      u.searchParams.delete("company_id");
+    } else if (tab === "observe") {
+      u.searchParams.set("tab", "observe");
+      const c = String(companyId || readUrlCompanyId() || "").trim();
+      if (c) u.searchParams.set("company", c);
+      else {
+        u.searchParams.delete("company");
+        u.searchParams.delete("company_id");
       }
-    } catch (_) { /* 一覧未取得でも観測は続行 */ }
-    try {
-      const legacy = await api("GET", "/v2/companies");
-      for (const r of legacy || []) {
-        const id = String(r.company_id || "").trim();
-        if (!id || byId.has(id)) continue;
-        byId.set(id, "");
-      }
-    } catch (_) { /* ok */ }
-    observeCompanies = [...byId.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0], "ja"))
-      .map(([company_id, company_name]) => ({ company_id, company_name }));
-    fillObserveCompanySelect();
+    }
+    const href = u.pathname + u.search + u.hash;
+    history.replaceState(null, "", href);
   }
 
   async function resolveCompanyName(cid) {
     const id = String(cid || "").trim();
     if (!id) return "";
-    const hit = observeCompanies.find((c) => c.company_id === id);
-    if (hit && hit.company_name) return hit.company_name;
     try {
       const co = await api("GET", "/v2/company/" + encodeURIComponent(id));
       return String(co.company_name || "").trim();
@@ -1011,46 +2351,396 @@
     }
   }
 
-  async function updateObserveTargetLabel() {
-    const el = $("observe-target-label");
+  function formatObserveCompanyHeading(cid, name) {
+    const id = String(cid || "").trim();
+    const nm = String(name || "").trim();
+    if (!id) return "（会社未指定）";
+    return nm ? id + "（" + nm + "）" : id;
+  }
+
+  async function updateObserveCompanyHeading(cid) {
+    const el = $("observe-company-heading");
     if (!el) return;
-    const cid = $("company-id").value.trim();
-    if (!cid) {
-      el.textContent = "（未選択）";
+    const id = String(cid || readUrlCompanyId() || "").trim();
+    if (!id) {
+      el.textContent = "（会社未指定）";
       return;
     }
-    const name = await resolveCompanyName(cid);
-    el.textContent = formatObserveTargetLabel(cid, name);
-    const hit = observeCompanies.find((c) => c.company_id === cid);
-    if (hit && !hit.company_name && name) hit.company_name = name;
+    el.textContent = "読み込み中…";
+    const name = await resolveCompanyName(id);
+    el.textContent = formatObserveCompanyHeading(id, name);
   }
 
-  async function setObserveCompany(cid, opts) {
-    const options = opts || {};
-    const reload = options.reload !== false;
+  async function syncObserveContextForCompany(cid) {
+    if (!isCompanyDetailMode()) return;
     const c = String(cid || "").trim();
-    if (!c) {
-      $("observe-target-label").textContent = "（未選択）";
-      return;
-    }
-    $("company-id").value = c;
-    rememberCompanyContext(c);
-    updateFieldLink();
-    fillObserveCompanySelect();
-    const sel = $("observe-company-select");
-    if (sel) sel.value = c;
-    await updateObserveTargetLabel();
-    if (reload) await loadObserveDashboard({ skipTargetRefresh: true });
+    if (!c) return;
+    await updateObserveCompanyHeading(c);
+    await loadObserveDashboard({ skipTargetRefresh: true });
   }
 
-  function cycleObserveCompany(dir) {
-    if (!observeCompanies.length) return;
-    const cid = $("company-id").value.trim();
-    const ids = observeCompanies.map((c) => c.company_id);
-    let idx = ids.indexOf(cid);
-    if (idx < 0) idx = 0;
-    else idx = (idx + dir + ids.length) % ids.length;
-    setObserveCompany(ids[idx]);
+  function showOpsMsg(text) {
+    const el = $("ops-msg");
+    if (!el) return;
+    if (!text) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = text;
+  }
+
+  function formatOpsActivityAt(raw) {
+    if (!raw) return "—";
+    const s = String(raw).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (m) return m[2] + "-" + m[3] + " " + m[4] + ":" + m[5];
+    return s.slice(0, 16);
+  }
+
+  function companyDetailHref(companyId) {
+    return (
+      "/sr/v2?tab=observe&company=" +
+      encodeURIComponent(String(companyId || "").trim())
+    );
+  }
+
+  function renderOpsTotals(totals) {
+    const t = totals || {};
+    $("ops-sum-company-count").textContent = String(t.company_count != null ? t.company_count : 0);
+    $("ops-sum-normal-count").textContent = String(t.normal_count != null ? t.normal_count : 0);
+    $("ops-sum-watch-count").textContent = String(t.watch_count != null ? t.watch_count : 0);
+    $("ops-sum-danger-count").textContent = String(t.danger_count != null ? t.danger_count : 0);
+  }
+
+  function opsObserveCompanyLink(name, companyId) {
+    const cid = String(companyId || "").trim();
+    const label = escapeHtml(name || cid || "—");
+    if (!cid) return label;
+    return (
+      '<a href="' +
+      escapeAttr(companyDetailHref(cid)) +
+      '">' +
+      label +
+      "</a>"
+    );
+  }
+
+  function opsStatusFromDangerScore(score) {
+    const s = Number(score) || 0;
+    if (s >= OPS_DANGER_SCORE_DANGER_MIN) return "danger";
+    if (s >= OPS_DANGER_SCORE_WATCH_MIN) return "watch";
+    return "normal";
+  }
+
+  function opsStatusBadgeHtml(statusKey) {
+    const status = String(statusKey || "normal").trim().toLowerCase();
+    const badgeCls =
+      status === "danger"
+        ? "ops-status-badge--danger"
+        : status === "watch"
+          ? "ops-status-badge--watch"
+          : "ops-status-badge--normal";
+    const label = OPS_STATUS_LABEL[status] || status;
+    return (
+      '<span class="ops-status-badge ' +
+      badgeCls +
+      '">' +
+      escapeHtml(label) +
+      "</span>"
+    );
+  }
+
+  function opsStaleDaysFromActivityAt(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    const normalized = s.endsWith("Z") ? s : s.replace(" ", "T");
+    const dt = new Date(normalized);
+    if (Number.isNaN(dt.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activity = new Date(dt.getTime());
+    activity.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.floor((today - activity) / 86400000));
+  }
+
+  function opsStaleStopLabel(item) {
+    const c = item || {};
+    const activityAt = c.last_activity_at;
+    if (c.stale_days != null && c.stale_days !== "") {
+      return String(c.stale_days) + "日停止";
+    }
+    if (activityAt) {
+      const days = opsStaleDaysFromActivityAt(activityAt);
+      if (days != null) return String(days) + "日停止";
+    }
+    return "未更新";
+  }
+
+  function renderOpsObserveList(elId, html) {
+    const el = $(elId);
+    if (!el) return;
+    el.innerHTML = html || '<li class="ops-observe-item"><span class="ops-observe-item-meta">該当なし</span></li>';
+  }
+
+  function renderOpsObservation(observation) {
+    const obs = observation || {};
+    const topDanger = Array.isArray(obs.top_danger_score) ? obs.top_danger_score : [];
+    renderOpsObserveList(
+      "ops-observe-top-danger",
+      topDanger
+        .map((c) => {
+          const score = c.danger_score != null ? c.danger_score : 0;
+          const status = opsStatusFromDangerScore(score);
+          return (
+            '<li class="ops-observe-item">' +
+            '<div class="ops-observe-item-name">' +
+            opsObserveCompanyLink(c.company_name, c.company_id) +
+            "</div>" +
+            '<div class="ops-observe-item-status">' +
+            opsStatusBadgeHtml(status) +
+            "</div>" +
+            '<div class="ops-observe-item-meta">危険度 ' +
+            escapeHtml(String(score)) +
+            "</div></li>"
+          );
+        })
+        .join("")
+    );
+
+    const stale = Array.isArray(obs.stale_updates) ? obs.stale_updates : [];
+    renderOpsObserveList(
+      "ops-observe-stale",
+      stale
+        .map((c) => {
+          const meta = opsStaleStopLabel(c);
+          return (
+            '<li class="ops-observe-item">' +
+            '<div class="ops-observe-item-name">' +
+            opsObserveCompanyLink(c.company_name, c.company_id) +
+            "</div>" +
+            '<div class="ops-observe-item-meta">' +
+            escapeHtml(meta) +
+            "</div></li>"
+          );
+        })
+        .join("")
+    );
+  }
+
+  function applyOpsFilters() {
+    let rows = Array.isArray(opsPortfolioCompanies) ? opsPortfolioCompanies.slice() : [];
+    if (opsStatusFilter !== "all") {
+      rows = rows.filter((c) => String(c.status || "").trim().toLowerCase() === opsStatusFilter);
+    }
+    renderOpsTable(rows);
+  }
+
+  function renderOpsTable(companies) {
+    const tb = $("ops-tbody-companies");
+    if (!tb) return;
+    const rows = Array.isArray(companies) ? companies : [];
+    if (!rows.length) {
+      tb.innerHTML = '<tr><td colspan="8" class="ops-empty">該当する会社がありません</td></tr>';
+      return;
+    }
+    tb.innerHTML = rows
+      .map((c) => {
+        const status = String(c.status || "normal").trim().toLowerCase();
+        const badgeCls =
+          status === "danger"
+            ? "ops-status-badge--danger"
+            : status === "watch"
+              ? "ops-status-badge--watch"
+              : "ops-status-badge--normal";
+        const label = OPS_STATUS_LABEL[status] || status;
+        const cid = String(c.company_id || "").trim();
+        const rate =
+          c.blue_rate != null && c.blue_rate !== ""
+            ? Number(c.blue_rate).toFixed(1) + "%"
+            : "0.0%";
+        const dangerScore = c.danger_score != null ? c.danger_score : 0;
+        return (
+          "<tr>" +
+          '<td><span class="ops-status-badge ' +
+          badgeCls +
+          '">' +
+          escapeHtml(label) +
+          "</span></td>" +
+          '<td class="num">' +
+          escapeHtml(String(dangerScore)) +
+          "</td>" +
+          '<td class="mono">' +
+          escapeHtml(cid) +
+          "</td>" +
+          "<td>" +
+          escapeHtml(c.company_name || "") +
+          "</td>" +
+          '<td class="num">' +
+          escapeHtml(String(c.blue_count != null ? c.blue_count : 0)) +
+          "</td>" +
+          '<td class="num">' +
+          escapeHtml(rate) +
+          "</td>" +
+          "<td>" +
+          escapeHtml(formatOpsActivityAt(c.last_activity_at)) +
+          "</td>" +
+          '<td><button type="button" class="ops-btn-detail" data-company="' +
+          escapeAttr(cid) +
+          '">詳細</button></td>' +
+          "</tr>"
+        );
+      })
+      .join("");
+
+    tb.querySelectorAll(".ops-btn-detail").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const cid = btn.getAttribute("data-company") || "";
+        if (cid) window.location.href = companyDetailHref(cid);
+      });
+    });
+    tb.querySelectorAll("tr").forEach((tr) => {
+      tr.addEventListener("click", (ev) => {
+        if (ev.target.closest(".ops-btn-detail")) return;
+        const btn = tr.querySelector(".ops-btn-detail");
+        if (btn) btn.click();
+      });
+    });
+  }
+
+  async function loadOpsPortfolio(force) {
+    if (opsPortfolioLoaded && !force) return;
+    const btn = $("btn-ops-refresh");
+    if (btn) btn.disabled = true;
+    showOpsMsg("");
+    try {
+      const data = await api("GET", "/v2/sr/observe-portfolio?active_only=true");
+      renderOpsTotals(data.totals);
+      renderOpsObservation(data.observation);
+      opsPortfolioCompanies = Array.isArray(data.companies) ? data.companies : [];
+      applyOpsFilters();
+      const gen = data.generated_at ? formatOpsActivityAt(data.generated_at) : "—";
+      $("ops-generated-at").textContent = "最終取得: " + gen;
+      opsPortfolioLoaded = true;
+    } catch (e) {
+      showOpsMsg(String(e.message || e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function renderFieldClassificationList(el, rows, emptyLabel) {
+    if (!el) return;
+    if (!rows || !rows.length) {
+      el.innerHTML =
+        '<li class="observe-fc-empty">' + escapeHtml(emptyLabel || "該当なし") + "</li>";
+      return;
+    }
+    el.innerHTML = rows
+      .map(function (row) {
+        return (
+          '<li><span class="observe-fc-label">・' +
+          escapeHtml(row.label) +
+          '</span><span class="observe-fc-count">' +
+          row.count +
+          "件</span></li>"
+        );
+      })
+      .join("");
+  }
+
+  function renderFieldClassificationBreakdown(breakdown) {
+    const fc = breakdown || {};
+    const headingEl = $("observe-field-classification-heading");
+    if (headingEl) {
+      headingEl.textContent =
+        fc.display_mode === "auto"
+          ? "現場分類（自動判定）"
+          : "現場分類（任意入力）";
+    }
+    const noteEl = $("observe-field-classification-note");
+    if (noteEl) {
+      const note = String(fc.note || "").trim();
+      if (note) {
+        noteEl.innerHTML = note
+          .split("。")
+          .filter(function (s) {
+            return s.trim();
+          })
+          .map(function (s) {
+            return escapeHtml(s.trim()) + "。";
+          })
+          .join("<br />");
+      } else {
+        noteEl.innerHTML =
+          "※Package Aでは任意入力のため参考値です。<br />※未入力は異常なしを意味しません。";
+      }
+    }
+    const processRows = (fc.process || []).slice();
+    if (fc.auto_process && fc.auto_process.count > 0) {
+      processRows.push({
+        label: fc.auto_process.label || "（自動判定）",
+        count: fc.auto_process.count,
+      });
+    }
+    const resultRows = (fc.result || []).slice();
+    if (fc.auto_result && fc.auto_result.count > 0) {
+      resultRows.push({
+        label: fc.auto_result.label || "（自動判定）",
+        count: fc.auto_result.count,
+      });
+    }
+    renderFieldClassificationList(
+      $("observe-field-classification-process"),
+      processRows,
+      "該当なし",
+    );
+    renderFieldClassificationList(
+      $("observe-field-classification-result"),
+      resultRows,
+      "該当なし",
+    );
+  }
+
+  function clearObserveDashboard() {
+    hideObserveMsg();
+    const heading = $("observe-company-heading");
+    if (heading) heading.textContent = "（会社未指定）";
+    const metaEl = $("observe-generated-at");
+    if (metaEl) metaEl.textContent = "";
+    const emptyObserve =
+      '<tr><td colspan="5" class="observe-empty">観測データがありません</td></tr>';
+    const summaryEl = $("observe-summary");
+    if (summaryEl) summaryEl.innerHTML = "";
+    const anomEl = $("observe-anomalies");
+    if (anomEl) anomEl.innerHTML = emptyObserve;
+    const procEl = $("observe-process");
+    if (procEl) procEl.innerHTML = emptyObserve;
+    const priEl = $("observe-priority");
+    if (priEl) {
+      priEl.innerHTML = '<div class="observe-empty">観測データがありません</div>';
+    }
+    renderFieldClassificationBreakdown(null);
+  }
+
+  function resetCompanyContext() {
+    lastFetchedCompanyId = "";
+    $("company-id").value = "";
+    const display = $("company-id-display");
+    if (display) display.textContent = "";
+    clearStoredCompanyKeys();
+    updateCompanyQuery("");
+    resetSettingsFormToEmpty();
+    clearObserveDashboard();
+    resetWorkingCalendarUi();
+    updateFieldLink();
+    resetCompanySearchUi();
+    hideMsg();
+    hideWdMsg();
+    hideLoginResult();
+    updateCompanyUiMode();
   }
 
   function escapeHtml(s) {
@@ -1076,20 +2766,36 @@
   }
 
   function switchTab(panelId) {
+    document.body.classList.remove("sr-mode-company-detail");
     const settings = $("panel-settings");
+    const ops = $("panel-ops");
     const observe = $("panel-observe");
     const tabSettings = $("tab-settings");
-    const tabObserve = $("tab-observe");
-    const isObserve = panelId === "panel-observe";
-    if (settings) settings.classList.toggle("panel-hidden", isObserve);
-    if (observe) observe.classList.toggle("panel-hidden", !isObserve);
-    if (tabSettings) tabSettings.classList.toggle("is-active", !isObserve);
-    if (tabObserve) tabObserve.classList.toggle("is-active", isObserve);
-    if (isObserve) {
-      loadObserveCompanyList()
-        .then(() => updateObserveTargetLabel())
-        .then(() => loadObserveDashboard({ skipTargetRefresh: true }));
+    const tabOps = $("tab-ops");
+    const isOps = panelId === "panel-ops";
+    if (settings) settings.classList.toggle("panel-hidden", isOps);
+    if (ops) ops.classList.toggle("panel-hidden", !isOps);
+    if (observe) observe.classList.add("panel-hidden");
+    if (tabSettings) tabSettings.classList.toggle("is-active", !isOps);
+    if (tabOps) tabOps.classList.toggle("is-active", isOps);
+    replaceMainShellUrl(isOps ? "ops" : "settings");
+    if (isOps) void loadOpsPortfolio(true);
+  }
+
+  async function enterCompanyDetailMode(cid) {
+    const c = String(cid || readUrlCompanyId() || "").trim();
+    if (!c) {
+      window.location.href = "/sr/v2?tab=ops";
+      return;
     }
+    document.body.classList.add("sr-mode-company-detail");
+    $("panel-settings").classList.add("panel-hidden");
+    $("panel-ops").classList.add("panel-hidden");
+    $("panel-observe").classList.remove("panel-hidden");
+    $("company-id").value = c;
+    replaceMainShellUrl("observe", c);
+    await updateObserveCompanyHeading(c);
+    await loadObserveDashboard({ skipTargetRefresh: true });
   }
 
   function renderObserveDashboard(data) {
@@ -1135,7 +2841,9 @@
     const ps = data.priority_status || {};
     if (priEl) {
       priEl.innerHTML = [
-        ["不足件数", ps.shortage_count],
+        ["不足件数（全体）", ps.shortage_count],
+        ["自社製造 不足", ps.manufacture_shortage_count],
+        ["商社・仕入 不足", ps.purchase_shortage_count],
         ["締切後投入件数", ps.after_cutoff_count],
         ["基準在庫未設定件数", ps.safety_unset_count],
         ["優先度集中状態", ps.concentration_label || "—"],
@@ -1152,17 +2860,20 @@
         (gen ? "更新: " + gen.replace("T", " ").replace("Z", " UTC") : "") +
         (biz ? " · 業務日 " + biz : "");
     }
+
+    renderFieldClassificationBreakdown(data.field_classification_breakdown);
   }
 
   async function loadObserveDashboard(opts) {
     const options = opts || {};
     hideObserveMsg();
-    const cid = $("company-id").value.trim();
+    const cid = readUrlCompanyId() || getActiveCompanyId();
     if (!cid) {
-      showObserveMsg(false, "観測対象会社を選択してください");
-      $("observe-target-label").textContent = "（未選択）";
+      clearObserveDashboard();
+      showObserveMsg(false, "company が指定されていません");
       return;
     }
+    $("company-id").value = cid;
     const btn = $("btn-observe-refresh");
     if (btn) btn.disabled = true;
     try {
@@ -1171,7 +2882,7 @@
         "/v2/sr/observe-dashboard?company_id=" + encodeURIComponent(cid),
       );
       renderObserveDashboard(data);
-      if (!options.skipTargetRefresh) await updateObserveTargetLabel();
+      if (!options.skipTargetRefresh) await updateObserveCompanyHeading(cid);
       showObserveMsg(true, "観測データを読み込みました");
     } catch (e) {
       showObserveMsg(false, String(e.message || e));
@@ -1181,19 +2892,72 @@
   }
 
   $("tab-settings").addEventListener("click", () => switchTab("panel-settings"));
-  $("tab-observe").addEventListener("click", () => switchTab("panel-observe"));
+  $("tab-ops").addEventListener("click", () => switchTab("panel-ops"));
   $("btn-observe-refresh").addEventListener("click", () => loadObserveDashboard());
-  $("observe-company-select").addEventListener("change", () => {
-    const v = $("observe-company-select").value.trim();
-    if (v) setObserveCompany(v);
-  });
-  $("btn-observe-prev").addEventListener("click", () => cycleObserveCompany(-1));
-  $("btn-observe-next").addEventListener("click", () => cycleObserveCompany(1));
-
-  const qsTab = new URLSearchParams(location.search).get("tab");
-  if (qsTab === "observe" || qsTab === "package-a") {
-    switchTab("panel-observe");
+  $("btn-ops-refresh").addEventListener("click", () => loadOpsPortfolio(true));
+  const opsFilterStatus = $("ops-filter-status");
+  if (opsFilterStatus) {
+    opsFilterStatus.addEventListener("change", () => {
+      opsStatusFilter = opsFilterStatus.value || "all";
+      applyOpsFilters();
+    });
   }
+
+  $("company-id").addEventListener("input", () => {
+    const cid = getActiveCompanyId();
+    updateFieldLink();
+    if (!cid) resetCompanyContext();
+  });
+  $("company-id").addEventListener("change", () => {
+    const cid = getActiveCompanyId();
+    if (!cid) {
+      resetCompanyContext();
+      return;
+    }
+    if (!readUrlCompanyId()) return;
+    updateFieldLink();
+    if (cid !== lastFetchedCompanyId) load();
+  });
+  $("company-id").addEventListener("blur", () => {
+    const cid = getActiveCompanyId();
+    if (!cid) {
+      resetCompanyContext();
+      return;
+    }
+    if (!readUrlCompanyId()) return;
+    if (cid === lastFetchedCompanyId) return;
+    load();
+  });
+
+  function bootSrV2() {
+    updateBoundaryPreview();
+    const tab = readMainTabFromUrl();
+    const urlCompany = readUrlCompanyId();
+    if (tab === "observe") {
+      void enterCompanyDetailMode(urlCompany);
+      return;
+    }
+    document.body.classList.remove("sr-mode-company-detail");
+    if (tab === "ops") {
+      switchTab("panel-ops");
+    } else {
+      switchTab("panel-settings");
+      if (urlCompany) initCompanyFromUrl();
+      else updateCompanyUiMode();
+    }
+  }
+
+  bootSrV2();
+  window.addEventListener("pageshow", () => {
+    if (isCompanyDetailMode()) {
+      const cid = readUrlCompanyId();
+      if (cid) void enterCompanyDetailMode(cid);
+      return;
+    }
+    if (readMainTabFromUrl() === "settings" && readUrlCompanyId()) {
+      initCompanyFromUrl();
+    }
+  });
 })();
 </script>
 </body>

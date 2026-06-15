@@ -1,7 +1,8 @@
 """
 第5条仕様に基づく blue → red 昇格（GET /work/list 再計算後・POST /test/recompute などから呼ぶ）。
 
-- blue: 順序違反・乖離は即時、予告あり未実績は翌営業日 work_end 超過で（_apply_minimal_judgement）
+- blue（持ち越し）: actual_at なし かつ effective_date > business_date（day_boundary_time）
+- blue（順序・乖離・7条）: is_invalid_flow / is_diff_anomaly / is_article7_deviation は即時
 - red: 「営業日の judgement_time」を**2回**跨いでも未解消のものだけ
   （1回目を跨いだだけでは blue のまま）
 
@@ -21,7 +22,11 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from app import models
-from app.services.business_date import calc_business_date, next_business_day
+from app.services.business_date import (
+    calc_business_date,
+    effective_calendar_date_jst,
+    next_business_day,
+)
 from app.services.package_rules import get_company_package
 from app.services.status_history import (
     append_work_unit_status_history_if_changed,
@@ -71,6 +76,39 @@ def next_work_end_boundary_jst(
     return datetime.combine(nd, work_end_time, tzinfo=JST)
 
 
+def carryover_implies_status_blue(
+    *,
+    actual_at: Optional[datetime],
+    business_date: date,
+    status: Optional[str],
+    settings: models.CompanySettings,
+) -> bool:
+    """
+    第5条: 持ち越し青判定。
+    actual_at IS NULL AND effective_date > business_date AND status != closed
+    """
+    if actual_at is not None:
+        return False
+    if (status or "").strip().lower() == "closed":
+        return False
+    effective = effective_calendar_date_jst(
+        reference_now_jst(), settings.day_boundary_time
+    )
+    return effective > business_date
+
+
+def carryover_implies_status_blue_unit(
+    unit: models.WorkUnit,
+    settings: models.CompanySettings,
+) -> bool:
+    return carryover_implies_status_blue(
+        actual_at=getattr(unit, "actual_at", None),
+        business_date=unit.business_date,
+        status=getattr(unit, "status", None),
+        settings=settings,
+    )
+
+
 def incomplete_implies_status_blue(
     *,
     has_planned_nonzero: bool,
@@ -81,19 +119,18 @@ def incomplete_implies_status_blue(
     db: Optional[Session],
 ) -> bool:
     """
-    「予告あり・実績なし」（着手の有無は問わない）を status=blue にするか。
-    「実績あり」は数量・明細ベース（_has_meaningful_actual）。actual_at のみでは未入力扱い。
-
-    翌営業日の work_end を reference 時刻（JST）が跨いだときだけ True。
+    後方互換ラッパ。持ち越し青判定（carryover_implies_status_blue）へ統合済み。
+    has_planned_nonzero / db はログ文脈用にシグネチャのみ維持。
     """
-    if not has_planned_nonzero or has_meaningful_actual:
+    _ = (has_planned_nonzero, company_id, db)
+    if has_meaningful_actual:
         return False
-    if db is None:
-        return False
-    wet: time = settings.work_end_time or time(17, 0)
-    ref_jst = reference_now_jst()
-    boundary = next_work_end_boundary_jst(business_date, wet, company_id, db)
-    return ref_jst >= boundary
+    return carryover_implies_status_blue(
+        actual_at=None,
+        business_date=business_date,
+        status=None,
+        settings=settings,
+    )
 
 
 def compute_red_deadline_jst(

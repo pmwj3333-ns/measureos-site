@@ -982,6 +982,21 @@
   }
   .actual-anomaly-details > summary.actual-anomaly-sum::-webkit-details-marker { display: none; }
   .actual-anomaly-body .pattern-row { margin-top: 8px; }
+  .pattern-group { margin-top: 8px; }
+  .pattern-subs {
+    margin: 6px 0 10px 22px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr));
+    gap: 6px 10px;
+  }
+  .pattern-subs[hidden] { display: none !important; }
+  .pattern-sub-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: #3a3a3c;
+  }
   .field-actual-global-memo {
     margin-top: 8px;
   }
@@ -1144,88 +1159,16 @@
   .screen { display: none; }
   .screen.active { display: block; }
 
-  /* 会社ID未設定時：入力のみ（中央寄せ） */
-  body.field-company-pick {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 24px 16px;
-  }
-  body.field-company-pick #field-main-shell {
-    display: none !important;
-  }
-  body.field-company-pick #companyBox {
-    display: block !important;
-    margin-top: 0;
-    width: 100%;
-    max-width: 400px;
-  }
-  #companyBox .company-input {
-    width: 100%;
-    max-width: 320px;
-    padding: 12px 14px;
-    font-size: 1rem;
-    border: 1px solid #c7c7cc;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    font-family: inherit;
-    box-sizing: border-box;
-  }
-  #companyBox .company-confirm {
-    padding: 12px 28px;
-    background: #007aff;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    font-family: inherit;
-    cursor: pointer;
-  }
-  .mo-autofill-decoy {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .mo-company-field-wrap {
-    position: relative;
-    display: inline-block;
-    vertical-align: middle;
-  }
-
 </style>
 </head>
 <body>
-
-<div id="companyBox" style="display:none; text-align:center; margin-top:40px;">
-  <div class="mo-company-field-wrap">
-    <input type="text" tabindex="-1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-           name="ignore_mo_company_decoy_pick" aria-hidden="true" class="mo-autofill-decoy" />
-    <input type="text" id="companyInput" class="company-input" placeholder="会社IDを入力"
-           name="mo_company_id_input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-           inputmode="verbatim" />
-  </div>
-  <div>
-    <button type="button" class="company-confirm" onclick="saveCompany()">確定</button>
-  </div>
-</div>
 
 <div id="field-main-shell">
 
 <div class="overlay" id="overlay">
   <div class="overlay-box">
-    <p class="overlay-lead">担当者を選んでください</p>
-    <p class="overlay-sub">欄をタップして登録班長から選ぶか、同じ欄に直接入力して確定できます。</p>
+    <p class="overlay-lead">班長を選択してください</p>
+    <p class="overlay-sub">欄をタップして班長一覧から選ぶか、同じ欄に直接入力して確定できます。</p>
     <div class="field-user-combobox">
       <input type="text" class="field-user-input" id="user-input"
              placeholder="班長を選択"
@@ -1257,19 +1200,8 @@
 </div>
 
 <details class="settings-adv" id="settings-adv">
-  <summary>初期設定（会社・作業・工程）</summary>
+  <summary>初期設定（作業・工程）</summary>
   <div class="settings-grid">
-    <div>
-      <label for="cfg-company">会社ID（事務画面と共有）</label>
-      <div class="mo-company-field-wrap" style="display:block;width:100%;max-width:100%;">
-        <input type="text" tabindex="-1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-               name="ignore_mo_company_decoy_cfg" aria-hidden="true" class="mo-autofill-decoy" />
-        <input type="text" id="cfg-company"
-               name="mo_company_id_input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-               inputmode="verbatim"
-               placeholder="手入力（候補は出ません）" />
-      </div>
-    </div>
     <div>
       <label for="cfg-task">作業</label>
       <input type="text" id="cfg-task" autocomplete="off" />
@@ -1393,14 +1325,33 @@
           </div>
           <div class="subhead" style="margin-top:12px;">異常の分類（任意）</div>
           <div class="pattern-row">
-            <label class="pattern-check">
-              <input type="checkbox" id="pattern-a-cb" />
-              <span><strong>A</strong> プロセス不備（手順ミス）</span>
-            </label>
-            <label class="pattern-check">
-              <input type="checkbox" id="pattern-b-cb" />
-              <span><strong>B</strong> 結果不備（数値ズレ）</span>
-            </label>
+            <div class="pattern-group">
+              <label class="pattern-check">
+                <input type="checkbox" id="pattern-a-cb" />
+                <span><strong>A</strong> プロセス不備（手順ミス）</span>
+              </label>
+              <div id="pattern-a-subs" class="pattern-subs" hidden>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="process" data-anomaly-code="input_forgotten" /> 入力忘れ</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="process" data-anomaly-code="sequence_skip" /> 順序飛び</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="process" data-anomaly-code="deferred" /> 後回し</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="process" data-anomaly-code="handoff_missing" /> 引継ぎ漏れ</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="process" data-anomaly-code="other" /> その他</label>
+              </div>
+            </div>
+            <div class="pattern-group">
+              <label class="pattern-check">
+                <input type="checkbox" id="pattern-b-cb" />
+                <span><strong>B</strong> 結果不備</span>
+              </label>
+              <div id="pattern-b-subs" class="pattern-subs" hidden>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="result" data-anomaly-code="material_shortage" /> 材料不足</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="result" data-anomaly-code="equipment_stop" /> 設備停止</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="result" data-anomaly-code="work_error" /> 作業ミス</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="result" data-anomaly-code="estimate_wrong" /> 見立て違い</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="result" data-anomaly-code="priority_change" /> 突発優先変更</label>
+                <label class="pattern-sub-check"><input type="checkbox" data-anomaly-side="result" data-anomaly-code="other" /> その他</label>
+              </div>
+            </div>
           </div>
         </div>
       </details>
@@ -1424,45 +1375,26 @@
 </div>
 
 <script src="/static/format-jst-datetime.js"></script>
+<script src="/static/anomaly-classification.js"></script>
 <script src="/static/priority-tier-due.js"></script>
 <script>
-/** 現場 v2・事務 v2 で共有（office_v2 と同一キー）。スクリプト先頭で参照するため最上部に置く。 */
-const LS_SHARED_COMPANY_ID = "company_id";
+/** session company（サーバー注入のみ・URL/localStorage 不使用） */
+let fieldSessionCompanyId = "";
 
-function saveCompany() {
-  const id = document.getElementById("companyInput").value.trim();
-  if (!id) {
-    alert("会社IDを入力してください");
-    return;
-  }
-  localStorage.setItem("company_id", id);
-  location.href = "/現場/v2?company=" + encodeURIComponent(id);
+function initFieldSessionCompanyFromBootstrap() {
+  const boot =
+    typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
+      ? window.__MO_BOOTSTRAP_COMPANY__.trim()
+      : "";
+  fieldSessionCompanyId = boot;
 }
 
-(function resolveFieldV2Company() {
-  const params = new URLSearchParams(location.search);
-  /** URL のみ（localStorage からの自動復元・URL への強制付与はしない） */
-  const companyId = (params.get("company") || params.get("company_id") || "").trim();
-
-  if (!companyId) {
-    document.body.classList.add("field-company-pick");
-    const box = document.getElementById("companyBox");
-    if (box) box.style.display = "block";
-    const inp = document.getElementById("companyInput");
-    if (inp) {
-      inp.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") saveCompany();
-      });
-      try {
-        inp.focus();
-      } catch (_) { /* ok */ }
-    }
-    window.__FIELD_V2_NEEDS_COMPANY__ = true;
-    return;
-  }
-
-  window.__FIELD_V2_NEEDS_COMPANY__ = false;
-})();
+function redirectToOfficeLogin() {
+  const path = window.location.pathname || "/field/v2";
+  window.location.replace(
+    "/office/v2?return_to=" + encodeURIComponent(path),
+  );
+}
 
 let unitId = null;
 let lastWorkData = null;
@@ -1488,6 +1420,7 @@ let fieldProductCodeByLabel = Object.create(null);
 /** GET /v2/work/list のキャッシュ（過去の予告・実績から候補・コードヒント） */
 let fieldPastWorkListRows = [];
 const MSG_PLANNED_UNSAVED = "予告内容が未保存です。先に「予告を登録」してください。";
+const MSG_PLANNED_REGISTER_FIRST = "先に予告登録を行ってください";
 
 /** 数量欄のイベント観測: URL に qty_evt_debug=1、または window.__FIELD_QTY_EVENT_DEBUG === true */
 function fieldQtyEventDebugEnabled() {
@@ -1614,12 +1547,6 @@ function article7QtySnapshotForDebug() {
   }));
 }
 
-function persistSharedCompanyId(raw) {
-  const v = (raw != null ? String(raw) : "").trim();
-  if (v) localStorage.setItem(LS_SHARED_COMPANY_ID, v);
-  else localStorage.removeItem(LS_SHARED_COMPANY_ID);
-}
-
 function fieldUserStorageKeyUser(companyId) {
   return "field_v2_last_user:" + String(companyId || "").trim();
 }
@@ -1669,8 +1596,7 @@ function param(key, fb) {
 }
 
 function getConfig() {
-  /** 現場の作業対象会社はクエリのみ（未指定時は空＝会社ID入力画面側） */
-  const company = (param("company_id", null) || param("company", null) || "").trim();
+  const company = fieldSessionCompanyId;
   return {
     company,
     task: document.getElementById("cfg-task").value.trim()
@@ -1684,7 +1610,6 @@ function getConfig() {
 }
 
 function saveCfgToLocal() {
-  persistSharedCompanyId(document.getElementById("cfg-company").value);
   localStorage.setItem("mo_v2_task", document.getElementById("cfg-task").value.trim());
   localStorage.setItem("mo_v2_process", document.getElementById("cfg-process").value.trim());
 }
@@ -1714,50 +1639,26 @@ function resetActualEntryFormIndependent() {
   resetActualQtyInputsInPlace(actualRowsHost());
   const memoEl = document.getElementById("actual-one-line-memo");
   if (memoEl) memoEl.value = "";
-  const pa = document.getElementById("pattern-a-cb");
-  const pb = document.getElementById("pattern-b-cb");
-  if (pa) pa.checked = false;
-  if (pb) pb.checked = false;
+  if (window.MO_ANOMALY_CLASSIFICATION) {
+    MO_ANOMALY_CLASSIFICATION.clearForm();
+  } else {
+    const pa = document.getElementById("pattern-a-cb");
+    const pb = document.getElementById("pattern-b-cb");
+    if (pa) pa.checked = false;
+    if (pb) pb.checked = false;
+  }
   const reasonEl = document.getElementById("deviation-reason");
   if (reasonEl) reasonEl.value = "";
   syncDeviationReasonPanel();
 }
 
 function loadCfgFromLocal() {
-  const urlCo = (param("company_id", null) || param("company", null) || "").trim();
-  document.getElementById("cfg-company").value = urlCo;
-  if (urlCo) persistSharedCompanyId(urlCo);
   document.getElementById("cfg-task").value =
     param("task", localStorage.getItem("mo_v2_task") || "task_01");
   document.getElementById("cfg-process").value =
     param("process", localStorage.getItem("mo_v2_process") || "proc_01");
 }
 
-document.getElementById("cfg-company").addEventListener("change", () => {
-  const v = document.getElementById("cfg-company").value.trim();
-  if (v) {
-    const u = new URL(window.location.href);
-    u.searchParams.set("company", v);
-    u.searchParams.delete("company_id");
-    const q = u.searchParams.toString();
-    history.replaceState(null, "", u.pathname + (q ? "?" + q : "") + u.hash);
-  }
-  saveCfgToLocal();
-  resetActualEntryFormIndependent();
-  _fieldLastActualInputTargetFp = fieldActualInputTargetFingerprint();
-  void refreshArticle7Panels();
-  const ov = document.getElementById("overlay");
-  if (ov && !ov.classList.contains("hidden")) {
-    fieldUserSuggestClose();
-    fieldUserSuggestRows = [];
-    fieldUserFetchMaster().then(() => {
-      const input = document.getElementById("user-input");
-      if (input) input.value = computeOverlayUserInputHint();
-      fieldUserUpdateClearBtnVisibility();
-      fieldUserUpdateConfirmButtonState();
-    });
-  }
-});
 ["cfg-task", "cfg-process"].forEach((id) => {
   document.getElementById(id).addEventListener("change", () => {
     saveCfgToLocal();
@@ -2781,7 +2682,7 @@ function persistActualDraftNow() {
   const key = actualDraftStorageKey();
   if (!key) return;
   const body = {
-    v: 1,
+    v: 2,
     lines: snapshotActualDraftLinesFromDom(),
     actual_memo: String(
       document.getElementById("actual-one-line-memo")?.value || "",
@@ -2791,6 +2692,9 @@ function persistActualDraftNow() {
     ),
     pattern_a: document.getElementById("pattern-a-cb")?.checked === true,
     pattern_b: document.getElementById("pattern-b-cb")?.checked === true,
+    anomaly_classification: window.MO_ANOMALY_CLASSIFICATION
+      ? MO_ANOMALY_CLASSIFICATION.collectFromDom()
+      : { process: [], result: [] },
   };
   try {
     localStorage.setItem(key, JSON.stringify(body));
@@ -2822,6 +2726,13 @@ function actualDraftOnDelegatedInteraction(el) {
     return;
   }
   if (el.id === "pattern-a-cb" || el.id === "pattern-b-cb") {
+    if (window.MO_ANOMALY_CLASSIFICATION) {
+      MO_ANOMALY_CLASSIFICATION.syncSubPanels();
+    }
+    schedulePersistActualDraft();
+    return;
+  }
+  if (el.matches && el.matches("input[data-anomaly-side][data-anomaly-code]")) {
     schedulePersistActualDraft();
     return;
   }
@@ -2944,8 +2855,19 @@ function tryRestoreActualDraftIntoForm(data) {
   }
   const pa = document.getElementById("pattern-a-cb");
   const pb = document.getElementById("pattern-b-cb");
-  if (pa && draft.pattern_a != null) pa.checked = draft.pattern_a === true;
-  if (pb && draft.pattern_b != null) pb.checked = draft.pattern_b === true;
+  if (window.MO_ANOMALY_CLASSIFICATION) {
+    MO_ANOMALY_CLASSIFICATION.applyToForm(
+      {
+        pattern_a: draft.pattern_a === true,
+        pattern_b: draft.pattern_b === true,
+        anomaly_classification: draft.anomaly_classification,
+      },
+      { readOnly: actualScreenReadOnly },
+    );
+  } else {
+    if (pa && draft.pattern_a != null) pa.checked = draft.pattern_a === true;
+    if (pb && draft.pattern_b != null) pb.checked = draft.pattern_b === true;
+  }
   syncDeviationReasonPanel();
   return true;
 }
@@ -2978,8 +2900,8 @@ function renderPlannedSummaryForActual(data) {
     });
     if (cntEl) cntEl.textContent = "0件";
     sum.innerHTML = formal
-      ? '<p class="actual-planned-empty">正式な予告はまだありません。<span class="actual-planned-empty-sub">（空でも着手・入力できます）</span></p>'
-      : '<p class="actual-planned-empty">着手前の入力はまだありません。<span class="actual-planned-empty-sub">（空でも着手・入力できます）</span></p>';
+      ? '<p class="actual-planned-empty">予告登録済み（内容未定）。<span class="actual-planned-empty-sub">予告フェーズは完了しています。</span></p>'
+      : '<p class="actual-planned-empty">予告登録前です。<span class="actual-planned-empty-sub">先に「予告を登録」を行ってください。</span></p>';
     return;
   }
 
@@ -3462,6 +3384,9 @@ function syncDeviationReasonPanel() {
     const open = hasReason || (pa && pa.checked) || (pb && pb.checked);
     panel.open = open;
     if (devBlock) devBlock.style.display = hasReason ? "block" : "none";
+    if (window.MO_ANOMALY_CLASSIFICATION) {
+      MO_ANOMALY_CLASSIFICATION.syncSubPanels({ readOnly: true });
+    }
     return;
   }
 
@@ -3507,6 +3432,13 @@ function article7DueMonthDay(it) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dueRaw);
   if (!m) return "—";
   return String(Number(m[2])) + "/" + String(Number(m[3]));
+}
+
+function article7FieldBoardItems(items) {
+  return (items || []).filter((it) => {
+    const m = String(it.production_mode || "manufacture").trim().toLowerCase();
+    return m !== "purchase";
+  });
 }
 
 function renderArticle7BoardPlannedHtml(items, options) {
@@ -3715,7 +3647,12 @@ async function refreshArticle7Panels() {
       });
     });
     syncDeviationReasonPanel();
-    if (plannedBoard) plannedBoard.innerHTML = renderArticle7BoardPlannedHtml(items, { withPick: true });
+    if (plannedBoard) {
+      plannedBoard.innerHTML = renderArticle7BoardPlannedHtml(
+        article7FieldBoardItems(items),
+        { withPick: true },
+      );
+    }
     if (actualEl) actualEl.innerHTML = renderArticle7BoardPlannedHtml(items, { withPick: false });
   } catch (_) {
     if (plannedBoard) plannedBoard.innerHTML = '<p class="a7-board-empty">' + escHtml("取得に失敗しました") + "</p>";
@@ -4044,8 +3981,7 @@ function shellForBlankPlannedUI(shell) {
 async function bootstrapWork() {
   const cfg = getConfig();
   if (!cfg.company || !String(cfg.company).trim()) {
-    toast("初期設定で会社IDを入力してください");
-    document.getElementById("settings-adv").open = true;
+    redirectToOfficeLogin();
     return;
   }
   if (!cfg.user || !String(cfg.user).trim()) {
@@ -4170,12 +4106,20 @@ async function showActualScreen(data, opts) {
   }
   if (opts.blankActualInputs) {
     setActualRowsFromData({ actual_lines: [] });
-    document.getElementById("pattern-a-cb").checked = false;
-    document.getElementById("pattern-b-cb").checked = false;
+    if (window.MO_ANOMALY_CLASSIFICATION) {
+      MO_ANOMALY_CLASSIFICATION.clearForm();
+    } else {
+      document.getElementById("pattern-a-cb").checked = false;
+      document.getElementById("pattern-b-cb").checked = false;
+    }
   } else {
     setActualRowsFromData(data);
-    document.getElementById("pattern-a-cb").checked = data.pattern_a === true;
-    document.getElementById("pattern-b-cb").checked = data.pattern_b === true;
+    if (window.MO_ANOMALY_CLASSIFICATION) {
+      MO_ANOMALY_CLASSIFICATION.applyToForm(data, { readOnly: ro });
+    } else {
+      document.getElementById("pattern-a-cb").checked = data.pattern_a === true;
+      document.getElementById("pattern-b-cb").checked = data.pattern_b === true;
+    }
   }
   let restoredActualDraft = false;
   if (!ro && workStateAllowsActualDraftPersist(data)) {
@@ -4187,6 +4131,9 @@ async function showActualScreen(data, opts) {
   document.getElementById("actual-btn").disabled = ro;
   document.getElementById("pattern-a-cb").disabled = ro;
   document.getElementById("pattern-b-cb").disabled = ro;
+  if (window.MO_ANOMALY_CLASSIFICATION) {
+    MO_ANOMALY_CLASSIFICATION.syncSubPanels({ readOnly: ro });
+  }
   const memoEl = document.getElementById("actual-one-line-memo");
   if (memoEl) {
     memoEl.disabled = ro;
@@ -4214,17 +4161,23 @@ async function submitPlannedCore(opts) {
     if (showToast) toast(scanned.error);
     return false;
   }
+  let linesToPost = scanned.lines;
   if (scanned.lines.length === 0) {
-    if (showToast) toast("商品名（または作業名）が入力されている行がありません");
-    return false;
-  }
-  if (scanned.lines.length > 0) {
+    const go = await openFieldAppModal({
+      title: "予告内容がありません",
+      bodyHtml: "<p>このまま予告なしで登録しますか？</p>",
+      cancelText: "戻る",
+      confirmText: "登録する",
+    });
+    if (!go) return false;
+    linesToPost = [];
+  } else {
     await refreshArticle7Panels();
     const proceed = await confirmPlannedIfArticle7AlreadyMade(scanned.lines);
     if (!proceed) return false;
   }
   try {
-    const data = await api("POST", `/v2/work/${id}/planned`, { lines: scanned.lines });
+    const data = await api("POST", `/v2/work/${id}/planned`, { lines: linesToPost });
     lastWorkData = data;
     unitId = data.id;
     setPlannedRowsFromData(data);
@@ -4248,7 +4201,7 @@ async function submitPlanned() {
   }
 }
 
-async function executeStartFromPlanned(pinnedWorkUnitId, draftPlannedLinesForStart) {
+async function executeStartFromPlanned(pinnedWorkUnitId) {
   const sbtn = document.getElementById("planned-start-btn");
   const rawId = pinnedWorkUnitId != null ? pinnedWorkUnitId : unitId;
   const id = Number(rawId);
@@ -4260,11 +4213,7 @@ async function executeStartFromPlanned(pinnedWorkUnitId, draftPlannedLinesForSta
   sbtn.disabled = true;
   sbtn.textContent = "着手中...";
   try {
-    const payload =
-      draftPlannedLinesForStart != null && draftPlannedLinesForStart.length
-        ? { lines: draftPlannedLinesForStart }
-        : {};
-    const row = await api("POST", `/v2/work/${id}/start`, payload);
+    const row = await api("POST", `/v2/work/${id}/start`, {});
     lastWorkData = row;
     unitId = row.id;
     applyUnit(row.unit);
@@ -4285,36 +4234,18 @@ async function submitStartFromPlanned() {
     toast(scanned.error);
     return;
   }
-  if (scanned.lines.length === 0) {
-    toast("予告内容がありません");
+  const registered = Boolean(lastWorkData && lastWorkData.planned_registered_at);
+  if (!registered) {
+    toast(MSG_PLANNED_REGISTER_FIRST);
     return;
   }
   const currentFp = fingerprintPlannedLinesNormalized(scanned.lines);
   const serverFp = _plannedSavedFingerprint;
-  const registered = Boolean(lastWorkData && lastWorkData.planned_registered_at);
-  if (registered && currentFp !== serverFp) {
+  if (currentFp !== serverFp) {
     toast(MSG_PLANNED_UNSAVED);
     return;
   }
-  const workUnitIdForStart = unitId;
-  const draftLinesForStart = registered ? null : scanned.lines;
-  let needDeferAfterModal = false;
-  if (!registered) {
-    const go = await openFieldAppModal({
-      title: "予告登録されていません",
-      bodyHtml:
-        "<p>このまま着手すると、「予告なし作業」として記録されます。</p>" +
-        "<p>予告として正式に残す場合は、先に「予告を登録」を押してください。</p>",
-      cancelText: "戻る",
-      confirmText: "このまま着手",
-    });
-    if (!go) return;
-    needDeferAfterModal = true;
-  }
-  if (needDeferAfterModal) {
-    await new Promise((r) => setTimeout(r, 0));
-  }
-  await executeStartFromPlanned(workUnitIdForStart, draftLinesForStart);
+  await executeStartFromPlanned(unitId);
 }
 
 async function submitActual() {
@@ -4341,6 +4272,7 @@ async function submitActual() {
   }
 
   const bChecked = document.getElementById("pattern-b-cb").checked;
+  const aChecked = document.getElementById("pattern-a-cb").checked;
   const needDevReason = isActualDeviantVsArticle7(scanned.lines, article7ItemsCache);
   const reasonEl = document.getElementById("deviation-reason");
   const reasonVal = reasonEl ? String(reasonEl.value || "").trim() : "";
@@ -4351,11 +4283,15 @@ async function submitActual() {
     submitting = false;
     return;
   }
+  const anomalyClassification = window.MO_ANOMALY_CLASSIFICATION
+    ? MO_ANOMALY_CLASSIFICATION.collectFromDom()
+    : { process: [], result: [] };
   const payload = {
     lines: scanned.lines,
-    pattern_a: document.getElementById("pattern-a-cb").checked,
+    pattern_a: aChecked,
     pattern_b: bChecked,
     user_pattern: bChecked ? "B" : null,
+    anomaly_classification: anomalyClassification,
   };
   const memoEl = document.getElementById("actual-one-line-memo");
   if (memoEl) payload.actual_memo = String(memoEl.value || "").trim() || null;
@@ -4427,30 +4363,40 @@ async function submitActual() {
 
 function applyEmbeddedFieldUsers() {
   const raw = window.__MO_FIELD_USERS_RAW__;
-  const bootCo =
-    typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
-      ? window.__MO_BOOTSTRAP_COMPANY__.trim()
-      : "";
-  const resolved = (document.getElementById("cfg-company").value || "").trim();
-  if (bootCo && (!resolved || bootCo !== resolved)) {
-    return;
-  }
   if (typeof raw === "string" && String(raw).trim()) {
     fieldUserSuggestRows = fieldUserParseFieldUsersRaw(raw);
   }
 }
 
 (function init() {
-  if (window.__FIELD_V2_NEEDS_COMPANY__) return;
+  initFieldSessionCompanyFromBootstrap();
+  if (!fieldSessionCompanyId) {
+    void (async function bootFieldWhenBootstrapMissing() {
+      try {
+        const res = await fetch("/v2/office/session", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const cid = String(data.company_id || "").trim();
+          if (cid) {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (_) { /* fall through */ }
+      redirectToOfficeLogin();
+    })();
+    return;
+  }
+  startFieldMainShell();
+})();
+
+function startFieldMainShell() {
   removeLegacyFieldUserStorageKeys();
   loadCfgFromLocal();
-  const companyAfterLoad = (
-    param("company_id", null) ||
-    param("company", null) ||
-    (document.getElementById("cfg-company") &&
-      document.getElementById("cfg-company").value) ||
-    ""
-  ).trim();
+  const companyAfterLoad = fieldSessionCompanyId;
   const savedLeader = companyAfterLoad
     ? readSavedUserNameForCompany(companyAfterLoad)
     : "";
@@ -4507,7 +4453,7 @@ function applyEmbeddedFieldUsers() {
       ev.stopPropagation();
     });
   }
-})();
+}
 </script>
 
 </body>

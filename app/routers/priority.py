@@ -32,6 +32,10 @@ from app.services.article7_safety_stock import (
     usable_stock_qty,
 )
 from app.services.article3_cutoff_observe import is_after_order_cutoff
+from app.services.production_mode import (
+    load_production_mode_maps,
+    resolve_production_mode,
+)
 
 router = APIRouter(prefix="/v2/priority", tags=["v2-第7条"])
 
@@ -89,9 +93,13 @@ def _rows_to_out(
     ctx: Optional[Dict[int, Tuple[Optional[str], List[str]]]] = None,
     article5_prog: Optional[Dict[int, Tuple[float, float]]] = None,
     safety_map: Optional[Dict[str, SafetyStockInfo]] = None,
+    production_by_code: Optional[Dict[str, str]] = None,
+    production_by_label: Optional[Dict[str, str]] = None,
 ) -> List[PriorityItemOut]:
     ctx = ctx or {}
     safety_map = safety_map or {}
+    by_code = production_by_code or {}
+    by_label = production_by_label or {}
     items: List[PriorityItemOut] = []
     for r in rows:
         hint, notices = ctx.get(int(r.id), (None, []))
@@ -116,6 +124,7 @@ def _rows_to_out(
             priority_score=float(pscore),
             article7_actual_hint=hint,
             article7_notices=list(notices),
+            production_mode=resolve_production_mode(pc, r.label, by_code, by_label),
         )
         if article5_prog is not None:
             ac, rem = article5_prog.get(int(r.id), (0.0, 0.0))
@@ -151,12 +160,17 @@ def list_priority_items(
     rows_sorted = sorted(rows, key=_priority_sort_key)
     ctx = article7_context_for_priority_items(cid, rows_sorted, db)
     safety_map = load_safety_stock_by_product_code(db, cid)
+    by_code, by_label = load_production_mode_maps(db, cid)
     prog = (
         article5_progress_for_priority_items(cid, rows_sorted, db)
         if article5_progress
         else None
     )
-    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx, prog, safety_map))
+    return PriorityItemsOut(
+        items=_rows_to_out(
+            rows_sorted, ctx, prog, safety_map, by_code, by_label
+        )
+    )
 
 
 @router.post(
@@ -301,4 +315,7 @@ def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get
     rows_sorted = sorted(rows, key=_priority_sort_key)
     ctx = article7_context_for_priority_items(cid, rows_sorted, db)
     safety_map = load_safety_stock_by_product_code(db, cid)
-    return PriorityItemsOut(items=_rows_to_out(rows_sorted, ctx, None, safety_map))
+    by_code, by_label = load_production_mode_maps(db, cid)
+    return PriorityItemsOut(
+        items=_rows_to_out(rows_sorted, ctx, None, safety_map, by_code, by_label)
+    )

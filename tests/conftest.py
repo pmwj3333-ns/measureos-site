@@ -52,3 +52,22 @@ def client():
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+def v2_register_planned(
+    client: TestClient,
+    unit_id: int,
+    *,
+    lines: list | None = None,
+) -> dict:
+    """予告フェーズ通過（着手前必須）。lines=[] で内容未定登録。"""
+    payload_lines: list = [{"label": "テスト商品", "value": 1}] if lines is None else lines
+    r = client.post(f"/v2/work/{unit_id}/planned", json={"lines": payload_lines})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def v2_start(client: TestClient, unit_id: int) -> dict:
+    r = client.post(f"/v2/work/{unit_id}/start", json={})
+    assert r.status_code == 200, r.text
+    return r.json()

@@ -1,8 +1,9 @@
-from datetime import datetime, date, timedelta, timezone
-from typing import Any, Dict, Tuple
+from datetime import datetime, date, time, timedelta, timezone
+from typing import Any, Dict, Optional, Tuple
 from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 from app import models
+from app.services.working_calendar import is_working_day
 
 # 営業日の暦日・境界時刻は常に Asia/Tokyo で解釈する（1社前提・固定）
 JST = ZoneInfo("Asia/Tokyo")
@@ -50,6 +51,23 @@ def calc_business_date_detailed(
     return final, debug
 
 
+def effective_calendar_date_jst(
+    now_jst: datetime,
+    day_boundary_time: Optional[time],
+) -> date:
+    """
+    暦日 + day_boundary_time（第5条 A案）。
+    JST 暦日の day_boundary 未満なら前暦日を effective とする。
+    """
+    local_date = now_jst.date()
+    if day_boundary_time is None:
+        return local_date
+    now_t = now_jst.timetz().replace(tzinfo=None) if now_jst.tzinfo else now_jst.time()
+    if now_t < day_boundary_time:
+        return local_date - timedelta(days=1)
+    return local_date
+
+
 def calc_business_date(input_time: datetime, settings: models.CompanySettings, db: Session) -> date:
     """
     Asia/Tokyo の暦日・壁時計で business_date の候補日を決める。
@@ -57,7 +75,7 @@ def calc_business_date(input_time: datetime, settings: models.CompanySettings, d
     - input_time: 基準時刻。naive は UTC。aware は任意 TZ から JST に変換。
     - day_boundary_time: その JST 暦日のこの時刻「未満」なら前日を候補にする。
     - 未設定なら JST の当日を候補にする。
-    - 候補が company_calendar 上で非営業日なら nearest_workday で直前の営業日へ。
+    - 候補が非営業日なら nearest_workday で直前の営業日へ（working_calendar 時間OS）。
     """
     return calc_business_date_detailed(input_time, settings, db)[0]
 
@@ -72,14 +90,11 @@ def calc_business_date_with_db(
 def nearest_workday(target: date, company_id: str, db: Session, direction: str = "prev") -> date:
     """
     target が非営業日なら direction に向かって最初の営業日を返す。
-    company_calendar に登録がない日は営業日とみなす。
+    営業日は working_calendar + default_working_weekdays（Package A 時間OS）。
     """
     current = target
     for _ in range(365):
-        record = db.query(models.CompanyCalendar).filter_by(
-            company_id=company_id, date=current
-        ).first()
-        if record is None or record.is_workday:
+        if is_working_day(company_id, current, db):
             return current
         current += timedelta(days=-1 if direction == "prev" else 1)
     return target

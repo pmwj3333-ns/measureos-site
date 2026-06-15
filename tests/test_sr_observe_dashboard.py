@@ -9,6 +9,7 @@ from starlette.testclient import TestClient
 
 from app import models
 from app.database import SessionLocal
+from tests.conftest import v2_register_planned
 
 CO = "sr_observe_test_co"
 TASK = "task_ob"
@@ -103,6 +104,7 @@ def test_observe_dashboard_counts_planned_unstarted_and_priority(co_client: Test
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["summary"]["planned_unstarted_count"] >= 1
+    assert body["summary"]["blue_count"] >= 1
     assert body["priority_status"]["after_cutoff_count"] >= 1
     assert body["priority_status"]["shortage_count"] >= 1
     assert body["priority_status"]["safety_unset_count"] >= 1
@@ -110,10 +112,25 @@ def test_observe_dashboard_counts_planned_unstarted_and_priority(co_client: Test
     assert "未着手予告" in kinds
 
 
+def test_observe_dashboard_carryover_blue(co_client: TestClient):
+    """過去 business_date・actual_at なし → 持ち越し blue_count。"""
+    w = _shell(co_client, business_date=PREV_BD)
+    uid = w["id"]
+    reg = v2_register_planned(co_client, uid, lines=[])
+    r = co_client.post(f"/v2/work/{reg['id']}/start", json={})
+    assert r.status_code == 200, r.text
+
+    r = co_client.get("/v2/sr/observe-dashboard", params={"company_id": CO})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["summary"]["blue_count"] >= 1
+
+
 def test_observe_dashboard_prev_day_incomplete(co_client: TestClient):
     w = _shell(co_client, business_date=PREV_BD)
     uid = w["id"]
-    r = co_client.post(f"/v2/work/{uid}/start", json={})
+    reg = v2_register_planned(co_client, uid, lines=[])
+    r = co_client.post(f"/v2/work/{reg['id']}/start", json={})
     assert r.status_code == 200, r.text
 
     r = co_client.get("/v2/sr/observe-dashboard", params={"company_id": CO})

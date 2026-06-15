@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 from app.schemas import CompanyMasterCreateIn, CompanyMasterOut, CompanyMasterPatchIn
+from app.services.company_search import search_active_companies
 
 router = APIRouter(prefix="/admin/companies", tags=["admin-会社マスタ"])
 
@@ -45,6 +46,14 @@ def list_companies(
         models.CompanyMaster.id.asc(),
     ).all()
     return [_row_to_out(r) for r in rows]
+
+
+@router.get("/search", summary="active 会社検索（company_id / company_name 部分一致）")
+def search_companies(
+    q: str = Query("", description="検索語（部分一致）"),
+    db: Session = Depends(get_db),
+):
+    return search_active_companies(db, q)
 
 
 @router.post("", summary="会社マスタ新規登録")
