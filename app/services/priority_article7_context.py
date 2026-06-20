@@ -6,7 +6,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
+import os
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple
@@ -14,9 +17,20 @@ from typing import Dict, List, Optional, Set, Tuple
 from sqlalchemy.orm import Session
 
 from app import models
+from app.services.article7_safety_stock import load_safety_stock_by_product_code
 from app.services.business_date import calc_business_date_with_db, nearest_workday
 
 _MAX_NOTICES = 3
+
+_PROGRESS_EPS = 1e-9
+
+logger = logging.getLogger(__name__)
+
+_ARTICLE5_PROGRESS_DEBUG = os.environ.get("MEASUREOS_ARTICLE5_PROGRESS_DEBUG", "").strip() in (
+    "1",
+    "true",
+    "yes",
+)
 
 _NOTICE_TODAY = "※本日この商品に実績入力があります"
 _NOTICE_RECENT = "※直近で製造実績があります"
@@ -125,6 +139,35 @@ def _fmt_qty(x: float) -> str:
     return str(round(x, 2))
 
 
+def _work_unit_has_positive_actual_content(unit: models.WorkUnit, im: str) -> bool:
+    """actual_at 付きでも数量ゼロの行は進捗集計対象外。"""
+    if getattr(unit, "actual_at", None) is None:
+        return False
+    for line in _actual_lines_resolved(unit, im):
+        try:
+            v = float(line.get("value", 0))
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(v) and v > 0:
+            return True
+    return False
+
+
+def _unit_has_matching_positive_actual(unit: models.WorkUnit, p: models.PriorityItem, im: str) -> bool:
+    if not _work_unit_has_positive_actual_content(unit, im):
+        return False
+    for line in _actual_lines_resolved(unit, im):
+        if not _line_belongs_to_priority(line, p):
+            continue
+        try:
+            v = float(line.get("value", 0))
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(v) and v > 0:
+            return True
+    return False
+
+
 def _sum_actuals_all_finalized(
     units: List[models.WorkUnit],
     p: models.PriorityItem,
@@ -149,16 +192,18 @@ def _sum_actuals_all_finalized(
 
 def _latest_work_units_with_actual_per_natural_key(
     units: List[models.WorkUnit],
+    im: str,
 ) -> List[models.WorkUnit]:
     """
     同一 (company_id, task_id, process_id, user_id, business_date) について、
-    actual_at がある行のうち id 最大だけを採用する（同日キー内の訂正・履歴の二重計上防止）。
+    数量のある実績（actual_lines または actual_value > 0）のうち id 最大だけを採用する。
+    actual_at のみで内容が空の行は進捗集計対象外（監査・異常判定用には残る）。
     business_date が無い行はキー无法のためそのまま1件ずつ含める。
     """
     by_natural: Dict[Tuple[str, str, str, str, date], List[models.WorkUnit]] = defaultdict(list)
     loose: List[models.WorkUnit] = []
     for u in units:
-        if getattr(u, "actual_at", None) is None:
+        if not _work_unit_has_positive_actual_content(u, im):
             continue
         bd = u.business_date
         if bd is None:
@@ -173,24 +218,148 @@ def _latest_work_units_with_actual_per_natural_key(
     return out
 
 
+def _progress_session_key(unit: models.WorkUnit) -> Tuple:
+    """
+    製造セッションキー。planned_registered_at あり → 予告登録単位。
+    無い行（テスト・レガシー）は natural key 単位で訂正最新1件にフォールバック。
+    """
+    preg = getattr(unit, "planned_registered_at", None)
+    if preg is not None:
+        return ("preg", preg)
+    bd = unit.business_date
+    if bd is None:
+        return ("loose", int(unit.id))
+    return (
+        "nk",
+        unit.company_id,
+        unit.task_id,
+        unit.process_id,
+        unit.user_id,
+        bd,
+    )
+
+
+def _latest_work_units_with_actual_for_priority(
+    units: List[models.WorkUnit],
+    p: models.PriorityItem,
+    im: str,
+) -> List[models.WorkUnit]:
+    """
+    planned_registered_at ごとの製造セッションについて、当該 PriorityItem に突合する
+    数量あり実績を含む WorkUnit のうち id 最大を1件採用し、セッション間は合算する。
+    同一セッション内の save_actual 訂正（clone 連鎖）は最新 id のみ残る。
+    """
+    by_session: Dict[Tuple, List[models.WorkUnit]] = defaultdict(list)
+    for u in units:
+        if not _unit_has_matching_positive_actual(u, p, im):
+            continue
+        by_session[_progress_session_key(u)].append(u)
+    out: List[models.WorkUnit] = []
+    for lst in by_session.values():
+        out.append(max(lst, key=lambda x: x.id))
+    return out
+
+
+def _matching_qty_on_unit(unit: models.WorkUnit, p: models.PriorityItem, im: str) -> float:
+    total = 0.0
+    for line in _actual_lines_resolved(unit, im):
+        if not _line_belongs_to_priority(line, p):
+            continue
+        try:
+            v = float(line.get("value", 0))
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(v) and v > 0:
+            total += v
+    return total
+
+
+def _log_article5_progress_debug(
+    p: models.PriorityItem,
+    all_units: List[models.WorkUnit],
+    picked_units: List[models.WorkUnit],
+    im: str,
+    completed: float,
+) -> None:
+    if not _ARTICLE5_PROGRESS_DEBUG:
+        return
+    candidates: List[models.WorkUnit] = []
+    for u in all_units:
+        if getattr(u, "actual_at", None) is None:
+            continue
+        if _matching_qty_on_unit(u, p, im) <= _PROGRESS_EPS:
+            continue
+        candidates.append(u)
+    candidates.sort(key=lambda x: x.id)
+
+    by_session: Dict[Tuple, List[models.WorkUnit]] = defaultdict(list)
+    for u in candidates:
+        by_session[_progress_session_key(u)].append(u)
+
+    session_bits: List[str] = []
+    picked_ids = {int(u.id) for u in picked_units}
+    for sk, lst in sorted(by_session.items(), key=lambda kv: str(kv[0])):
+        lst_sorted = sorted(lst, key=lambda x: x.id)
+        picked = max(lst_sorted, key=lambda x: x.id)
+        preg = getattr(picked, "planned_registered_at", None)
+        session_bits.append(
+            f"session_key={sk!r} planned_registered_at={preg!r} "
+            f"candidates={[u.id for u in lst_sorted]} "
+            f"picked_unit_id={picked.id} picked_qty={_matching_qty_on_unit(picked, p, im)}"
+        )
+
+    sum_bits: List[str] = []
+    for u in sorted(picked_units, key=lambda x: x.id):
+        qty = _matching_qty_on_unit(u, p, im)
+        sum_bits.append(
+            f"unit_id={u.id} planned_reg={getattr(u, 'planned_registered_at', None)!r} "
+            f"qty={qty}"
+        )
+
+    logger.info(
+        "article5_progress priority_id=%s product_code=%r label=%r prod_value=%s "
+        "sessions=[%s] picked_for_sum=[%s] completed_qty=%s",
+        p.id,
+        (p.product_code or "").strip(),
+        (p.label or "").strip(),
+        p.prod_value,
+        " | ".join(session_bits) if session_bits else "(none)",
+        " | ".join(sum_bits) if sum_bits else "(none)",
+        completed,
+    )
+
+
+@dataclass(frozen=True)
+class Article5ProgressRow:
+    """第5条実績を第7条表示に接続する参考数量（priority_item / prod_value は変更しない）。"""
+
+    completed_qty: float
+    remaining_qty: float
+    effective_usable_qty: float
+    margin_after_ship_qty: float
+
+
 def article5_progress_for_priority_items(
     company_id: str,
     priorities: List[models.PriorityItem],
     db: Session,
-) -> Dict[int, Tuple[float, float]]:
+) -> Dict[int, Article5ProgressRow]:
     """
-    priority.id -> (completed_qty, remaining_qty)。
-    completed は「実績確定あり」の作業行のうち、同一営業日キーごとに最新 1 行だけから集計（履歴の重複除外）。
-    remaining_qty = prod_value - completed_qty（超過時は負。現場の「残り」と ✔ 判定に使う）。
+    priority.id -> Article5ProgressRow。
+    completed は planned_registered_at セッションごとに最新実績1件を採用し、セッション間合算する。
+    remaining_qty = max(0, prod_value - completed_qty)（現場向け製造残）。
+    effective_usable_qty = stock_qty + completed_qty（在庫CSV + 作成済み）。
+    margin_after_ship_qty = effective_usable_qty - ship_value - safety_stock（基準在庫を残した出荷後余裕）。
     PriorityItem は更新しない。
     """
     cid = (company_id or "").strip()
-    out: Dict[int, Tuple[float, float]] = {}
+    out: Dict[int, Article5ProgressRow] = {}
     if not cid or not priorities:
         return out
 
     settings = _settings_ephemeral(cid, db)
     im = _norm_input_mode(settings)
+    safety_map = load_safety_stock_by_product_code(db, cid)
 
     units = (
         db.query(models.WorkUnit)
@@ -198,17 +367,44 @@ def article5_progress_for_priority_items(
         .filter(models.WorkUnit.actual_at.isnot(None))
         .all()
     )
-    latest_units = _latest_work_units_with_actual_per_natural_key(units)
 
     for p in priorities:
-        completed = _sum_actuals_all_finalized(latest_units, p, im)
+        picked_units = _latest_work_units_with_actual_for_priority(units, p, im)
+        completed = _sum_actuals_all_finalized(picked_units, p, im)
+        _log_article5_progress_debug(p, units, picked_units, im, completed)
         prod = float(p.prod_value) if p.prod_value is not None else 0.0
         if not math.isfinite(prod) or prod < 0:
             prod = 0.0
-        remaining = prod - completed
+        remaining = max(0.0, prod - completed)
         if not math.isfinite(remaining):
             remaining = prod
-        out[int(p.id)] = (completed, remaining)
+
+        stock = float(getattr(p, "stock_qty", None) or 0)
+        if not math.isfinite(stock) or stock < 0:
+            stock = 0.0
+        effective_usable = stock + completed
+        if not math.isfinite(effective_usable):
+            effective_usable = stock
+
+        ship = float(p.ship_value) if p.ship_value is not None else 0.0
+        if not math.isfinite(ship) or ship < 0:
+            ship = 0.0
+        pc = (getattr(p, "product_code", None) or "").strip()
+        sinfo = safety_map.get(pc)
+        safety = float(sinfo.value) if sinfo else 0.0
+        if not math.isfinite(safety) or safety < 0:
+            safety = 0.0
+
+        margin = effective_usable - ship - safety
+        if not math.isfinite(margin):
+            margin = effective_usable - ship - safety
+
+        out[int(p.id)] = Article5ProgressRow(
+            completed_qty=completed,
+            remaining_qty=remaining,
+            effective_usable_qty=effective_usable,
+            margin_after_ship_qty=margin,
+        )
 
     return out
 

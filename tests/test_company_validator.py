@@ -71,8 +71,7 @@ def test_stock_csv_import_validates_company(client: TestClient):
         data={"company_id": "unknown_csv_co"},
         files=files,
     )
-    assert r.status_code == 422
-    assert r.json()["detail"] == "company_id is not registered"
+    assert r.status_code == 401
 
 
 def test_v2_put_leaders_auto_registers_company_master(client: TestClient):

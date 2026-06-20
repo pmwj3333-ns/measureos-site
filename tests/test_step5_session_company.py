@@ -151,6 +151,8 @@ def test_stock_import_v2_no_company_input_ui():
     assert "company_id を入力してください" not in html
     assert "sessionCompanyId" in html
     assert "initSessionCompanyFromBootstrap" in html
+    assert "ensureSessionCompanyForWrite" in html
+    assert "pageBootstrapCompanyId" in html
     assert 'localStorage.setItem("company_id"' not in html
 
 
@@ -161,6 +163,8 @@ def test_shipment_import_v2_no_company_input_ui():
     assert "company_id を入力してください" not in html
     assert "sessionCompanyId" in html
     assert "initSessionCompanyFromBootstrap" in html
+    assert "ensureSessionCompanyForWrite" in html
+    assert "pageBootstrapCompanyId" in html
     assert 'localStorage.setItem("company_id"' not in html
 
 
@@ -172,4 +176,6 @@ def test_product_master_v2_no_company_input_ui():
     assert "company_id を入力してください" not in html
     assert "productMasterSessionCompanyId" in html
     assert "initProductMasterSessionCompanyFromBootstrap" in html
+    assert "resolveSessionCompanyId" in html
+    assert "syncSessionCompanyId" in html
     assert 'params.get("company_id")' not in html

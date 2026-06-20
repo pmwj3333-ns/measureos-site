@@ -626,6 +626,10 @@
       text-decoration: none;
     }
     .ops-observe-item-name a:hover { text-decoration: underline; }
+    .ops-observe-rank {
+      font-variant-numeric: tabular-nums;
+      color: #374151;
+    }
     .ops-observe-item-status { margin-bottom: 4px; }
     .ops-observe-item-meta {
       font-size: 0.75rem;
@@ -2427,6 +2431,20 @@
     );
   }
 
+  /** 危険度上位: #N 会社名（危険度X） */
+  function opsObserveDangerRankLine(rank, name, companyId, score) {
+    const namePart = opsObserveCompanyLink(name, companyId);
+    return (
+      '<span class="ops-observe-rank">#' +
+      String(rank) +
+      "</span> " +
+      namePart +
+      "（危険度" +
+      escapeHtml(String(score != null ? score : 0)) +
+      "）"
+    );
+  }
+
   function opsStatusFromDangerScore(score) {
     const s = Number(score) || 0;
     if (s >= OPS_DANGER_SCORE_DANGER_MIN) return "danger";
@@ -2478,38 +2496,72 @@
     return "未更新";
   }
 
-  function renderOpsObserveList(elId, html) {
+  function opsStaleDaysForItem(item) {
+    const c = item || {};
+    if (c.stale_days != null && c.stale_days !== "") {
+      const n = Number(c.stale_days);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (c.last_activity_at) {
+      return opsStaleDaysFromActivityAt(c.last_activity_at);
+    }
+    return null;
+  }
+
+  /** 危険度上位: danger_score > 0 または status != normal のみ */
+  function opsDangerObserveItemVisible(item) {
+    const c = item || {};
+    const score = c.danger_score != null ? Number(c.danger_score) : 0;
+    const status = String(c.status || opsStatusFromDangerScore(score)).trim().toLowerCase();
+    return score > 0 || status !== "normal";
+  }
+
+  /** 更新停止: 停止日数 >= 1 のみ（0日は除外） */
+  function opsStaleObserveItemVisible(item) {
+    const days = opsStaleDaysForItem(item);
+    return days != null && days >= 1;
+  }
+
+  function renderOpsObserveList(elId, html, emptyMessage) {
     const el = $(elId);
     if (!el) return;
-    el.innerHTML = html || '<li class="ops-observe-item"><span class="ops-observe-item-meta">該当なし</span></li>';
+    const fallback = emptyMessage || "該当なし";
+    el.innerHTML =
+      html ||
+      '<li class="ops-observe-item"><span class="ops-observe-item-meta">' +
+      escapeHtml(fallback) +
+      "</span></li>";
   }
 
   function renderOpsObservation(observation) {
     const obs = observation || {};
-    const topDanger = Array.isArray(obs.top_danger_score) ? obs.top_danger_score : [];
+    const topDanger = (Array.isArray(obs.top_danger_score) ? obs.top_danger_score : []).filter(
+      opsDangerObserveItemVisible,
+    );
     renderOpsObserveList(
       "ops-observe-top-danger",
       topDanger
-        .map((c) => {
+        .map((c, index) => {
+          const rank = index + 1;
           const score = c.danger_score != null ? c.danger_score : 0;
           const status = opsStatusFromDangerScore(score);
           return (
             '<li class="ops-observe-item">' +
             '<div class="ops-observe-item-name">' +
-            opsObserveCompanyLink(c.company_name, c.company_id) +
+            opsObserveDangerRankLine(rank, c.company_name, c.company_id, score) +
             "</div>" +
             '<div class="ops-observe-item-status">' +
             opsStatusBadgeHtml(status) +
-            "</div>" +
-            '<div class="ops-observe-item-meta">危険度 ' +
-            escapeHtml(String(score)) +
             "</div></li>"
           );
         })
-        .join("")
+        .join(""),
+      "危険会社なし",
     );
 
-    const stale = Array.isArray(obs.stale_updates) ? obs.stale_updates : [];
+    const stale = (Array.isArray(obs.stale_updates) ? obs.stale_updates : []).filter(
+      opsStaleObserveItemVisible,
+    );
     renderOpsObserveList(
       "ops-observe-stale",
       stale
@@ -2525,7 +2577,8 @@
             "</div></li>"
           );
         })
-        .join("")
+        .join(""),
+      "更新停止中の会社はありません",
     );
   }
 

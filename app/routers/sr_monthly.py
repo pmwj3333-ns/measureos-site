@@ -133,7 +133,7 @@ def _render_print_html(payload: dict) -> str:
   <table><thead><tr><th>工程</th><th>件数</th></tr></thead><tbody>{rows(m.get('by_process'))}</tbody></table>
   <h2>班長別件数</h2>
   <table><thead><tr><th>班長</th><th>件数</th></tr></thead><tbody>{rows(m.get('by_leader'))}</tbody></table>
-  <h2>④ 社労士コメント</h2>
+  <h2>④ Observerコメント</h2>
   <div class="comment">{comment or "（未入力）"}</div>
   <script>window.onload = function() {{ window.print(); }};</script>
 </body>

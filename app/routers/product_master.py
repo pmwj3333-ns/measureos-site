@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app import models
@@ -14,6 +14,10 @@ from app.schemas import (
     ProductMasterPatchIn,
 )
 from app.services.company_validator import validate_company_id
+from app.services.office_session_scope import (
+    require_session_company_match,
+    require_session_company_row,
+)
 from app.services.product_master import ensure_product_master_row
 from app.services.production_mode import normalize_production_mode
 
@@ -36,13 +40,13 @@ def _row_to_out(r: models.ProductMaster) -> ProductMasterOut:
 
 @router.get("", summary="商品マスタ一覧（会社単位）")
 def list_product_master(
+    request: Request,
     company_id: str = Query(..., description="company_id"),
     active_only: bool = Query(True, description="true のとき is_active のみ"),
     db: Session = Depends(get_db),
 ):
-    cid = (company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = require_session_company_match(request, company_id)
+    validate_company_id(db, cid)
     q = db.query(models.ProductMaster).filter(models.ProductMaster.company_id == cid)
     if active_only:
         q = q.filter(models.ProductMaster.is_active.is_(True))
@@ -51,8 +55,13 @@ def list_product_master(
 
 
 @router.post("", summary="商品マスタ新規作成（label のみ・同一会社で label 重複は 422）")
-def create_product_master(body: ProductMasterCreateIn, db: Session = Depends(get_db)):
-    cid = validate_company_id(db, body.company_id)
+def create_product_master(
+    request: Request,
+    body: ProductMasterCreateIn,
+    db: Session = Depends(get_db),
+):
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     lb = (body.label or "").strip()
     if not lb:
         raise HTTPException(status_code=422, detail="label が空です")
@@ -83,8 +92,13 @@ def create_product_master(body: ProductMasterCreateIn, db: Session = Depends(get
 
 
 @router.post("/ensure", summary="ラベルが無ければマスタに1件作成（product_code は null・既存は更新しない）")
-def ensure_product_master(body: ProductMasterEnsureIn, db: Session = Depends(get_db)):
-    cid = validate_company_id(db, body.company_id)
+def ensure_product_master(
+    request: Request,
+    body: ProductMasterEnsureIn,
+    db: Session = Depends(get_db),
+):
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     lb = (body.label or "").strip()
     if not lb:
         raise HTTPException(status_code=422, detail="label が空です")
@@ -102,10 +116,16 @@ def _dup_code_error() -> HTTPException:
 
 
 @router.patch("/{row_id}", summary="商品マスタのコード・ラベル・有効フラグを更新")
-def patch_product_master(row_id: int, body: ProductMasterPatchIn, db: Session = Depends(get_db)):
+def patch_product_master(
+    request: Request,
+    row_id: int,
+    body: ProductMasterPatchIn,
+    db: Session = Depends(get_db),
+):
     row = db.get(models.ProductMaster, row_id)
     if not row:
         raise HTTPException(status_code=404, detail="商品マスタが見つかりません")
+    require_session_company_row(request, row.company_id)
     validate_company_id(db, row.company_id)
     patch = body.model_dump(exclude_unset=True)
     now = datetime.utcnow()

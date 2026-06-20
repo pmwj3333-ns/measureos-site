@@ -4,155 +4,422 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>MEASURE OS — 在庫CSV取り込み（第7条ステップ①）</title>
+<title>MEASURE OS — 第7条 在庫CSV取込</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-    background: #f2f2f7;
-    color: #1c1c1e;
-    font-size: 15px;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+    background: #f4f6f9;
+    color: #1a1a1a;
+    font-size: 14px;
     line-height: 1.45;
-    padding: 20px 16px 40px;
-    max-width: 800px;
-    margin: 0 auto;
+    min-height: 100vh;
   }
-  h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 14px; line-height: 1.55; }
-  .bar {
+  header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 14px 20px;
+  }
+  header h1 { font-size: 1.05rem; font-weight: 700; }
+  header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; line-height: 1.5; }
+  .badge {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.75);
+  }
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 18px 18px 40px;
+  }
+  .panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+  }
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .panel-head h2 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 4px;
+  }
+  .panel-desc {
+    font-size: 0.78rem;
+    color: #6b7280;
+    line-height: 1.55;
+    max-width: 640px;
+  }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .related-nav-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #5c6570;
+    margin-bottom: 8px;
+  }
+  .related-nav-links {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    align-items: flex-end;
-    margin-bottom: 12px;
+  }
+  .nav-pill {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e3a5f;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1.2;
+  }
+  .nav-pill:hover { background: #eff6ff; border-color: #93c5fd; }
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    font-family: inherit;
     position: relative;
     z-index: 10;
   }
-  label { font-size: 0.72rem; color: #636366; display: block; margin-bottom: 2px; }
-  input[type="text"] {
-    padding: 10px 12px; border: 1px solid #c7c7cc; border-radius: 10px;
-    font-size: 0.95rem; width: 100%; max-width: 280px; font-family: inherit;
+  .btn-primary { background: #1e3a5f; color: #fff; }
+  .btn-secondary { background: #64748b; color: #fff; }
+  .btn-compact { padding: 7px 12px; font-size: 0.78rem; font-weight: 600; }
+  .btn-primary:disabled,
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.secondary { background: #64748b; color: #fff; }
+  .hint {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-top: 10px;
+    line-height: 1.5;
   }
-  button {
-    position: relative;
-    z-index: 10;
-    padding: 10px 18px; border: none; border-radius: 10px; font-weight: 600;
-    font-size: 0.88rem; cursor: pointer; font-family: inherit;
-    background: #007aff; color: #fff;
+  .hint.err {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 9px 12px;
   }
-  button.secondary { background: #8e8e93; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
-  .hint.err { color: #ff3b30; }
-  .hint.ok { color: #2e7d32; }
-  a { color: #007aff; }
-  .nav-links { margin-bottom: 12px; font-size: 0.78rem; }
+  .hint.ok {
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 9px 12px;
+  }
   .drop-zone,
   .dropzone {
     position: relative;
     z-index: 1;
-    margin-top: 12px;
-    padding: 28px 16px;
-    border: 2px dashed #c7c7cc;
-    border-radius: 12px;
-    background: #fff;
+    margin-top: 4px;
+    padding: 32px 18px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
     text-align: center;
     transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
   }
-  .drop-zone.dragover { border-color: #007aff; background: #e8f4ff; }
-  .drop-zone p { font-size: 0.82rem; color: #636366; margin-bottom: 10px; }
-  .csv-preview-wrap { margin-top: 12px; overflow-x: auto; }
-  .csv-preview-wrap table {
-    width: 100%; border-collapse: collapse; font-size: 0.78rem;
-    background: #fff; border-radius: 8px; overflow: hidden;
-    border: 1px solid #e5e5ea;
+  .drop-zone.dragover {
+    border-color: #1e3a5f;
+    background: #eff6ff;
   }
-  .csv-preview-wrap th, .csv-preview-wrap td {
-    padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e5ea;
-    vertical-align: top;
+  .drop-zone-lead {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1e3a5f;
+    margin-bottom: 6px;
   }
-  .csv-preview-wrap th { background: #f2f2f7; color: #636366; font-weight: 600; }
-  tr.csv-row-err { background: #ffebee; }
-  tr.csv-row-err td { color: #b71c1c; }
-  tr.csv-row-fatal td { background: #ffebee; color: #b71c1c; font-weight: 600; }
-  .csv-cell-ok { color: #2e7d32; font-size: 0.72rem; }
-  .panel-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-  .section-title {
-    font-size: 0.7rem; font-weight: 700; color: #8e8e93;
-    letter-spacing: 0.06em; text-transform: uppercase;
-    margin-bottom: 8px; margin-top: 4px;
+  .drop-zone-or {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 8px 0 12px;
   }
-  input[type="file"] { font-size: 0.82rem; max-width: 100%; }
-  .file-status-row {
-    position: relative;
-    z-index: 10;
-    margin-top: 10px;
+  .btn-file-select {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid #1e3a5f;
+    background: #fff;
+    color: #1e3a5f;
     font-size: 0.82rem;
-    color: #636366;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-file-select:hover { background: #eff6ff; }
+  .csv-file-input {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+  }
+  .file-status-panel { margin-top: 14px; }
+  .file-empty-state {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 14px;
+    text-align: center;
+  }
+  .file-empty-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 4px;
+  }
+  .file-empty-sub { font-size: 0.78rem; color: #6b7280; }
+  .file-selected-state {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #374151;
   }
-  .file-status-row #csv-file-name { word-break: break-all; }
-
+  .file-selected-label { font-weight: 600; color: #5c6570; }
+  .file-selected-name { word-break: break-all; flex: 1; min-width: 0; }
+  .csv-preview-wrap {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    overflow-x: auto;
+  }
+  .csv-preview-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  .csv-preview-wrap th,
+  .csv-preview-wrap td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eef1f4;
+    vertical-align: top;
+  }
+  .csv-preview-wrap th {
+    background: #f0f3f7;
+    color: #4a5568;
+    font-weight: 600;
+  }
+  tr.csv-row-err { background: #fef2f2; }
+  tr.csv-row-err td { color: #991b1b; }
+  tr.csv-row-fatal td { background: #fef2f2; color: #991b1b; font-weight: 600; }
+  .csv-cell-ok { color: #166534; font-size: 0.72rem; }
+  .panel-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .csv-guide {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .csv-guide-block + .csv-guide-block {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+  }
+  .csv-guide-heading {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .csv-guide-lead {
+    font-size: 0.78rem;
+    color: #374151;
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .csv-guide-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px 20px;
+  }
+  .csv-guide-subhead {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #5c6570;
+    margin-bottom: 6px;
+  }
+  .csv-guide-subhead--ng { color: #991b1b; }
+  .csv-guide-list {
+    list-style: none;
+    font-size: 0.78rem;
+    color: #4b5563;
+    line-height: 1.55;
+  }
+  .csv-guide-list li {
+    position: relative;
+    padding-left: 1em;
+  }
+  .csv-guide-list li::before {
+    content: "・";
+    position: absolute;
+    left: 0;
+  }
+  .csv-guide-note {
+    margin-top: 8px;
+    font-size: 0.72rem;
+    color: #6b7280;
+    line-height: 1.5;
+  }
   .overlay,
-  .dropzone-overlay {
-    pointer-events: none;
-  }
+  .dropzone-overlay { pointer-events: none; }
 </style>
 </head>
 <body>
-  <h1>在庫CSV取り込み（第7条ステップ①）</h1>
-  <p class="sub">
-    既存在庫管理システムから出力したCSVをそのまま投入してください。会社単位で<strong>全置換</strong>保存します（計算・出荷予定との突合は行いません）。
-  </p>
-  <div class="nav-links">
-    <a href="/priority/input/v2">第7条の入力</a>
-    · <a href="/shipment/import/v2">出荷予定CSV取り込み</a>
-    · <a href="/priority/v2">優先度一覧</a>
-    · <a href="/office/v2">事務 v2</a>
-  </div>
-  <div class="bar">
-    <button type="button" class="secondary btn-rebuild-priority">第7条を再計算</button>
-  </div>
-
-  <div class="section-title">CSV</div>
-  <div
-    id="drop-zone"
-    class="drop-zone"
-    tabindex="0"
-    role="button"
-    aria-label="CSVをドロップまたはクリックで選択"
-  >
-    <p>CSVファイルをここにドラッグ＆ドロップするか、下から選択してください。</p>
-    <input type="file" id="csv-file" accept=".csv,text/csv,text/plain" />
-  </div>
-  <div class="file-status-row">
-    <span>選択ファイル: <span id="csv-file-name">選択されていません</span></span>
-    <button type="button" id="btn-clear-file" class="secondary">選択解除</button>
-  </div>
-  <p id="msg" class="hint"></p>
-
-  <div id="csv-preview-wrap" class="csv-preview-wrap" hidden>
-    <p class="hint" id="csv-preview-caption" style="margin-bottom:8px;">プレビュー（取り込み前に内容を確認してください）</p>
-    <table>
-      <thead>
-        <tr>
-          <th>行</th>
-          <th>product_code</th>
-          <th>label</th>
-          <th>stock_qty</th>
-          <th>safety_stock</th>
-          <th>状態</th>
-        </tr>
-      </thead>
-      <tbody id="csv-preview-body"></tbody>
-    </table>
-    <div class="panel-actions">
-      <button type="button" id="btn-import" disabled>在庫CSVを取り込む</button>
+<header>
+  <h1>MEASURE OS — 第7条 在庫CSV取込</h1>
+  <p>既存在庫管理システムから出力したCSVを取り込みます。</p>
+  <span class="badge">v2 · 第7条</span>
+</header>
+<div class="wrap">
+  <div class="panel">
+    <span class="related-nav-label">関連画面</span>
+    <div class="related-nav-links">
+      <a class="nav-pill" href="/priority/input/v2">第7条入力</a>
+      <a class="nav-pill" href="/shipment/import/v2">出荷CSV取込</a>
+      <a class="nav-pill" href="/priority/v2">優先順位</a>
+      <a class="nav-pill" href="/office/v2">事務v2</a>
     </div>
   </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>在庫CSV取込</h2>
+        <p class="panel-desc">
+          既存在庫管理システムから出力したCSVをそのまま投入してください。会社単位で<strong>全置換</strong>保存します（計算・出荷予定との突合は行いません）。
+        </p>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn-secondary btn-rebuild-priority">第7条を再計算</button>
+      </div>
+    </div>
+
+    <div class="csv-guide" aria-label="取込ファイルの説明">
+      <div class="csv-guide-block">
+        <h3 class="csv-guide-heading">■取り込むファイル</h3>
+        <p class="csv-guide-lead">
+          在庫管理システムから出力した<br>
+          「在庫一覧CSV」を取り込んでください。
+        </p>
+        <div class="csv-guide-columns">
+          <div>
+            <div class="csv-guide-subhead">例</div>
+            <ul class="csv-guide-list">
+              <li>在庫一覧.csv</li>
+              <li>棚卸一覧.csv</li>
+            </ul>
+          </div>
+          <div>
+            <div class="csv-guide-subhead csv-guide-subhead--ng">取り込めない例</div>
+            <ul class="csv-guide-list">
+              <li>PDF</li>
+              <li>画像ファイル</li>
+            </ul>
+          </div>
+        </div>
+        <p class="csv-guide-note">
+          ※Excelファイル（.xlsx）は、CSV形式で保存してから取り込んでください。
+        </p>
+      </div>
+      <div class="csv-guide-block">
+        <h3 class="csv-guide-heading">■CSVに必要な情報</h3>
+        <p class="csv-guide-lead">以下の情報が含まれているCSVを使用してください。</p>
+        <ul class="csv-guide-list">
+          <li>商品コード</li>
+          <li>商品名</li>
+          <li>現在庫数</li>
+        </ul>
+        <p class="csv-guide-note">※列名は会社ごとに異なっても構いません。</p>
+      </div>
+    </div>
+
+    <div
+      id="drop-zone"
+      class="drop-zone"
+      tabindex="0"
+      role="button"
+      aria-label="CSVをドロップまたはクリックで選択"
+    >
+      <p class="drop-zone-lead">CSVファイルをここへドラッグ＆ドロップ</p>
+      <p class="drop-zone-or">または</p>
+      <label class="btn-file-select" for="csv-file">ファイルを選択</label>
+      <input
+        type="file"
+        id="csv-file"
+        class="csv-file-input"
+        accept=".csv,text/csv,text/plain"
+      />
+    </div>
+
+    <div class="file-status-panel">
+      <div id="file-empty-state" class="file-empty-state">
+        <div class="file-empty-title">CSVファイルが選択されていません</div>
+        <div class="file-empty-sub">CSVを選択すると内容をプレビュー表示します</div>
+      </div>
+      <div id="file-selected-state" class="file-selected-state" hidden>
+        <span class="file-selected-label">選択ファイル</span>
+        <span id="csv-file-name" class="file-selected-name"></span>
+        <button type="button" id="btn-clear-file" class="btn-secondary btn-compact">選択解除</button>
+      </div>
+    </div>
+
+    <p id="msg" class="hint"></p>
+
+    <div id="csv-preview-wrap" class="csv-preview-wrap" hidden>
+      <p class="hint" id="csv-preview-caption" style="margin-bottom:8px;">プレビュー（取り込み前に内容を確認してください）</p>
+      <table>
+        <thead>
+          <tr>
+            <th>行</th>
+            <th>product_code</th>
+            <th>label</th>
+            <th>stock_qty</th>
+            <th>safety_stock</th>
+            <th>状態</th>
+          </tr>
+        </thead>
+        <tbody id="csv-preview-body"></tbody>
+      </table>
+      <div class="panel-actions">
+        <button type="button" class="btn-primary" id="btn-import" disabled>在庫CSVを取り込む</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 let fileRef = null;
@@ -160,13 +427,50 @@ let fileRef = null;
 document.addEventListener("DOMContentLoaded", function () {
   var $ = function (id) { return document.getElementById(id); };
   var sessionCompanyId = "";
+  var pageBootstrapCompanyId = "";
 
   function initSessionCompanyFromBootstrap() {
     var boot =
       typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
         ? window.__MO_BOOTSTRAP_COMPANY__.trim()
         : "";
+    pageBootstrapCompanyId = boot;
     sessionCompanyId = boot;
+  }
+
+  async function resolveSessionCompanyId() {
+    try {
+      var res = await fetch("/v2/office/session", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!res.ok) return "";
+      var data = await res.json();
+      return String(data.company_id || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  async function ensureSessionCompanyForWrite() {
+    var liveCid = await resolveSessionCompanyId();
+    if (!liveCid) {
+      return { ok: false, message: "会社セッションがありません。", company: "" };
+    }
+    if (pageBootstrapCompanyId && liveCid !== pageBootstrapCompanyId) {
+      return {
+        ok: false,
+        message:
+          "会社が切り替わっています（このページ: " +
+          pageBootstrapCompanyId +
+          " / 現在のログイン: " +
+          liveCid +
+          "）。ページを再読み込みしてから操作してください。",
+        company: "",
+      };
+    }
+    sessionCompanyId = liveCid;
+    return { ok: true, message: "", company: liveCid };
   }
 
   function redirectToOfficeLogin() {
@@ -482,9 +786,16 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!btn) return;
     btn.disabled = !fileRef;
     var nameEl = document.getElementById("csv-file-name");
-    if (nameEl) {
-      nameEl.textContent =
-        fileRef && fileRef.name ? fileRef.name : "選択されていません";
+    var emptyEl = document.getElementById("file-empty-state");
+    var selectedEl = document.getElementById("file-selected-state");
+    if (fileRef && fileRef.name) {
+      if (emptyEl) emptyEl.hidden = true;
+      if (selectedEl) selectedEl.hidden = false;
+      if (nameEl) nameEl.textContent = fileRef.name;
+    } else {
+      if (emptyEl) emptyEl.hidden = false;
+      if (selectedEl) selectedEl.hidden = true;
+      if (nameEl) nameEl.textContent = "";
     }
   }
 
@@ -535,6 +846,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   dz.addEventListener("click", function (e) {
     if (e.target === fin) return;
+    if (e.target.closest && e.target.closest(".btn-file-select")) return;
     fin.click();
   });
   dz.addEventListener("keydown", function (e) {
@@ -574,11 +886,12 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   document.querySelector(".btn-rebuild-priority").addEventListener("click", async function () {
-    var company = sessionCompanyId;
-    if (!company) {
-      setMsg("会社セッションがありません。", "err");
+    var check = await ensureSessionCompanyForWrite();
+    if (!check.ok) {
+      setMsg(check.message, "err");
       return;
     }
+    var company = check.company;
     setMsg("第7条を再計算しています…", "");
     try {
       var res = await fetch("/v2/priority/rebuild", {
@@ -609,11 +922,12 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   $("btn-import").addEventListener("click", async function () {
-    var company = sessionCompanyId;
-    if (!company) {
-      setMsg("会社セッションがありません。", "err");
+    var check = await ensureSessionCompanyForWrite();
+    if (!check.ok) {
+      setMsg(check.message, "err");
       return;
     }
+    var company = check.company;
     if (!fileRef) {
       setMsg("CSV ファイルを選択してください。", "err");
       return;
@@ -627,6 +941,7 @@ document.addEventListener("DOMContentLoaded", function () {
       fd.append("file", fileRef, fileRef.name || "stock.csv");
       var res = await fetch("/v2/stock/import", {
         method: "POST",
+        credentials: "same-origin",
         body: fd,
       });
       var data = null;

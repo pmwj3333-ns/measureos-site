@@ -190,6 +190,14 @@ def test_sr_v2_ops_observation_cards_simplified():
     assert ">危険度上位</h3>" in html
     assert ">更新停止</h3>" in html
     assert "opsStatusFromDangerScore" in html
+    assert "opsDangerObserveItemVisible" in html
+    assert "opsObserveDangerRankLine" in html
+    assert "ops-observe-rank" in html
+    assert "（危険度" in html
+    assert "opsStaleObserveItemVisible" in html
+    assert "opsStaleDaysForItem" in html
+    assert "危険会社なし" in html
+    assert "更新停止中の会社はありません" in html
     assert "ops-observe-item-status" in html
     assert "opsStaleStopLabel" in html
     assert "opsStaleDaysFromActivityAt" in html

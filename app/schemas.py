@@ -280,7 +280,31 @@ class PriorityItemOut(BaseModel):
     )
     article5_remaining_qty: Optional[float] = Field(
         None,
-        description="prod_value - article5_completed_qty（超過時は負。作成済み ✔ は残り<=0 で判定）。",
+        description="max(0, prod_value - article5_completed_qty)。現場向け製造残（作成済み ✔ は残り<=0 で判定）。",
+    )
+    article5_effective_usable_qty: Optional[float] = Field(
+        None,
+        description="stock_qty + article5_completed_qty。在庫CSVに作成済み実績を加えた使用可能在庫（表示のみ）。",
+    )
+    article5_margin_after_ship_qty: Optional[float] = Field(
+        None,
+        description=(
+            "article5_effective_usable_qty - ship_value - safety_stock_value。"
+            "基準在庫を残した出荷後余裕（表示のみ）。"
+        ),
+    )
+    # GET 時に PriorityItem の stock / ship / prod から算出（表示のみ・prod_value は変更しない）
+    shortage_from_ship_qty: float = Field(
+        0.0,
+        description="不足内訳・出荷不足分 max(0, ship_value - stock_qty)。",
+    )
+    shortage_from_safety_qty: float = Field(
+        0.0,
+        description="不足内訳・基準在庫不足分 max(0, prod_value - shortage_from_ship_qty)。",
+    )
+    shortage_reason_labels: List[str] = Field(
+        default_factory=list,
+        description='不足理由ラベル（例: ["出荷不足", "基準在庫不足"]）。手入力行は ["出荷不足（手入力）"]。',
     )
     # product_master.production_mode を参照（表示分離用・不足計算は共通）
     production_mode: str = "manufacture"

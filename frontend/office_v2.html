@@ -107,10 +107,39 @@
     min-height: min(520px, 58vh);
     border-bottom: 2px solid #e8ecf0;
   }
+  /* 要注意0件: 監視領域を縮め、下段の予告・実績を上へ */
+  .audit-workspace.attention-empty {
+    min-height: auto;
+    align-items: start;
+  }
+  .audit-workspace.attention-empty .audit-list-panel > .hint {
+    display: none;
+  }
+  .audit-workspace.attention-empty .wrap-audit-attention {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  .audit-workspace.attention-empty .wrap-audit-attention.wrap-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+  .audit-workspace.attention-empty .wrap-audit-attention thead {
+    display: none;
+  }
+  .audit-workspace.attention-empty .wrap-audit-attention tbody td.detail-empty {
+    padding: 14px 12px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.82rem;
+    border-bottom: none;
+  }
   @media (max-width: 1000px) {
     .audit-workspace {
       grid-template-columns: 1fr;
       min-height: auto;
+    }
+    .audit-workspace:not(.attention-empty) {
+      min-height: min(520px, 58vh);
     }
   }
   .audit-list-panel {
@@ -1711,6 +1740,12 @@
       "件</span>";
   }
 
+  function syncAttentionLayout() {
+    const ws = document.querySelector(".audit-workspace");
+    if (!ws) return;
+    ws.classList.toggle("attention-empty", filteredAttn.length === 0);
+  }
+
   function renderAttentionTable() {
     filteredAttn = collectOfficeAnomalySortedRows(rows);
     const COLS = 5;
@@ -1718,12 +1753,14 @@
       tbodyAnomaly.innerHTML =
         '<tr><td colspan="' + COLS + '" class="detail-empty">データなし</td></tr>';
       syncAttentionSummaryStrip();
+      syncAttentionLayout();
       return;
     }
     if (!filteredAttn.length) {
       tbodyAnomaly.innerHTML =
-        '<tr><td colspan="' + COLS + '" class="detail-empty">要注意行なし</td></tr>';
+        '<tr><td colspan="' + COLS + '" class="detail-empty">要注意なし</td></tr>';
       syncAttentionSummaryStrip();
+      syncAttentionLayout();
       return;
     }
     const unit = (filteredAttn[0] && filteredAttn[0].unit) || "個";
@@ -1764,6 +1801,7 @@
       })
       .join("");
     syncAttentionSummaryStrip();
+    syncAttentionLayout();
   }
 
   function renderPlannedUnstartedTable() {

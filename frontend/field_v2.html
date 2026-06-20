@@ -7,14 +7,35 @@
 <title>MEASURE OS</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-         background: #f2f2f7; color: #1c1c1e; min-height: 100vh; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+         background: #f4f6f9; color: #1a1a1a; min-height: 100vh; font-size: 14px; line-height: 1.45; }
 
-  .header { background: #1c1c1e; padding: 14px 20px; display: flex;
-            align-items: center; justify-content: space-between; }
-  .header-left   { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .header-title { color: #fff; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.05em; }
-  .header-hint  { color: rgba(255,255,255,0.45); font-size: 0.65rem; line-height: 1.3; }
+  header.field-site-header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 14px 20px;
+    width: 100%;
+  }
+  header.field-site-header h1 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  header.field-site-header p {
+    font-size: 0.75rem;
+    opacity: 0.88;
+    margin: 4px 0 0;
+    line-height: 1.45;
+  }
+  .field-site-header-sub { opacity: 0.78 !important; }
+  .field-header-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .field-header-top-row > div:first-child { min-width: 0; flex: 1 1 auto; }
   .header-user  {
     color: rgba(255,255,255,0.75); font-size: 0.8rem; cursor: pointer;
     flex-shrink: 0; text-align: right; max-width: 46%; word-break: break-all;
@@ -26,11 +47,47 @@
   }
   .header-user:active { opacity: 0.72; }
 
-  .main { max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
+  .main { max-width: 920px; margin: 0 auto; padding: 18px 18px 80px; }
+  .field-wrap { max-width: 920px; }
 
   /* 予告・作業盤（幅広・2カラム） */
-  .field-planned-main { max-width: 1160px; }
-  .field-planned-card { padding: 10px 10px 10px; }
+  .field-planned-main { max-width: 920px; }
+  .field-intro-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+  }
+  .field-panel-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 6px;
+  }
+  .field-panel-desc {
+    font-size: 0.78rem;
+    color: #6b7280;
+    line-height: 1.55;
+  }
+  .field-sub-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 12px 14px;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+    height: 100%;
+  }
+  .field-sub-panel-head {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .field-planned-card { padding: 0; background: transparent; box-shadow: none; border: none; }
   .sub-text.tight { margin: 4px 0; line-height: 1.45; }
   .field-planned-unit-hint.sub-text.tight { margin-top: 2px; margin-bottom: 0; }
   .field-board-grid {
@@ -63,21 +120,25 @@
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #e8e8ed;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
   }
   .field-planned-actions-submit {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 8px;
+    width: 100%;
   }
   .field-planned-actions .btn-primary,
   .field-planned-actions .btn-secondary {
-    width: 100%;
+    width: auto;
+    min-width: min(100%, 260px);
+    max-width: 100%;
     margin-top: 0;
-    padding: 11px 14px;
-    border-radius: 10px;
+    padding: 11px 16px;
+    border-radius: 6px;
     font-size: 0.88rem;
     font-weight: 700;
   }
@@ -85,9 +146,9 @@
     padding: 9px 12px;
     font-size: 0.8rem;
     font-weight: 600;
-    color: #1e3d5c;
-    background: #e8f1f9;
-    border: 1px solid rgba(15, 70, 120, 0.22);
+    color: #1e3a5f;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
     box-shadow: none;
   }
   .field-planned-actions .btn-planned-start:disabled {
@@ -279,13 +340,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .article7-board .a7-card-pick:hover { background: rgba(0, 122, 255, 0.07); }
-  .article7-board .a7-card-pick:active { background: rgba(0, 122, 255, 0.11); }
+  .article7-board .a7-card-pick:hover { background: rgba(30, 58, 95, 0.07); }
+  .article7-board .a7-card-pick:active { background: rgba(30, 58, 95, 0.11); }
   .article7-board .a7-card-pick.a7-pick-flash {
     animation: a7PickFlash 0.28s ease-out;
   }
   @keyframes a7PickFlash {
-    from { background: rgba(0, 122, 255, 0.22); }
+    from { background: rgba(30, 58, 95, 0.22); }
     to { background: transparent; }
   }
   .article7-board .a7-card-more {
@@ -310,11 +371,11 @@
     animation: plannedRowA7Flash 0.95s ease-out;
   }
   @keyframes plannedRowA7Flash {
-    0% { box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.45); }
+    0% { box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.45); }
     100% { box-shadow: none; }
   }
   @keyframes actualPlannedPickFlash {
-    0% { background-color: rgba(0, 122, 255, 0.14); }
+    0% { background-color: rgba(30, 58, 95, 0.14); }
     100% { background-color: transparent; }
   }
   .actual-planned-hit.actual-planned-pick-flash {
@@ -360,6 +421,25 @@
     margin-left: 4px;
     vertical-align: middle;
   }
+  .article7-board .a7-shortage-reasons {
+    margin: 2px 0 4px;
+    line-height: 1.45;
+  }
+  .article7-board .a7-shortage-reasons .lbl,
+  .article7-board .a7-current-state .lbl {
+    display: block;
+    margin-bottom: 1px;
+  }
+  .article7-board .a7-current-state {
+    margin: 2px 0 4px;
+    line-height: 1.45;
+  }
+  .article7-board .a7-current-state .article7-progress-done {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
   @media (min-width: 768px) {
     .field-board-grid { flex-direction: row; align-items: flex-start; gap: 12px; }
     .field-board-col.field-board-a7 {
@@ -397,10 +477,10 @@
     padding: 5px 11px;
     font-size: 0.76rem;
     font-weight: 600;
-    border: 1px dashed #c7c7cc;
-    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
     background: #fff;
-    color: #007aff;
+    color: #1e3a5f;
     cursor: pointer;
     font-family: inherit;
     -webkit-tap-highlight-color: transparent;
@@ -425,7 +505,7 @@
     width: 100%;
     box-sizing: border-box;
   }
-  .planned-inp-product:focus { outline: none; border-color: #007aff; }
+  .planned-inp-product:focus { outline: none; border-color: #1e3a5f; }
   .planned-inp-qty-wrap {
     flex: 0 0 auto;
     display: flex;
@@ -454,7 +534,7 @@
     background: transparent;
     box-sizing: border-box;
   }
-  .planned-inp-qty:focus { border-bottom-color: #007aff; outline: none; }
+  .planned-inp-qty:focus { border-bottom-color: #1e3a5f; outline: none; }
   .planned-um-details {
     flex: 0 1 auto;
   }
@@ -554,7 +634,7 @@
   }
 
   .settings-adv {
-    max-width: 480px; margin: 0 auto; padding: 8px 16px 0;
+    max-width: 920px; margin: 0 auto; padding: 8px 18px 0;
     font-size: 0.78rem; color: #636366;
   }
   .settings-adv summary {
@@ -570,20 +650,21 @@
     font-size: 0.9rem; font-family: inherit; background: #fff;
   }
 
-  .card { background: #fff; border-radius: 16px; padding: 24px 20px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px; }
-  .card-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
-                color: #8e8e93; text-transform: uppercase; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px 18px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06); margin-bottom: 14px; }
+  .card-label { font-size: 0.82rem; font-weight: 700;
+                color: #1e3a5f; margin-bottom: 8px; letter-spacing: 0; text-transform: none; }
 
   .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   .input-num  { flex: 1; font-size: 1.5rem; font-weight: 700; border: none;
                 border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
                 background: transparent; font-family: inherit; color: #1c1c1e; }
-  .input-num:focus { border-bottom-color: #007aff; }
+  .input-num:focus { border-bottom-color: #1e3a5f; }
   .input-text { width: 100%; font-size: 1rem; font-weight: 600; border: none;
                 border-bottom: 2px solid #e5e5ea; padding: 8px 0; outline: none;
-                background: transparent; font-family: inherit; color: #1c1c1e; }
-  .input-text:focus { border-bottom-color: #007aff; }
+                background: transparent; font-family: inherit; color: #1a1a1a; }
+  .input-text:focus { border-bottom-color: #1e3a5f; }
   .input-textarea {
     width: 100%;
     min-height: 88px;
@@ -615,14 +696,14 @@
   .pattern-check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem;
                     line-height: 1.45; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .pattern-check input { width: 1.15rem; height: 1.15rem; margin-top: 2px; flex-shrink: 0;
-                         accent-color: #007aff; }
+                         accent-color: #1e3a5f; }
 
-  .btn-primary { width: 100%; padding: 16px; background: #007aff; color: #fff;
-                 border: none; border-radius: 14px; font-size: 1rem; font-weight: 700;
+  .btn-primary { width: 100%; padding: 12px 16px; background: #1e3a5f; color: #fff;
+                 border: none; border-radius: 6px; font-size: 0.92rem; font-weight: 700;
                  font-family: inherit; cursor: pointer; margin-top: 8px; }
-  .btn-primary:disabled { opacity: 0.4; cursor: default; }
-  .btn-secondary { width: 100%; padding: 13px; background: #f2f2f7; color: #636366;
-                   border: none; border-radius: 14px; font-size: 0.9rem;
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .btn-secondary { width: 100%; padding: 11px 16px; background: #64748b; color: #fff;
+                   border: none; border-radius: 6px; font-size: 0.88rem; font-weight: 600;
                    font-family: inherit; cursor: pointer; margin-top: 8px; }
 
   .multi-rows { margin-bottom: 4px; }
@@ -641,14 +722,14 @@
   }
   .btn-add-row {
     width: 100%; padding: 12px; margin-top: 10px; background: #fff;
-    border: 1.5px dashed #c7c7cc; border-radius: 12px; color: #007aff;
-    font-weight: 600; font-size: 0.9rem; cursor: pointer; font-family: inherit;
+    border: 1.5px dashed #cbd5e1; border-radius: 8px; color: #1e3a5f;
+    font-weight: 600; font-size: 0.88rem; cursor: pointer; font-family: inherit;
     -webkit-tap-highlight-color: transparent;
   }
   /* 当日実績盤（横1行＝1商品・一覧優先） */
-  .field-actual-main { max-width: 1160px; }
+  .field-actual-main { max-width: 920px; }
   .main.field-actual-main { padding-bottom: 56px; }
-  .field-actual-board-card { padding: 10px 10px 12px; }
+  .field-actual-board-card { padding: 0; background: transparent; box-shadow: none; border: none; }
   .field-actual-board-head {
     display: flex;
     flex-wrap: wrap;
@@ -750,8 +831,8 @@
     -webkit-tap-highlight-color: transparent;
   }
   .actual-planned-hit:last-child { border-bottom: none; }
-  .actual-planned-hit:hover { background: rgba(0, 122, 255, 0.07); }
-  .actual-planned-hit:active { background: rgba(0, 122, 255, 0.11); }
+  .actual-planned-hit:hover { background: rgba(30, 58, 95, 0.07); }
+  .actual-planned-hit:active { background: rgba(30, 58, 95, 0.11); }
   .ap-name {
     font-size: 0.8rem;
     font-weight: 700;
@@ -814,7 +895,7 @@
     animation: actualRowFlash 1.05s ease-out;
   }
   @keyframes actualRowFlash {
-    0% { box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.65); background: rgba(0, 122, 255, 0.1); }
+    0% { box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.65); background: rgba(30, 58, 95, 0.1); }
     100% { box-shadow: none; background: #f9f9fb; }
   }
   .field-actual-input-col { min-width: 0; }
@@ -834,7 +915,7 @@
     border: 1px dashed #c7c7cc;
     border-radius: 8px;
     background: #fff;
-    color: #007aff;
+    color: #1e3a5f;
     cursor: pointer;
     font-family: inherit;
     -webkit-tap-highlight-color: transparent;
@@ -878,7 +959,7 @@
     font-family: inherit;
     color: #1c1c1e;
   }
-  .actual-inp-product:focus { outline: none; border-color: #007aff; }
+  .actual-inp-product:focus { outline: none; border-color: #1e3a5f; }
   .actual-inp-qty-wrap {
     flex: 0 0 auto;
     display: flex;
@@ -908,7 +989,7 @@
     font-family: inherit;
     color: #1c1c1e;
   }
-  .actual-inp-qty:focus { border-bottom-color: #007aff; outline: none; }
+  .actual-inp-qty:focus { border-bottom-color: #1e3a5f; outline: none; }
   .actual-um-details {
     flex: 0 1 auto;
     min-width: 0;
@@ -941,7 +1022,7 @@
     font-family: inherit;
     box-sizing: border-box;
   }
-  .actual-line-memo:focus { outline: none; border-color: #007aff; }
+  .actual-line-memo:focus { outline: none; border-color: #1e3a5f; }
   .actual-line-memo::placeholder { color: #c7c7cc; }
   .actual-board-remove.btn-line-remove {
     width: 36px;
@@ -1006,22 +1087,22 @@
     font-size: 0.86rem;
   }
   .field-actual-actions {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid #e8e8ed;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
     display: flex;
     justify-content: flex-end;
     align-items: center;
   }
-  /* 当日盤の締め：全面青バーではなく右端の確定操作 */
   .field-actual-actions .btn-primary {
     width: auto;
+    min-width: min(100%, 220px);
     margin-top: 0;
-    padding: 7px 20px;
-    border-radius: 8px;
-    font-size: 0.84rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
+    padding: 11px 18px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0;
     box-shadow: none;
     flex-shrink: 0;
   }
@@ -1072,79 +1153,124 @@
   /* 実績行の product_code は非表示（サーバ・第7条突合用に内部保持） */
   .line-resolved-pc { display: none !important; }
 
-  /* 縦中央だと班長一覧が画面外（上）に逃げて「入力欄だけ見える」ことがある → 上から表示 */
-  .overlay { position: fixed; inset: 0; background: #1c1c1e; z-index: 100;
-             display: flex; align-items: flex-start; justify-content: flex-start;
-             padding: 24px 16px 32px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* 班長選択（初回オーバーレイ） */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: #f4f6f9;
+    z-index: 100;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .overlay.hidden { display: none; }
-  .overlay-box { width: 100%; max-width: 400px; padding: 20px 20px 28px; position: relative;
-                 margin: 0 auto; }
-  .overlay-lead { color: rgba(255,255,255,0.92); font-size: 1.02rem; font-weight: 700;
-                  margin-bottom: 6px; text-align: center; line-height: 1.35; }
-  .overlay-sub { color: rgba(255,255,255,0.4); font-size: 0.72rem; text-align: center;
-                  margin-bottom: 14px; line-height: 1.45; }
-  /* 班長：1 欄コンボボックス + ドロップダウン */
+  .overlay-body {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 18px 32px;
+  }
+  .overlay-card {
+    width: 100%;
+    max-width: 480px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 18px 22px;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+  }
+  .overlay-lead {
+    color: #1e3a5f;
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .overlay-sub {
+    color: #6b7280;
+    font-size: 0.78rem;
+    text-align: center;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
   .field-user-combobox { position: relative; width: 100%; margin-bottom: 14px; }
   .field-user-input {
-    width: 100%; padding: 14px 72px 14px 16px; background: rgba(255,255,255,0.1);
-    border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px; color: #fff;
-    font-size: 1rem; font-family: inherit; outline: none; box-sizing: border-box;
+    width: 100%;
+    padding: 12px 72px 12px 14px;
+    background: #fff;
+    border: 1px solid #c5ccd4;
+    border-radius: 6px;
+    color: #1a1a1a;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
   }
-  .field-user-input::placeholder { color: rgba(255,255,255,0.38); }
+  .field-user-input::placeholder { color: #9ca3af; }
   .field-user-input:focus {
-    border-color: rgba(0,122,255,0.7);
-    background: rgba(255,255,255,0.12);
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.12);
   }
   .field-user-clear {
     position: absolute; right: 34px; top: 50%; transform: translateY(-50%);
     width: 40px; min-height: 40px; padding: 0; margin: 0;
-    border: none; border-radius: 10px;
+    border: none; border-radius: 6px;
     background: transparent;
-    color: rgba(255,255,255,0.55);
+    color: #6b7280;
     font-size: 1.35rem; line-height: 1; font-weight: 500;
     font-family: inherit; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     -webkit-tap-highlight-color: transparent;
     z-index: 2;
   }
-  .field-user-clear:active { color: #fff; background: rgba(255,255,255,0.12); }
+  .field-user-clear:active { color: #1e3a5f; background: #f3f4f6; }
   .field-user-clear[hidden] { display: none !important; }
   .field-user-dd-caret {
     position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
     width: 0; height: 0;
     border-left: 5px solid transparent; border-right: 5px solid transparent;
-    border-top: 6px solid rgba(255,255,255,0.45);
+    border-top: 6px solid #9ca3af;
     pointer-events: none;
   }
   .field-user-dropdown {
     position: absolute; left: 0; right: 0; top: calc(100% + 6px);
     max-height: min(40vh, 280px); overflow-y: auto;
-    background: #2c2c2e;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(30, 58, 95, 0.12);
     z-index: 5;
     -webkit-overflow-scrolling: touch;
   }
   .field-user-dropdown[hidden] { display: none !important; }
   .field-user-dd-item {
-    padding: 14px 16px; font-size: 0.95rem; font-weight: 600;
-    color: rgba(255,255,255,0.92);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 12px 14px; font-size: 0.9rem; font-weight: 600;
+    color: #1a1a1a;
+    border-bottom: 1px solid #eef1f4;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
   .field-user-dd-item:last-child { border-bottom: none; }
-  .field-user-dd-item:active { background: rgba(0,122,255,0.35); }
+  .field-user-dd-item:active { background: #eff6ff; }
   .field-user-dd-empty {
-    padding: 14px 16px; font-size: 0.85rem; color: rgba(255,255,255,0.45);
+    padding: 12px 14px; font-size: 0.82rem; color: #6b7280;
     line-height: 1.5;
   }
   .overlay-btn {
-    width: 100%; padding: 15px; background: #007aff; color: #fff; border: none;
-    border-radius: 14px; font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer;
+    width: 100%;
+    padding: 12px 16px;
+    background: #1e3a5f;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
   }
   .overlay-btn:disabled {
-    opacity: 0.42;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -1166,38 +1292,48 @@
 <div id="field-main-shell">
 
 <div class="overlay" id="overlay">
-  <div class="overlay-box">
-    <p class="overlay-lead">班長を選択してください</p>
-    <p class="overlay-sub">欄をタップして班長一覧から選ぶか、同じ欄に直接入力して確定できます。</p>
-    <div class="field-user-combobox">
-      <input type="text" class="field-user-input" id="user-input"
-             placeholder="班長を選択"
-             autocomplete="off" role="combobox" aria-expanded="false" aria-controls="user-suggest" aria-autocomplete="list"
-             data-lpignore="true" data-1p-ignore="true"
-             onfocus="fieldUserOnFocus()"
-             onblur="fieldUserOnBlur()"
-             oninput="fieldUserOnInputSuggest()"
-             onkeydown="fieldUserOnKeydown(event)" />
-      <button type="button" class="field-user-clear" id="user-input-clear" hidden
-              aria-label="班長の入力をクリア"
-              onmousedown="event.preventDefault()"
-              onclick="fieldUserClearInput(event)">×</button>
-      <span class="field-user-dd-caret" aria-hidden="true"></span>
-      <div id="user-suggest" class="field-user-dropdown" role="listbox" hidden></div>
+  <header class="field-site-header">
+    <h1>MEASURE OS</h1>
+    <p>現場入力（第5条）</p>
+    <p class="field-site-header-sub">予告 → 着手 → 実績 を登録します。</p>
+  </header>
+  <div class="overlay-body">
+    <div class="overlay-card">
+      <p class="overlay-lead">班長を選択してください</p>
+      <p class="overlay-sub">担当する班長を選択して作業を開始します。</p>
+      <div class="field-user-combobox">
+        <input type="text" class="field-user-input" id="user-input"
+               placeholder="班長を選択"
+               autocomplete="off" role="combobox" aria-expanded="false" aria-controls="user-suggest" aria-autocomplete="list"
+               data-lpignore="true" data-1p-ignore="true"
+               onfocus="fieldUserOnFocus()"
+               onblur="fieldUserOnBlur()"
+               oninput="fieldUserOnInputSuggest()"
+               onkeydown="fieldUserOnKeydown(event)" />
+        <button type="button" class="field-user-clear" id="user-input-clear" hidden
+                aria-label="班長の入力をクリア"
+                onmousedown="event.preventDefault()"
+                onclick="fieldUserClearInput(event)">×</button>
+        <span class="field-user-dd-caret" aria-hidden="true"></span>
+        <div id="user-suggest" class="field-user-dropdown" role="listbox" hidden></div>
+      </div>
+      <button type="button" class="overlay-btn" id="btn-overlay-confirm" disabled
+              onclick="confirmUser()">この内容で使う</button>
     </div>
-    <button type="button" class="overlay-btn" id="btn-overlay-confirm" disabled
-            onclick="confirmUser()">この内容で使う</button>
   </div>
 </div>
 
-<div class="header">
-  <div class="header-left">
-    <div class="header-title">MEASURE OS</div>
-    <div class="header-hint" id="header-hint">担当者名（右上）をタップで変更</div>
+<header class="field-site-header" id="field-app-header">
+  <div class="field-header-top-row">
+    <div>
+      <h1>MEASURE OS</h1>
+      <p>現場入力（第5条）</p>
+      <p class="field-site-header-sub" id="header-hint">予告 → 着手 → 実績 を登録します。</p>
+    </div>
+    <button type="button" class="header-user" id="header-user" onclick="changeUser()"
+            aria-label="担当者名を変更">—</button>
   </div>
-  <button type="button" class="header-user" id="header-user" onclick="changeUser()"
-          aria-label="担当者名を変更">—</button>
-</div>
+</header>
 
 <details class="settings-adv" id="settings-adv">
   <summary>初期設定（作業・工程）</summary>
@@ -1214,41 +1350,47 @@
 </details>
 
 <div id="screen-planned" class="screen">
-  <div class="main field-planned-main">
+  <div class="main field-planned-main field-wrap">
+    <div class="field-intro-panel">
+      <h2 class="field-panel-title">第5条｜明日の予告</h2>
+      <p class="field-panel-desc">
+        翌営業日の予定作業を登録します。<br>
+        予告 → 着手 → 実績 の順で運用します。
+      </p>
+    </div>
     <div class="card field-planned-card">
-      <div class="field-planned-toolbar">
-        <div class="card-label" style="margin-bottom:6px;">第5条・明日の予告（任意）</div>
-        <p class="sub-text tight">
-          左で第7条を見ながら、右で種目別に予告します。第7条は<strong>参照のみ</strong>（強制しません）。
-        </p>
-      </div>
       <div class="field-board-grid">
         <aside class="field-board-col field-board-a7">
-          <div class="field-board-a7-head">第7条（左・スクロール）</div>
-          <div class="field-board-a7-scroll">
-            <div id="article7-board-planned" class="article7-board"></div>
+          <div class="field-sub-panel">
+            <div class="field-sub-panel-head">第7条参照</div>
+            <div class="field-board-a7-scroll">
+              <div id="article7-board-planned" class="article7-board"></div>
+            </div>
+            <p class="sub-text tight field-board-a7-foot">不足行をタップで予告へ反映（参照のみ）。</p>
           </div>
-          <p class="sub-text tight field-board-a7-foot">不足行をタップで予告へ反映（商品名のみ・数量はご入力）。在庫・出荷などは各行の「詳細」から。</p>
         </aside>
         <div class="field-board-col field-board-planned-input">
-          <div id="planned-block-mfg">
-            <div class="planned-input-head">
-              <span class="field-label">予告（製造・横1行＝1商品）</span>
+          <div class="field-sub-panel">
+            <div class="field-sub-panel-head">予告入力</div>
+            <div id="planned-block-mfg">
+              <div class="planned-input-head">
+                <span class="field-label">製造（1行＝1商品）</span>
+              </div>
+              <div id="planned-rows-mfg" class="multi-rows planned-rows-tight"></div>
             </div>
-            <div id="planned-rows-mfg" class="multi-rows planned-rows-tight"></div>
-          </div>
-          <div id="planned-block-log" style="display:none;">
-            <div class="planned-input-head">
-              <span class="field-label">予告（物流）</span>
+            <div id="planned-block-log" style="display:none;">
+              <div class="planned-input-head">
+                <span class="field-label">物流</span>
+              </div>
+              <div id="planned-rows-log" class="multi-rows planned-rows-tight"></div>
             </div>
-            <div id="planned-rows-log" class="multi-rows planned-rows-tight"></div>
-          </div>
-          <p class="sub-text tight field-planned-unit-hint">単位 <span id="planned-unit">個</span>（会社設定）。左の第7条の行をタップすると予告盤へ商品名が入ります（数量は空欄）。手入力も可能です。</p>
-          <div class="field-planned-actions">
-            <button type="button" class="btn-add-planned-compact" id="planned-add-row-btn" onclick="addPlannedRow()">＋ 商品追加</button>
-            <div class="field-planned-actions-submit">
-              <button type="button" class="btn-primary" id="planned-btn" onclick="submitPlanned()">予告を登録</button>
-              <button type="button" class="btn-secondary btn-planned-start" id="planned-start-btn" onclick="submitStartFromPlanned()">着手して実績報告へ</button>
+            <p class="sub-text tight field-planned-unit-hint">単位 <span id="planned-unit">個</span> · 第7条行タップで商品名を反映</p>
+            <div class="field-planned-actions">
+              <button type="button" class="btn-add-planned-compact" id="planned-add-row-btn" onclick="addPlannedRow()">＋ 商品追加</button>
+              <div class="field-planned-actions-submit">
+                <button type="button" class="btn-primary" id="planned-btn" onclick="submitPlanned()">予告を登録</button>
+                <button type="button" class="btn-secondary btn-planned-start" id="planned-start-btn" onclick="submitStartFromPlanned()">着手して実績報告へ</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1269,46 +1411,48 @@
 </dialog>
 
 <div id="screen-actual" class="screen">
-  <div class="main field-actual-main">
+  <div class="main field-actual-main field-wrap">
+    <div class="field-intro-panel">
+      <h2 class="field-panel-title">第5条｜実績報告</h2>
+      <p class="field-panel-desc">実施した作業内容を登録してください。</p>
+    </div>
     <div class="started-info" id="started-info" style="display:none;"></div>
     <div class="card field-actual-board-card">
-      <div class="field-actual-board-head">
-        <div class="card-label">第5条・今日の実績盤</div>
-        <p class="field-actual-board-tagline">
-          左の<strong id="actual-planned-tagline-label">今日の予告</strong>を見ながら、右で実績を入力します。第7条は必要なときだけ開いて参照してください。
-        </p>
-      </div>
       <div class="field-actual-board-grid">
         <div class="field-actual-ref-col">
-          <div class="field-actual-ref-scroll">
-            <section class="actual-planned-board" id="actual-planned-board" aria-label="今日の予告">
-              <div class="actual-planned-board-head">
-                <span class="actual-planned-board-title" id="actual-planned-board-title">今日の予告</span>
-                <span class="actual-planned-count" id="actual-planned-count"></span>
-              </div>
-              <div id="actual-planned-summary" class="actual-planned-summary-host"></div>
-            </section>
-            <details class="actual-a7-details">
-              <summary class="actual-a7-summary">第7条詳細を見る</summary>
-              <div class="actual-a7-details-body">
-                <p class="sub-text tight actual-a7-hint">
-                  判断・リスク確認用。開いたときだけ不足・優先・在庫・納期・進捗などを表示します。
-                </p>
-                <div id="article7-panel-actual" class="article7-board"></div>
-              </div>
-            </details>
+          <div class="field-sub-panel">
+            <div class="field-sub-panel-head">予告内容</div>
+            <div class="field-actual-ref-scroll">
+              <section class="actual-planned-board" id="actual-planned-board" aria-label="今日の予告">
+                <div class="actual-planned-board-head">
+                  <span class="actual-planned-board-title" id="actual-planned-board-title">今日の予告</span>
+                  <span class="actual-planned-count" id="actual-planned-count"></span>
+                </div>
+                <div id="actual-planned-summary" class="actual-planned-summary-host"></div>
+              </section>
+              <details class="actual-a7-details">
+                <summary class="actual-a7-summary">第7条詳細を見る</summary>
+                <div class="actual-a7-details-body">
+                  <p class="sub-text tight actual-a7-hint">判断・リスク確認用（必要なときのみ）。</p>
+                  <div id="article7-panel-actual" class="article7-board"></div>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
         <div class="field-actual-input-col">
-          <div class="field-actual-rows-toolbar">
-            <span class="field-label">実績（1行＝商品・順不同）</span>
-            <button type="button" class="btn-add-actual-compact" onclick="addActualRow()">＋ 行追加</button>
-          </div>
-          <div id="actual-inputs-mfg">
-            <div id="actual-rows-mfg" class="multi-rows actual-horiz-rows"></div>
-          </div>
-          <div id="actual-inputs-log" style="display:none;">
-            <div id="actual-rows-log" class="multi-rows actual-horiz-rows"></div>
+          <div class="field-sub-panel">
+            <div class="field-sub-panel-head">実績入力</div>
+            <div class="field-actual-rows-toolbar">
+              <span class="field-label">1行＝1商品</span>
+              <button type="button" class="btn-add-actual-compact" onclick="addActualRow()">＋ 行追加</button>
+            </div>
+            <div id="actual-inputs-mfg">
+              <div id="actual-rows-mfg" class="multi-rows actual-horiz-rows"></div>
+            </div>
+            <div id="actual-inputs-log" style="display:none;">
+              <div id="actual-rows-log" class="multi-rows actual-horiz-rows"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1544,6 +1688,10 @@ function article7QtySnapshotForDebug() {
       it.article5_completed_qty != null ? Number(it.article5_completed_qty) : null,
     article5_remaining_qty:
       it.article5_remaining_qty != null ? Number(it.article5_remaining_qty) : null,
+    article5_effective_usable_qty:
+      it.article5_effective_usable_qty != null ? Number(it.article5_effective_usable_qty) : null,
+    article5_margin_after_ship_qty:
+      it.article5_margin_after_ship_qty != null ? Number(it.article5_margin_after_ship_qty) : null,
   }));
 }
 
@@ -1688,6 +1836,68 @@ function formatArticle5ProgressQty(n) {
   if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
   const r = Math.round(n * 100) / 100;
   return String(r);
+}
+
+/** 第7条カード・不足理由（GET shortage_reason_labels 等） */
+function article7ShortageReasonHtml(it, unitVal) {
+  const labels = Array.isArray(it.shortage_reason_labels) ? it.shortage_reason_labels : [];
+  if (!labels.length) return "";
+  const shipPart =
+    it.shortage_from_ship_qty != null ? Number(it.shortage_from_ship_qty) : NaN;
+  const safetyPart =
+    it.shortage_from_safety_qty != null ? Number(it.shortage_from_safety_qty) : NaN;
+  const eps = 1e-6;
+  const lines = [];
+  for (const lab of labels) {
+    const key = String(lab || "").trim();
+    if (!key) continue;
+    let qty = NaN;
+    if (key === "出荷不足" || key === "出荷不足（手入力）") {
+      qty = shipPart;
+    } else if (key === "基準在庫不足") {
+      qty = safetyPart;
+    }
+    const qtySuffix =
+      Number.isFinite(qty) && qty > eps
+        ? ` ${escHtml(formatArticle5ProgressQty(qty))} ${escHtml(unitVal)}`
+        : "";
+    lines.push(`<div>・${escHtml(key)}${qtySuffix}</div>`);
+  }
+  if (!lines.length) return "";
+  return `<div class="a7-shortage-reasons"><span class="lbl">発生理由</span>${lines.join("")}</div>`;
+}
+
+/** 第7条カード・現在状態（article5_remaining_qty ベース） */
+function article7CurrentStateHtml(remainingNum, unitVal) {
+  const remEps = 1e-6;
+  if (!Number.isFinite(remainingNum)) return "";
+  if (remainingNum <= remEps) {
+    return (
+      '<div class="a7-current-state">' +
+      '<span class="lbl">現在状態</span>' +
+      '<div><span class="article7-progress-done">・充足済み ✔</span></div>' +
+      "</div>"
+    );
+  }
+  return (
+    '<div class="a7-current-state">' +
+    '<span class="lbl">現在状態</span>' +
+    `<div>・製造残 ${escHtml(formatArticle5ProgressQty(remainingNum))} ${escHtml(unitVal)}</div>` +
+    "</div>"
+  );
+}
+
+/** 第7条カード1行目の数量表示（article5_remaining_qty あり → 残N のみ。無ければ 不足M） */
+function article7CardHeaderQtyText(it, prodStr) {
+  const remainingFromApi =
+    it.article5_remaining_qty != null ? Number(it.article5_remaining_qty) : NaN;
+  if (Number.isFinite(remainingFromApi)) {
+    if (remainingFromApi <= 1e-6) {
+      return "充足済み";
+    }
+    return "残" + escHtml(formatArticle5ProgressQty(remainingFromApi));
+  }
+  return "不足" + escHtml(prodStr);
 }
 
 /** 予告行の数量を出すか（null・空は未定。0 は実数量として表示） */
@@ -3246,8 +3456,7 @@ function article7RequiredQtyForPlannedWarn(it) {
 }
 
 /**
- * 必要数を満たしている（残りなし以下）のにさらに予告するときだけ true。
- * article5_remaining_qty が取れるときは remaining <= 0 を優先。無いときは completed >= 必要数。
+ * 充足済み（予告登録時のみ確認）。article5_remaining_qty <= 0 または completed >= prod_value。
  */
 function article7ShouldWarnAlreadyMadeBeforePlanned(it) {
   if (!it) return false;
@@ -3255,18 +3464,18 @@ function article7ShouldWarnAlreadyMadeBeforePlanned(it) {
     it.article5_completed_qty != null ? Number(it.article5_completed_qty) : NaN;
   const rRaw =
     it.article5_remaining_qty != null ? Number(it.article5_remaining_qty) : NaN;
+  const prodRaw = it.prod_value != null ? Number(it.prod_value) : NaN;
   if (Number.isFinite(rRaw)) {
     return rRaw <= ARTICLE7_PLANNED_WARN_EPS;
   }
-  const req = article7RequiredQtyForPlannedWarn(it);
   if (
-    !Number.isFinite(cRaw) ||
-    !Number.isFinite(req) ||
-    req <= ARTICLE7_PLANNED_WARN_EPS
+    Number.isFinite(cRaw) &&
+    Number.isFinite(prodRaw) &&
+    prodRaw > ARTICLE7_PLANNED_WARN_EPS
   ) {
-    return false;
+    return cRaw + ARTICLE7_PLANNED_WARN_EPS >= prodRaw;
   }
-  return cRaw + ARTICLE7_PLANNED_WARN_EPS >= req;
+  return false;
 }
 
 function findArticle7ProgressHitForPlannedLine(line, items) {
@@ -3277,13 +3486,15 @@ function findArticle7ProgressHitForPlannedLine(line, items) {
       it.article5_completed_qty != null ? Number(it.article5_completed_qty) : NaN;
     const rRaw =
       it.article5_remaining_qty != null ? Number(it.article5_remaining_qty) : NaN;
-    const req = article7RequiredQtyForPlannedWarn(it);
+    const prodRaw = it.prod_value != null ? Number(it.prod_value) : NaN;
+    const prod = Number.isFinite(prodRaw) ? prodRaw : article7RequiredQtyForPlannedWarn(it);
     const completed = Number.isFinite(cRaw) ? cRaw : 0;
     let remaining = Number.isFinite(rRaw) ? rRaw : NaN;
-    if (!Number.isFinite(remaining) && Number.isFinite(req) && Number.isFinite(completed)) {
-      remaining = req - completed;
+    if (!Number.isFinite(remaining) && Number.isFinite(prod) && Number.isFinite(completed)) {
+      remaining = Math.max(0, prod - completed);
     }
-    return { completed, remaining };
+    if (!Number.isFinite(remaining)) remaining = 0;
+    return { prod, completed, remaining, label: String(it.label || "").trim() };
   }
   return null;
 }
@@ -3345,26 +3556,33 @@ async function confirmPlannedIfArticle7AlreadyMade(lines) {
   const u = escHtml(unitVal || "個");
   const h = hits[0].completedRem;
   let body =
-    '<p class="field-app-modal-detail">作成済み：' +
-    escHtml(formatArticle5ProgressQty(h.completed)) +
+    '<p class="field-app-modal-detail">不足目安: ' +
+    escHtml(formatArticle5ProgressQty(h.prod)) +
+    " " +
     u +
     "</p>" +
-    '<p class="field-app-modal-detail">残り：' +
+    '<p class="field-app-modal-detail">作成済み: ' +
+    escHtml(formatArticle5ProgressQty(h.completed)) +
+    " " +
+    u +
+    "</p>" +
+    '<p class="field-app-modal-detail">製造残: ' +
     escHtml(formatArticle5ProgressQty(h.remaining)) +
+    " " +
     u +
     "</p>";
   if (hits.length > 1) {
     body +=
       '<p class="field-app-modal-muted">（ほか ' +
       (hits.length - 1) +
-      " 行も同様です）</p>";
+      " 行も充足済みです）</p>";
   }
-  body += '<p>再度、予告しますか？</p>';
+  body += "<p>それでも予告登録しますか？</p>";
   return await openFieldAppModal({
-    title: "この商品はすでに作成済みです",
+    title: "この商品は既に充足済みです",
     bodyHtml: body,
-    cancelText: "キャンセル",
-    confirmText: "OK",
+    cancelText: "戻る",
+    confirmText: "登録する",
   });
 }
 
@@ -3490,14 +3708,16 @@ function renderArticle7BoardPlannedHtml(items, options) {
       it.is_after_cutoff === true
         ? ' <span class="a7-cutoff-obs">⚠ 締切後投入</span>'
         : "";
-    const oneLine =
-      `${emoji} ${escHtml(label)} 不足${escHtml(prodStr)} ${dueMd}${cutoffObs}`;
     const pcKey = String(it.product_code || "").trim();
 
     const completedRaw =
       it.article5_completed_qty != null ? Number(it.article5_completed_qty) : NaN;
     const remainingFromApi =
       it.article5_remaining_qty != null ? Number(it.article5_remaining_qty) : NaN;
+    const effectiveUsableRaw =
+      it.article5_effective_usable_qty != null ? Number(it.article5_effective_usable_qty) : NaN;
+    const marginAfterShipRaw =
+      it.article5_margin_after_ship_qty != null ? Number(it.article5_margin_after_ship_qty) : NaN;
     const completedNum = Number.isFinite(completedRaw) ? completedRaw : NaN;
     let remainingNum = Number.isFinite(remainingFromApi) ? remainingFromApi : NaN;
     if (
@@ -3505,33 +3725,54 @@ function renderArticle7BoardPlannedHtml(items, options) {
       Number.isFinite(prodRaw) &&
       Number.isFinite(completedNum)
     ) {
-      remainingNum = prodRaw - completedNum;
+      remainingNum = Math.max(0, prodRaw - completedNum);
     }
-    const progressParts = [];
-    const remEps = 1e-6;
-    if (Number.isFinite(completedNum) || Number.isFinite(remainingNum)) {
-      if (Number.isFinite(completedNum) && completedNum > remEps) {
-        progressParts.push(
+    const hasArticle5Progress =
+      Number.isFinite(completedNum) ||
+      Number.isFinite(remainingNum) ||
+      Number.isFinite(effectiveUsableRaw) ||
+      Number.isFinite(marginAfterShipRaw);
+    const progressEarlyParts = [];
+    const progressLateParts = [];
+    if (hasArticle5Progress) {
+      if (Number.isFinite(completedNum)) {
+        progressEarlyParts.push(
           `<div><span class="lbl">作成済み</span>${escHtml(formatArticle5ProgressQty(completedNum))} ${escHtml(unitVal)}</div>`,
         );
       }
-      if (Number.isFinite(remainingNum)) {
-        progressParts.push(
-          `<div><span class="lbl">残り</span>${escHtml(formatArticle5ProgressQty(remainingNum))} ${escHtml(unitVal)}</div>`,
+      if (Number.isFinite(effectiveUsableRaw)) {
+        progressEarlyParts.push(
+          `<div><span class="lbl">使用可能在庫</span>${escHtml(formatArticle5ProgressQty(effectiveUsableRaw))} ${escHtml(unitVal)}</div>`,
         );
       }
-      if (Number.isFinite(remainingNum) && remainingNum <= remEps) {
-        progressParts.push('<div class="article7-progress-done">作成済み ✔</div>');
+      if (Number.isFinite(remainingNum)) {
+        progressLateParts.push(
+          `<div><span class="lbl">製造残</span>${escHtml(formatArticle5ProgressQty(remainingNum))} ${escHtml(unitVal)}</div>`,
+        );
+      }
+      if (Number.isFinite(marginAfterShipRaw)) {
+        progressLateParts.push(
+          `<div><span class="lbl">出荷後余裕</span>${escHtml(formatArticle5ProgressQty(marginAfterShipRaw))} ${escHtml(unitVal)}</div>`,
+        );
       }
     }
-    const progressBlock = progressParts.join("");
+    const qtyHead = article7CardHeaderQtyText(it, prodStr);
+    const oneLine =
+      `${emoji} ${escHtml(label)} ${qtyHead} ${dueMd}${cutoffObs}`;
+    const reasonBlock = article7ShortageReasonHtml(it, unitVal);
+    const currentStateBlock =
+      hasArticle5Progress && Number.isFinite(remainingNum)
+        ? article7CurrentStateHtml(remainingNum, unitVal)
+        : "";
 
     const bodyInner =
-      `<div><span class="lbl">在庫</span>${escHtml(stockStr)} ${escHtml(unitVal)}　` +
-      `<span class="lbl">出荷</span>${escHtml(shipStr)} ${escHtml(unitVal)}　` +
-      `<span class="lbl">不足目安</span>${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
-      `<div><span class="lbl">納期</span>${dueDisp}　${tierLead}<span class="lbl">目的</span>製造目安 ${escHtml(prodStr)} ${escHtml(unitVal)}</div>` +
-      progressBlock;
+      `<div><span class="lbl">在庫(CSV)</span>${escHtml(stockStr)} ${escHtml(unitVal)}</div>` +
+      progressEarlyParts.join("") +
+      `<div><span class="lbl">出荷予定</span>${escHtml(shipStr)} ${escHtml(unitVal)}</div>` +
+      reasonBlock +
+      currentStateBlock +
+      progressLateParts.join("") +
+      `<div><span class="lbl">納期</span>${dueDisp}　${tierLead}<span class="lbl">不足目安</span>${escHtml(prodStr)} ${escHtml(unitVal)}</div>`;
 
     if (withPick) {
       return (

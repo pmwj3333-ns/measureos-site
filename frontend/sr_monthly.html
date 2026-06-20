@@ -162,8 +162,7 @@
 <header>
   <h1>MEASURE OS — 月報作成</h1>
   <p>
-    自動集計・下書きを確認し、社労士コメントを追加して保存・PDF出力します。
-    · <a href="/sr/v2">設定画面</a>
+    自動集計・下書きを確認し、Observerコメントを追加して保存・PDF出力します。
     · <a id="link-settings-company" href="/sr/v2">会社設定</a>
   </p>
 </header>
@@ -245,7 +244,7 @@
     </div>
 
     <div class="card">
-      <h2>④ 社労士コメント</h2>
+      <h2>④ Observerコメント</h2>
       <p class="hint">改善提案・気になった点・経営者へのコメントを記載してください。</p>
       <textarea id="consultant-comment" placeholder="例：予告なし着手の再発防止について現場と確認済み。"></textarea>
       <div class="actions">
@@ -341,10 +340,79 @@
       const n = String(name || "").trim();
       label.textContent = c ? (n ? c + " ｜ " + n : c) : "会社未選択";
     }
+    const searchInp = $("company-search-input");
+    if (searchInp) {
+      const c = String(cid || "").trim();
+      const n = String(name || "").trim();
+      if (!c) {
+        searchInp.value = "";
+      } else if (!searchInp.value.trim()) {
+        searchInp.value = formatLabel(c, n) || c;
+      }
+    }
     $("btn-aggregate").disabled = !String(cid || "").trim();
     if (opts.syncUrl !== false) {
       updatePageQuery(cid, $("target-month").value);
     }
+  }
+
+  function closeCompanySearchDropdown() {
+    const box = $("company-search-results");
+    if (box) {
+      box.hidden = true;
+    }
+  }
+
+  function selectCompanyHit(id, name) {
+    const inp = $("company-search-input");
+    const typed = inp ? inp.value.trim() : "";
+    setCompanyId(id, name);
+    if (inp) {
+      inp.value = typed || formatLabel(id, name) || String(id || "").trim();
+    }
+    closeCompanySearchDropdown();
+  }
+
+  async function confirmCompanyFromInput() {
+    const inp = $("company-search-input");
+    if (!inp) return;
+    const q = inp.value.trim();
+    if (!q) return;
+    const box = $("company-search-results");
+    const visible = box ? box.querySelectorAll(".company-search-item") : [];
+    if (visible.length) {
+      const ql = q.toLowerCase();
+      let btn = null;
+      for (let i = 0; i < visible.length; i++) {
+        const item = visible[i];
+        const id = (item.getAttribute("data-id") || "").toLowerCase();
+        const nm = (item.getAttribute("data-name") || "").toLowerCase();
+        if (ql === id || (nm && ql === nm)) {
+          btn = item;
+          break;
+        }
+      }
+      if (!btn) btn = visible[0];
+      selectCompanyHit(btn.getAttribute("data-id"), btn.getAttribute("data-name"));
+      return;
+    }
+    let hits = [];
+    try {
+      hits = await fetchCompanySearchHits(q);
+    } catch (_) {
+      return;
+    }
+    if (!hits.length) return;
+    const ql = q.toLowerCase();
+    let hit =
+      hits.find(function (h) {
+        return String(h.company_id || "").trim().toLowerCase() === ql;
+      }) ||
+      hits.find(function (h) {
+        return String(h.company_name || "").trim().toLowerCase() === ql;
+      }) ||
+      hits[0];
+    selectCompanyHit(hit.company_id, hit.company_name || "");
   }
 
   function showMsg(el, ok, text) {
@@ -657,17 +725,20 @@
   $("company-search-input").addEventListener("input", function () {
     renderSearch().catch(function () {});
   });
+  $("company-search-input").addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    confirmCompanyFromInput().catch(function () {});
+  });
   $("company-search-results").addEventListener("click", function (ev) {
     const btn = ev.target.closest(".company-search-item");
     if (!btn) return;
-    setCompanyId(btn.getAttribute("data-id"), btn.getAttribute("data-name"));
-    $("company-search-input").value = "";
-    $("company-search-results").hidden = true;
+    selectCompanyHit(btn.getAttribute("data-id"), btn.getAttribute("data-name"));
   });
   document.addEventListener("click", function (ev) {
     const wrap = $("company-search-wrap");
     if (wrap && !wrap.contains(ev.target)) {
-      $("company-search-results").hidden = true;
+      closeCompanySearchDropdown();
     }
   });
 

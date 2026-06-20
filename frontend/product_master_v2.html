@@ -4,94 +4,274 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>MEASURE OS — 商品マスタ（第5条）</title>
+<title>MEASURE OS — 商品マスタ（第7条）</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-    background: #f2f2f7;
-    color: #1c1c1e;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+    background: #f4f6f9;
+    color: #1a1a1a;
     font-size: 14px;
     line-height: 1.45;
-    padding: 20px 16px 48px;
-    max-width: 960px;
+    min-height: 100vh;
+  }
+  header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 14px 20px;
+  }
+  header h1 { font-size: 1.05rem; font-weight: 700; }
+  header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; line-height: 1.5; }
+  .badge {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.75);
+  }
+  .wrap {
+    max-width: 920px;
     margin: 0 auto;
+    padding: 18px 18px 40px;
   }
-  h1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-  .sub { font-size: 0.75rem; color: #636366; margin-bottom: 14px; line-height: 1.55; }
-  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
-  label { font-size: 0.72rem; color: #636366; display: block; margin-bottom: 2px; }
-  input[type="text"] {
-    padding: 8px 10px; border: 1px solid #c7c7cc; border-radius: 8px;
-    font-size: 0.88rem; font-family: inherit;
+  .panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
   }
-  button {
-    padding: 8px 14px; border: none; border-radius: 8px; font-weight: 600;
-    font-size: 0.82rem; cursor: pointer; font-family: inherit;
-    background: #007aff; color: #fff;
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
   }
-  button.secondary { background: #8e8e93; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .hint { font-size: 0.72rem; color: #8e8e93; margin-top: 10px; line-height: 1.5; }
-  .hint.err { color: #ff3b30; }
-  .hint.ok { color: #2e7d32; }
-  a { color: #007aff; }
-  .nav-links { margin-bottom: 12px; font-size: 0.78rem; }
+  .panel-section-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 0;
+  }
+  .panel-desc {
+    font-size: 0.78rem;
+    color: #6b7280;
+    line-height: 1.6;
+    max-width: 640px;
+    margin-top: 8px;
+  }
+  .related-nav-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #5c6570;
+    margin: 14px 0 8px;
+  }
+  .related-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .nav-pill {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e3a5f;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1.2;
+  }
+  .nav-pill:hover { background: #eff6ff; border-color: #93c5fd; }
+  .hint {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .hint.err {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 9px 12px;
+  }
+  .hint.ok {
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 9px 12px;
+  }
+  .add-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 12px;
+  }
+  .add-field { flex: 1; min-width: min(100%, 280px); }
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: #5c6570;
+    margin-bottom: 6px;
+  }
+  input[type="text"],
+  input[type="number"] {
+    padding: 10px 12px;
+    border: 1px solid #c5ccd4;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    width: 100%;
+    background: #fff;
+    color: #1a1a1a;
+  }
+  input:focus { outline: none; border-color: #1e3a5f; }
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-primary { background: #1e3a5f; color: #fff; }
+  .btn-secondary { background: #64748b; color: #fff; }
+  .btn-primary:disabled,
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.secondary { background: #64748b; color: #fff; }
+  .filter-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #5c6570;
+    white-space: nowrap;
+  }
+  .filter-check input { margin: 0; }
+  .table-wrap { overflow-x: auto; margin-top: 4px; }
   table {
-    width: 100%; border-collapse: collapse; background: #fff;
-    border-radius: 10px; overflow: hidden; border: 1px solid #e5e5ea; font-size: 0.8rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
   }
-  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #e5e5ea; vertical-align: middle; }
-  th { background: #f2f2f7; color: #636366; font-weight: 600; }
-  tr.inactive td { color: #8e8e93; background: #fafafa; }
+  th, td {
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eef1f4;
+    vertical-align: middle;
+  }
+  th {
+    background: #f0f3f7;
+    color: #4a5568;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tr.inactive td { color: #9ca3af; background: #fafbfc; }
   td input.code-inp { width: 100%; max-width: 200px; }
-  td select.mode-sel { max-width: 140px; font-size: 0.8rem; padding: 6px 8px; border: 1px solid #c7c7cc; border-radius: 6px; }
+  td input.code-inp--unset,
+  td input.code-inp--unset::placeholder { color: #9ca3af; }
+  td select.mode-sel {
+    max-width: 140px;
+    font-size: 0.8rem;
+    padding: 7px 8px;
+    border: 1px solid #c5ccd4;
+    border-radius: 6px;
+    font-family: inherit;
+  }
   .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .row-actions button {
+    padding: 7px 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: inherit;
+    background: #1e3a5f;
+    color: #fff;
+  }
+  .row-actions button.secondary { background: #64748b; }
+  .empty-cell { color: #6b7280; font-size: 0.82rem; padding: 16px 10px; }
 </style>
 </head>
 <body>
-  <p class="nav-links"><a href="/office/v2">事務 v2</a> · <a href="/priority/input/v2">第7条入力</a></p>
-  <h1>商品マスタ</h1>
-  <p class="sub">会社の商品辞書です。CSV 取込で新商品だけ追加され、既存の設定（基準在庫・製造区分など）は保持されます。今回の CSV に無い過去商品も残ります。</p>
-
-  <div class="bar">
-    <div>
-      <label for="show-inactive">表示</label>
-      <div style="padding-top:6px;">
-        <label><input type="checkbox" id="show-inactive" checked /> 無効行も含める（辞書全体）</label>
-      </div>
+<header>
+  <h1>MEASURE OS — 商品マスタ</h1>
+  <p>第7条で使用する商品の製造区分・基準在庫を管理します。</p>
+  <span class="badge">v2 · 第7条</span>
+</header>
+<div class="wrap">
+  <div class="panel">
+    <h2 class="panel-section-title">商品マスタ</h2>
+    <p class="panel-desc">
+      第7条で使用する商品の管理画面です。<br>
+      CSV取込で追加された商品に対して、製造区分や基準在庫を設定できます。<br>
+      設定内容は優先順位計算に利用されます。
+    </p>
+    <span class="related-nav-label">関連画面</span>
+    <div class="related-nav-links">
+      <a class="nav-pill" href="/priority/input/v2">第7条入力</a>
+      <a class="nav-pill" href="/stock/import/v2">在庫CSV取込</a>
+      <a class="nav-pill" href="/shipment/import/v2">出荷CSV取込</a>
+      <a class="nav-pill" href="/priority/v2">優先順位</a>
+      <a class="nav-pill" href="/office/v2">事務v2</a>
     </div>
   </div>
+
   <p id="msg" class="hint"></p>
 
-  <div class="bar" style="margin-top:8px; padding-top:12px; border-top:1px solid #e5e5ea;">
-    <div style="flex:1; min-width:200px; max-width:420px;">
-      <label for="new-label">新規商品名（label）</label>
-      <input type="text" id="new-label" placeholder="例: 商品C" style="width:100%" autocomplete="off" />
+  <div class="panel">
+    <h2 class="panel-section-title">新規商品追加</h2>
+    <div class="add-row" style="margin-top:12px;">
+      <div class="add-field">
+        <label for="new-label">商品名</label>
+        <input type="text" id="new-label" placeholder="例: 商品C" autocomplete="off" />
+      </div>
+      <button type="button" class="btn-primary" id="btn-add">追加</button>
     </div>
-    <button type="button" id="btn-add">追加</button>
   </div>
 
-  <div style="overflow-x:auto;">
-    <table id="tbl">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>商品名（label）</th>
-          <th>product_code</th>
-          <th>製造区分</th>
-          <th>基準在庫</th>
-          <th>状態</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody id="tbody">
-          <tr><td colspan="7" class="hint">読み込み中…</td></tr>
-      </tbody>
-    </table>
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-section-title">商品一覧</h2>
+      <label class="filter-check">
+        <input type="checkbox" id="show-inactive" checked />
+        無効行も含める
+      </label>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>商品名</th>
+            <th>商品コード</th>
+            <th>製造区分</th>
+            <th>基準在庫</th>
+            <th>状態</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7" class="empty-cell">読み込み中…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
-
-  <p class="hint">API: <code>GET /v2/product-master?company_id=…</code> · <code>POST /v2/product-master</code>（新規） · <code>PATCH /v2/product-master/{id}</code></p>
+</div>
 
 <script>
 (function () {
@@ -129,6 +309,8 @@
     const res = await fetch("/v2/product-master/" + id, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
@@ -155,6 +337,8 @@
     const res = await fetch("/v2/product-master", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
       body: JSON.stringify({ company_id: companyId, label: label }),
     });
     const data = await res.json().catch(() => ({}));
@@ -167,12 +351,16 @@
   function renderRows(rows) {
     const tb = $("tbody");
     if (!rows.length) {
-      tb.innerHTML = "<tr><td colspan=\"7\" class=\"hint\">データなし</td></tr>";
+      tb.innerHTML = "<tr><td colspan=\"7\" class=\"empty-cell\">データなし</td></tr>";
       return;
     }
     tb.innerHTML = rows.map((r) => {
       const inactive = r.is_active === false;
-      const codeVal = r.product_code != null ? String(r.product_code) : "";
+      const codeVal =
+        r.product_code != null && String(r.product_code).trim()
+          ? String(r.product_code)
+          : "";
+      const codeUnset = !codeVal;
       const ssVal =
         r.safety_stock_value != null && r.safety_stock_value !== ""
           ? String(r.safety_stock_value)
@@ -187,7 +375,7 @@
         "<tr class=\"" + (inactive ? "inactive" : "") + "\" data-id=\"" + r.id + "\">" +
         "<td>" + esc(r.id) + "</td>" +
         "<td>" + esc(r.label) + "</td>" +
-        "<td><input class=\"code-inp\" type=\"text\" data-code-input value=\"" + esc(codeVal) + "\" placeholder=\"空なら null\" /></td>" +
+        "<td><input class=\"code-inp" + (codeUnset ? " code-inp--unset" : "") + "\" type=\"text\" data-code-input value=\"" + esc(codeVal) + "\" placeholder=\"未設定\" /></td>" +
         "<td>" + modeSel + "</td>" +
         "<td><input class=\"code-inp\" type=\"number\" min=\"0\" step=\"1\" data-safety-input value=\"" + esc(ssVal) + "\" placeholder=\"未設定\" style=\"max-width:88px\" /></td>" +
         "<td>" + (inactive ? "無効" : "有効") + "</td>" +
@@ -208,6 +396,13 @@
       const codeInp = tr.querySelector("[data-code-input]");
       const modeSel = tr.querySelector("[data-mode-input]");
       const safetyInp = tr.querySelector("[data-safety-input]");
+      if (codeInp) {
+        const syncCodeUnsetClass = () => {
+          const hasVal = String(codeInp.value || "").trim().length > 0;
+          codeInp.classList.toggle("code-inp--unset", !hasVal);
+        };
+        codeInp.addEventListener("input", syncCodeUnsetClass);
+      }
       if (saveBtn) {
         saveBtn.addEventListener("click", async () => {
           saveBtn.disabled = true;
@@ -273,10 +468,32 @@
     });
   }
 
+  async function resolveSessionCompanyId() {
+    try {
+      const res = await fetch("/v2/office/session", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!res.ok) return "";
+      const data = await res.json();
+      return String(data.company_id || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  async function syncSessionCompanyId() {
+    const sessionCid = await resolveSessionCompanyId();
+    if (sessionCid) {
+      productMasterSessionCompanyId = sessionCid;
+    }
+    return productMasterSessionCompanyId;
+  }
+
   async function load() {
-    const cid = productMasterSessionCompanyId;
+    const cid = await syncSessionCompanyId();
     if (!cid) {
-      setMsg("会社セッションがありません", "err");
+      redirectToOfficeLogin();
       return;
     }
     const inc = $("show-inactive").checked ? "false" : "true";
@@ -284,12 +501,12 @@
     try {
       const res = await fetch(
         "/v2/product-master?company_id=" + encodeURIComponent(cid) + "&active_only=" + inc,
-        { cache: "no-store" }
+        { credentials: "same-origin", cache: "no-store" }
       );
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setMsg((data && data.detail) || res.statusText || String(res.status), "err");
-        $("tbody").innerHTML = "<tr><td colspan=\"7\" class=\"hint err\">取得できませんでした</td></tr>";
+        $("tbody").innerHTML = "<tr><td colspan=\"7\" class=\"empty-cell\">取得できませんでした</td></tr>";
         return;
       }
       const rows = Array.isArray(data) ? data : [];
@@ -304,10 +521,10 @@
     void load();
   });
   $("btn-add").addEventListener("click", async () => {
-    const cid = productMasterSessionCompanyId;
+    const cid = await syncSessionCompanyId();
     const lb = $("new-label").value.trim();
     if (!cid) {
-      setMsg("会社セッションがありません", "err");
+      redirectToOfficeLogin();
       return;
     }
     if (!lb) {
@@ -329,27 +546,14 @@
     }
   });
   initProductMasterSessionCompanyFromBootstrap();
-  if (!productMasterSessionCompanyId) {
-    void (async function bootProductMasterWhenBootstrapMissing() {
-      try {
-        const res = await fetch("/v2/office/session", {
-          credentials: "same-origin",
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const sessionCid = String(data.company_id || "").trim();
-          if (sessionCid) {
-            window.location.reload();
-            return;
-          }
-        }
-      } catch (_) { /* fall through */ }
+  void (async function bootProductMaster() {
+    const cid = await syncSessionCompanyId();
+    if (!cid) {
       redirectToOfficeLogin();
-    })();
-  } else {
-    void load();
-  }
+      return;
+    }
+    await load();
+  })();
 })();
 </script>
 </body>

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
@@ -218,6 +219,13 @@ def test_sr_monthly_page_route(client: TestClient):
     assert "work-status-note" in r.text
     assert "/static/sr_monthly_url_state.js" in r.text
     assert "monthly_target_month" in r.text
+
+
+def test_sr_monthly_company_search_keeps_input_on_select():
+    html = Path("frontend/sr_monthly.html").read_text(encoding="utf-8")
+    assert "selectCompanyHit" in html
+    assert "confirmCompanyFromInput" in html
+    assert 'company-search-input").value = ""' not in html
 
 
 def test_print_html_audit_rate_matches_metrics():

@@ -2,12 +2,13 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app import models
 from app.database import get_db
 from app.schemas import ShipmentImportOut
+from app.services.office_session_scope import require_session_company_match
 from app.services.product_master import ensure_product_master_entries
 from app.services.shipment_csv import dedupe_by_product_code_and_due_date, parse_shipment_csv_text
 from app.services.company_validator import validate_company_id
@@ -26,11 +27,13 @@ def _decode_upload(raw: bytes) -> str:
 
 @router.post("/import", summary="出荷予定CSV取り込み（会社単位・全置換）")
 async def import_shipment_csv(
+    request: Request,
     file: UploadFile = File(...),
     company_id: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    cid = validate_company_id(db, company_id)
+    cid = require_session_company_match(request, company_id)
+    validate_company_id(db, cid)
 
     raw = await file.read()
     text = _decode_upload(raw)

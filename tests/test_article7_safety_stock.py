@@ -14,6 +14,7 @@ from app.services.article7_safety_stock import shortage_qty
 from app.services.priority_rebuild import rebuild_priority_items_for_company
 
 CO = "art7_safety_test_co"
+PASS = "Art7SafetyPass1"
 
 
 def _register_company(client: TestClient) -> None:
@@ -24,9 +25,27 @@ def _register_company(client: TestClient) -> None:
     assert r.status_code == 200, r.text
 
 
+def _login(client: TestClient) -> None:
+    r = client.put(
+        f"/v2/company/{CO}/leaders",
+        json={
+            "leaders": [{"name": "班長", "process": ""}],
+            "company_name": CO,
+            "company_password": PASS,
+        },
+    )
+    assert r.status_code == 200, r.text
+    r = client.post(
+        "/v2/office/login",
+        json={"company_id": CO, "password": PASS},
+    )
+    assert r.status_code == 200, r.text
+
+
 @pytest.fixture
 def co_client(client: TestClient) -> TestClient:
     _register_company(client)
+    _login(client)
     return client
 
 

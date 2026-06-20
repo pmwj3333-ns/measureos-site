@@ -428,6 +428,11 @@
             : "manufacture",
         prod_value: prod,
         prodNum: prodNum,
+        shortage_from_ship_qty: it.shortage_from_ship_qty,
+        shortage_from_safety_qty: it.shortage_from_safety_qty,
+        shortage_reason_labels: Array.isArray(it.shortage_reason_labels)
+          ? it.shortage_reason_labels
+          : [],
         unit: u,
         due: String(due).trim(),
       });
@@ -467,6 +472,31 @@
       " <strong>" +
       esc(String(value)) +
       esc(unit) +
+      "</strong></span>"
+    );
+  }
+
+  function shortageReasonMetricsHtml(it) {
+    var labels = it.shortage_reason_labels || [];
+    if (!labels.length) return "";
+    var shipPart = Number(it.shortage_from_ship_qty);
+    var safetyPart = Number(it.shortage_from_safety_qty);
+    var u = it.unit || "個";
+    var chunks = [];
+    for (var j = 0; j < labels.length; j++) {
+      var key = String(labels[j] || "").trim();
+      if (!key) continue;
+      var qty = NaN;
+      if (key === "出荷不足" || key === "出荷不足（手入力）") qty = shipPart;
+      else if (key === "基準在庫不足") qty = safetyPart;
+      var val = Number.isFinite(qty) && qty > 1e-6 ? String(qty) : "—";
+      chunks.push(esc(key) + " " + esc(val) + esc(u));
+    }
+    if (!chunks.length) return "";
+    return (
+      metricSep() +
+      '<span class="prio-metric">理由 <strong>' +
+      chunks.join(" / ") +
       "</strong></span>"
     );
   }
@@ -543,6 +573,7 @@
         metric("使用可能", it.usable_stock_qty, it.unit) +
         metricSep() +
         dueMetric +
+        shortageReasonMetricsHtml(it) +
         "</div>" +
         "</div>" +
         "</li>";

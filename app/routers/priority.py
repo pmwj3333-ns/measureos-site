@@ -21,6 +21,7 @@ from app.schemas import (
 )
 from app.services.article7_priority_phase1 import compute_article7_priority_phase1
 from app.services.priority_article7_context import (
+    Article5ProgressRow,
     article5_progress_for_priority_items,
     article7_context_for_priority_items,
 )
@@ -28,6 +29,7 @@ from app.services.priority_rebuild import rebuild_priority_items_for_company
 from app.services.company_validator import validate_company_id
 from app.services.article7_safety_stock import (
     SafetyStockInfo,
+    decompose_shortage_for_display,
     load_safety_stock_by_product_code,
     usable_stock_qty,
 )
@@ -91,7 +93,7 @@ def _norm_due_date(raw: Optional[str]) -> Optional[str]:
 def _rows_to_out(
     rows: List[models.PriorityItem],
     ctx: Optional[Dict[int, Tuple[Optional[str], List[str]]]] = None,
-    article5_prog: Optional[Dict[int, Tuple[float, float]]] = None,
+    article5_prog: Optional[Dict[int, Article5ProgressRow]] = None,
     safety_map: Optional[Dict[str, SafetyStockInfo]] = None,
     production_by_code: Optional[Dict[str, str]] = None,
     production_by_label: Optional[Dict[str, str]] = None,
@@ -107,17 +109,29 @@ def _rows_to_out(
         stock_f = float(getattr(r, "stock_qty", None) or 0)
         pc = getattr(r, "product_code", None) or ""
         sinfo = _safety_info_for_item(pc, safety_map)
+        ship_f = float(r.ship_value)
+        prod_f = float(r.prod_value)
+        ship_part, safety_part, reason_labels = decompose_shortage_for_display(
+            stock_f,
+            ship_f,
+            prod_f,
+            safety_stock_unset=bool(sinfo.is_unset),
+            product_code=pc,
+        )
         kw = dict(
             id=r.id,
             product_code=pc,
             label=r.label or "",
-            ship_value=float(r.ship_value),
+            ship_value=ship_f,
             stock_qty=stock_f,
-            prod_value=float(r.prod_value),
+            prod_value=prod_f,
             due_date=r.due_date,
             safety_stock_value=None if sinfo.is_unset else int(sinfo.value),
             safety_stock_unset=bool(sinfo.is_unset),
             usable_stock_qty=float(usable_stock_qty(stock_f, sinfo.value)),
+            shortage_from_ship_qty=float(ship_part),
+            shortage_from_safety_qty=float(safety_part),
+            shortage_reason_labels=list(reason_labels),
             is_after_cutoff=bool(getattr(r, "is_after_cutoff", False)),
             status=(getattr(r, "status", None) or "open").strip() or "open",
             priority_level=str(pl),
@@ -127,9 +141,22 @@ def _rows_to_out(
             production_mode=resolve_production_mode(pc, r.label, by_code, by_label),
         )
         if article5_prog is not None:
-            ac, rem = article5_prog.get(int(r.id), (0.0, 0.0))
-            kw["article5_completed_qty"] = float(ac)
-            kw["article5_remaining_qty"] = float(rem)
+            row = article5_prog.get(int(r.id))
+            if row is not None:
+                kw["article5_completed_qty"] = float(row.completed_qty)
+                kw["article5_remaining_qty"] = float(row.remaining_qty)
+                kw["article5_effective_usable_qty"] = float(row.effective_usable_qty)
+                kw["article5_margin_after_ship_qty"] = float(row.margin_after_ship_qty)
+            else:
+                kw["article5_completed_qty"] = 0.0
+                kw["article5_remaining_qty"] = float(max(0.0, float(r.prod_value)))
+                stock_f_prog = float(getattr(r, "stock_qty", None) or 0)
+                kw["article5_effective_usable_qty"] = stock_f_prog
+                sinfo_prog = _safety_info_for_item(pc, safety_map)
+                safety_prog = 0.0 if sinfo_prog.is_unset else float(sinfo_prog.value)
+                kw["article5_margin_after_ship_qty"] = (
+                    stock_f_prog - float(r.ship_value) - safety_prog
+                )
         items.append(PriorityItemOut(**kw))
     return items
 
@@ -140,7 +167,8 @@ def list_priority_items(
     article5_progress: bool = Query(
         False,
         description=(
-            "true のとき各項目に article5_completed_qty / article5_remaining_qty を付与（現場向け）。"
+            "true のとき各項目に article5_completed_qty / article5_remaining_qty / "
+            "article5_effective_usable_qty / article5_margin_after_ship_qty を付与（現場向け）。"
             "false のときは null のまま。"
         ),
     ),

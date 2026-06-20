@@ -13,12 +13,34 @@ from app.database import SessionLocal
 from app.services.product_master import ensure_product_master_entries
 
 CO = "pm_dict_test_co"
+PASS = "PmDictPass1"
 
 
 def _register(client: TestClient) -> None:
     r = client.post(
         "/admin/companies",
         json={"company_id": CO, "company_name": "商品辞書テスト"},
+    )
+    assert r.status_code == 200, r.text
+
+
+def _set_password(client: TestClient) -> None:
+    r = client.put(
+        f"/v2/company/{CO}/leaders",
+        json={
+            "leaders": [{"name": "班長", "process": ""}],
+            "company_name": CO,
+            "company_password": PASS,
+        },
+    )
+    assert r.status_code == 200, r.text
+
+
+def _login(client: TestClient) -> None:
+    _set_password(client)
+    r = client.post(
+        "/v2/office/login",
+        json={"company_id": CO, "password": PASS},
     )
     assert r.status_code == 200, r.text
 
@@ -75,6 +97,7 @@ def test_ensure_adds_only_missing_entries():
 
 
 def test_stock_import_does_not_remove_legacy_product(co_client: TestClient):
+    _login(co_client)
     db = SessionLocal()
     try:
         _seed_legacy_product(db)
@@ -113,6 +136,7 @@ def test_stock_import_does_not_remove_legacy_product(co_client: TestClient):
 
 
 def test_shipment_import_adds_new_product_without_touching_existing(co_client: TestClient):
+    _login(co_client)
     db = SessionLocal()
     try:
         _seed_legacy_product(db)

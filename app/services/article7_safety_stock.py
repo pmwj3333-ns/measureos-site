@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -63,3 +64,43 @@ def shortage_qty(current_stock: float, safety_stock: int, ship_qty: float) -> fl
 
 def usable_stock_qty(current_stock: float, safety_stock: int) -> float:
     return max(0.0, float(current_stock) - float(safety_stock))
+
+
+_SHORTAGE_EPS = 1e-9
+
+
+def is_manual_priority_item(product_code: str) -> bool:
+    """POST /v2/priority/create 由来（product_code 空）。rebuild 行はコード必須。"""
+    return not (product_code or "").strip()
+
+
+def decompose_shortage_for_display(
+    stock_qty: float,
+    ship_value: float,
+    prod_value: float,
+    *,
+    safety_stock_unset: bool = True,
+    product_code: str = "",
+) -> Tuple[float, float, List[str]]:
+    """
+    不足内訳（表示専用）。prod_value は変更しない。
+    ship_part = max(0, ship - stock)
+    safety_part = max(0, prod - ship_part)
+    """
+    stock = max(0.0, float(stock_qty)) if math.isfinite(float(stock_qty)) else 0.0
+    ship = max(0.0, float(ship_value)) if math.isfinite(float(ship_value)) else 0.0
+    prod = max(0.0, float(prod_value)) if math.isfinite(float(prod_value)) else 0.0
+
+    if is_manual_priority_item(product_code) and prod > _SHORTAGE_EPS:
+        return prod, 0.0, ["出荷不足（手入力）"]
+
+    ship_part = max(0.0, ship - stock)
+    safety_part = max(0.0, prod - ship_part)
+
+    labels: List[str] = []
+    if ship_part > _SHORTAGE_EPS:
+        labels.append("出荷不足")
+    if safety_part > _SHORTAGE_EPS and not safety_stock_unset:
+        labels.append("基準在庫不足")
+
+    return ship_part, safety_part, labels
