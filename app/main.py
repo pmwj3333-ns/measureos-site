@@ -491,7 +491,7 @@ app.include_router(sr_observe.router)
 app.include_router(sr_monthly.router)
 app.include_router(working_calendar.router)
 
-# uvicorn の cwd に依存しない（/static/debug.html 等）
+# uvicorn の cwd に依存しない（/static/*.js 等）
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FRONTEND_DIR = _PROJECT_ROOT / "frontend"
 
@@ -699,4 +699,8 @@ def debug_screen_alias():
     return _file_response_or_404("debug.html")
 
 
-app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory=str(_FRONTEND_DIR / "static")),
+    name="static",
+)

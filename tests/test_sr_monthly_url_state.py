@@ -12,7 +12,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 SR_MONTHLY_HTML = ROOT / "frontend" / "sr_monthly.html"
-URL_STATE_JS = ROOT / "frontend" / "sr_monthly_url_state.js"
+URL_STATE_JS = ROOT / "frontend" / "static" / "sr_monthly_url_state.js"
 
 MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
