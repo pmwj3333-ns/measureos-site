@@ -106,7 +106,6 @@
     var rebuildBtn = document.getElementById("btn-rebuild-priority");
     var rebuildStatusEl = document.getElementById("article7-rebuild-status");
     var boardActionsEl = document.getElementById("article7-board-actions");
-    var boardBtn = document.getElementById("btn-priority-board");
 
     if (!flowEl || !rebuildBtn) return;
 
@@ -128,21 +127,34 @@
       if (boardActionsEl) boardActionsEl.hidden = !show;
     }
 
-    function applyRebuildButtonUi() {
+    function resetRebuildButton() {
       rebuildBtn.classList.remove("is-loading");
+      rebuildBtn.textContent = "第7条を再計算する";
+    }
+
+    /** 再計算ボタン領域は loading / idle / error のときのみ表示。done では必ず非表示。 */
+    function syncActionUi(ready) {
       if (rebuildState === "done") {
         showRebuildActions(false);
+        showBoardActions(true);
+        resetRebuildButton();
         return;
       }
-      showRebuildActions(true);
+
       showBoardActions(false);
+
       if (rebuildState === "loading") {
+        showRebuildActions(true);
         rebuildBtn.textContent = "第7条を再計算中…";
         rebuildBtn.disabled = true;
         rebuildBtn.classList.add("is-loading");
+        setRebuildStatus("", "");
         return;
       }
-      rebuildBtn.textContent = "第7条を再計算する";
+
+      showRebuildActions(true);
+      resetRebuildButton();
+      rebuildBtn.disabled = !ready;
     }
 
     function renderReadiness(companyId) {
@@ -164,15 +176,9 @@
         }
       }
       if (rebuildState === "idle") {
-        rebuildBtn.disabled = !ready;
         setRebuildStatus("", "");
-      } else if (rebuildState === "error") {
-        rebuildBtn.disabled = !ready;
       }
-      applyRebuildButtonUi();
-      if (rebuildState === "done") {
-        showBoardActions(true);
-      }
+      syncActionUi(ready);
     }
 
     function showFlow(companyId) {
@@ -217,9 +223,7 @@
       }
 
       rebuildState = "loading";
-      applyRebuildButtonUi();
-      setRebuildStatus("第7条を再計算中…", "loading");
-      showBoardActions(false);
+      syncActionUi(true);
 
       try {
         var res = await fetch("/v2/priority/rebuild", {
@@ -237,7 +241,7 @@
           if (typeof d !== "string") d = JSON.stringify(data.detail || data);
           rebuildState = "error";
           setRebuildStatus("再計算に失敗しました: " + (d || res.statusText), "err");
-          renderReadiness(company);
+          syncActionUi(st.stock && st.shipment);
           return;
         }
         var n = data.success_count != null ? data.success_count : 0;
@@ -246,15 +250,14 @@
         if (det) line += "。" + det;
         rebuildState = "done";
         setRebuildStatus(line, "ok");
-        applyRebuildButtonUi();
-        showBoardActions(true);
+        syncActionUi(true);
         if (hintEl) {
           hintEl.textContent = "再計算が完了しました。優先度監視盤で結果を確認してください。";
         }
       } catch (e) {
         rebuildState = "error";
         setRebuildStatus(String(e.message || e), "err");
-        renderReadiness(company);
+        syncActionUi(st.stock && st.shipment);
       }
     });
 
