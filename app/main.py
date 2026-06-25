@@ -14,6 +14,7 @@ from app.services.return_to import build_office_login_url
 from app import models
 from app.routers import (
     admin_companies,
+    csv_import_meta,
     office_session,
     priority,
     product_master,
@@ -483,6 +484,7 @@ app.include_router(priority.router)
 app.include_router(stock.router)
 app.include_router(product_master.router)
 app.include_router(shipment.router)
+app.include_router(csv_import_meta.router)
 app.include_router(test_control.router, prefix="/v2")
 app.include_router(admin_companies.router)
 app.include_router(sr_observe.router)

@@ -10,73 +10,13 @@ import unicodedata
 from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
-from app.services.stock_csv import cleanse_numeric_string, _norm_header_cell
+from app.services.csv_header_normalizer import (
+    format_missing_header_error,
+    resolve_header_indices,
+)
+from app.services.stock_csv import cleanse_numeric_string
 
-FIELD_ALIASES: Dict[str, List[str]] = {
-    "product_code": [
-        "product_code",
-        "品番",
-        "商品コード",
-        "code",
-        "コード",
-    ],
-    "label": [
-        "label",
-        "商品名",
-        "ラベル",
-        "品名",
-        "name",
-        "商品",
-    ],
-    "ship_qty": [
-        "ship_qty",
-        "出荷予定数",
-        "出荷数",
-        "出荷数量",
-        "ship",
-        "qty",
-        "数量",
-    ],
-    "due_date": [
-        "due_date",
-        "納期",
-        "希望納期",
-        "出荷予定日",
-        "delivery",
-        "delivery_date",
-        "due",
-    ],
-    "ordered_at": [
-        "ordered_at",
-        "受注時刻",
-        "受注日時",
-        "order_at",
-        "ordered",
-    ],
-}
-
-FIELD_ALIAS_SETS: Dict[str, set] = {
-    field: {_norm_header_cell(a) for a in aliases}
-    for field, aliases in FIELD_ALIASES.items()
-}
-
-
-def _resolve_header_indices(header_cells: List[str]) -> Optional[Dict[str, int]]:
-    out: Dict[str, int] = {}
-    for i, cell in enumerate(header_cells):
-        n = _norm_header_cell(cell)
-        if not n:
-            continue
-        for field, alias_set in FIELD_ALIAS_SETS.items():
-            if field in out:
-                continue
-            if n in alias_set:
-                out[field] = i
-                break
-    req = ("product_code", "label", "ship_qty", "due_date")
-    if not all(f in out for f in req):
-        return None
-    return out
+SHIPMENT_IMPORT_SCHEMA = "shipment"
 
 
 def parse_due_date(raw: object) -> Optional[str]:
@@ -167,11 +107,9 @@ def parse_shipment_csv_text(text: str) -> Tuple[List[dict], int, Optional[str]]:
     if header_idx is None:
         return [], 0, "データ行がありません"
 
-    colmap = _resolve_header_indices(header_cells)
+    colmap = resolve_header_indices(header_cells, SHIPMENT_IMPORT_SCHEMA)
     if colmap is None:
-        return [], 0, (
-            "1行目に必須列（product_code・label・ship_qty・due_date、または 商品コード・商品名・出荷予定数・納期 等）が見つかりません"
-        )
+        return [], 0, format_missing_header_error(SHIPMENT_IMPORT_SCHEMA)
 
     def get_cell(r: List[str], key: str) -> str:
         j = colmap[key]

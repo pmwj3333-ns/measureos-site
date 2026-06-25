@@ -423,6 +423,7 @@
   </div>
 </div>
 
+<script src="/static/csv_header_resolver.js"></script>
 <script>
 let fileRef = null;
 
@@ -509,46 +510,28 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  var FIELD_ALIASES = {
-    product_code: ["product_code", "品番", "商品コード", "code", "コード"],
-    label: ["label", "商品名", "ラベル", "品名", "name", "商品"],
-    ship_qty: ["ship_qty", "出荷予定数", "出荷数", "出荷数量", "ship", "qty", "数量"],
-    due_date: ["due_date", "納期", "希望納期", "出荷予定日", "delivery", "delivery_date", "due"],
-    ordered_at: ["ordered_at", "受注時刻", "受注日時", "order_at", "ordered"],
-  };
+  var csvImportSchema = null;
 
-  function normHeaderCell(s) {
-    var t = String(s == null ? "" : s).trim().normalize("NFKC").toLowerCase();
-    t = t.replace(/[\s\u3000]+/g, "");
-    return t;
+  async function loadCsvImportSchema() {
+    try {
+      var res = await fetch("/v2/csv/import-schemas/shipment", { cache: "no-store" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (_) {
+      return null;
+    }
   }
 
-  var FIELD_ALIAS_SETS = {};
-  Object.keys(FIELD_ALIASES).forEach(function (field) {
-    FIELD_ALIAS_SETS[field] = {};
-    FIELD_ALIASES[field].forEach(function (a) {
-      FIELD_ALIAS_SETS[field][normHeaderCell(a)] = true;
-    });
-  });
-
   function resolveHeaderIndices(headerCells) {
-    var out = {};
-    for (var i = 0; i < headerCells.length; i++) {
-      var n = normHeaderCell(headerCells[i]);
-      if (!n) continue;
-      Object.keys(FIELD_ALIAS_SETS).forEach(function (field) {
-        if (out[field] !== undefined) return;
-        if (FIELD_ALIAS_SETS[field][n]) out[field] = i;
-      });
+    if (!window.CsvHeaderResolver || !csvImportSchema) return null;
+    return window.CsvHeaderResolver.resolveHeaderIndices(headerCells, csvImportSchema);
+  }
+
+  function missingHeaderMessage() {
+    if (csvImportSchema && csvImportSchema.label) {
+      return "1行目に" + csvImportSchema.label + "の必須列が見つかりません。";
     }
-    if (
-      out.product_code === undefined ||
-      out.label === undefined ||
-      out.ship_qty === undefined ||
-      out.due_date === undefined
-    )
-      return null;
-    return out;
+    return "1行目に必須列が見つかりません。";
   }
 
   function parseCsvRow(line) {
@@ -685,8 +668,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     var colmap = resolveHeaderIndices(headerCells);
     if (!colmap) {
-      var fmsg =
-        "1行目に必須列（product_code・label・ship_qty・due_date、または 商品コード・商品名・出荷予定数・納期 等）が見つかりません";
+      var fmsg = missingHeaderMessage();
       return {
         fatal: fmsg,
         previewRows: [{ kind: "fatal", msg: fmsg }],
@@ -1006,6 +988,13 @@ document.addEventListener("DOMContentLoaded", function () {
       setMsg(String(e && e.message ? e.message : e), "err");
     } finally {
       btn.disabled = false;
+    }
+  });
+
+  void loadCsvImportSchema().then(function (schema) {
+    csvImportSchema = schema;
+    if (!schema) {
+      setMsg("CSV列定義の読み込みに失敗しました。ページを再読み込みしてください。", "err");
     }
   });
 

@@ -9,78 +9,16 @@ import re
 import unicodedata
 from typing import Dict, List, Optional, Tuple
 
-FIELD_ALIASES: Dict[str, List[str]] = {
-    "product_code": [
-        "product_code",
-        "品番",
-        "商品コード",
-        "code",
-        "コード",
-    ],
-    "label": [
-        "label",
-        "商品名",
-        "ラベル",
-        "品名",
-        "name",
-        "商品",
-    ],
-    "stock_qty": [
-        "stock_qty",
-        "在庫数",
-        "在庫数量",
-        "stock",
-        "qty",
-        "数量",
-        "在庫",
-    ],
-    "safety_stock": [
-        "safety_stock",
-        "安全在庫",
-        "安全在庫数",
-        "安全在庫数量",
-        "min",
-    ],
-}
+from app.services.csv_header_normalizer import (
+    format_missing_header_error,
+    normalize_header_cell,
+    resolve_header_indices,
+)
 
-FIELD_ALIAS_SETS: Dict[str, set] = {}
+STOCK_IMPORT_SCHEMA = "stock"
 
-
-def _norm_header_cell(s: str) -> str:
-    t = unicodedata.normalize("NFKC", str(s).strip()).lower()
-    t = re.sub(r"[\s\u3000]+", "", t)
-    return t
-
-
-def _build_alias_sets() -> None:
-    global FIELD_ALIAS_SETS
-    if FIELD_ALIAS_SETS:
-        return
-    FIELD_ALIAS_SETS = {
-        field: {_norm_header_cell(a) for a in aliases}
-        for field, aliases in FIELD_ALIASES.items()
-    }
-
-
-_build_alias_sets()
-
-
-def _resolve_header_indices(header_cells: List[str]) -> Optional[Dict[str, int]]:
-    out: Dict[str, int] = {}
-    for i, cell in enumerate(header_cells):
-        n = _norm_header_cell(cell)
-        if not n:
-            continue
-        for field, alias_set in FIELD_ALIAS_SETS.items():
-            if field in out:
-                continue
-            if n in alias_set:
-                out[field] = i
-                break
-    req = ("product_code", "label", "stock_qty")
-    if not all(f in out for f in req):
-        return None
-    return out
+# 後方互換（shipment_csv 等）
+_norm_header_cell = normalize_header_cell
 
 
 def cleanse_numeric_string(raw: object) -> str:
@@ -128,11 +66,9 @@ def parse_stock_csv_text(text: str) -> Tuple[List[dict], int, Optional[str]]:
     if header_idx is None:
         return [], 0, "データ行がありません"
 
-    colmap = _resolve_header_indices(header_cells)
+    colmap = resolve_header_indices(header_cells, STOCK_IMPORT_SCHEMA)
     if colmap is None:
-        return [], 0, (
-            "1行目に必須列（product_code・label・stock_qty、または 商品コード・商品名・在庫数 等）が見つかりません"
-        )
+        return [], 0, format_missing_header_error(STOCK_IMPORT_SCHEMA)
 
     def get_cell(r: List[str], key: str) -> str:
         j = colmap[key]
