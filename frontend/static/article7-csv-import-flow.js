@@ -102,8 +102,10 @@
     var flowEl = document.getElementById("article7-flow");
     var readinessEl = document.getElementById("article7-flow-readiness");
     var hintEl = document.getElementById("article7-flow-hint");
+    var rebuildActionsEl = document.getElementById("article7-rebuild-actions");
     var rebuildBtn = document.getElementById("btn-rebuild-priority");
     var rebuildStatusEl = document.getElementById("article7-rebuild-status");
+    var boardActionsEl = document.getElementById("article7-board-actions");
     var boardBtn = document.getElementById("btn-priority-board");
 
     if (!flowEl || !rebuildBtn) return;
@@ -115,20 +117,29 @@
       if (!rebuildStatusEl) return;
       rebuildStatusEl.textContent = text || "";
       rebuildStatusEl.className = "hint article7-rebuild-status" + (cls ? " " + cls : "");
+      rebuildStatusEl.hidden = !text;
+    }
+
+    function showRebuildActions(show) {
+      if (rebuildActionsEl) rebuildActionsEl.hidden = !show;
+    }
+
+    function showBoardActions(show) {
+      if (boardActionsEl) boardActionsEl.hidden = !show;
     }
 
     function applyRebuildButtonUi() {
-      rebuildBtn.classList.remove("is-loading", "is-done");
+      rebuildBtn.classList.remove("is-loading");
+      if (rebuildState === "done") {
+        showRebuildActions(false);
+        return;
+      }
+      showRebuildActions(true);
+      showBoardActions(false);
       if (rebuildState === "loading") {
         rebuildBtn.textContent = "第7条を再計算中…";
         rebuildBtn.disabled = true;
         rebuildBtn.classList.add("is-loading");
-        return;
-      }
-      if (rebuildState === "done") {
-        rebuildBtn.textContent = "✔ 再計算済み";
-        rebuildBtn.disabled = true;
-        rebuildBtn.classList.add("is-done");
         return;
       }
       rebuildBtn.textContent = "第7条を再計算する";
@@ -142,7 +153,9 @@
       var ready = st.stock && st.shipment;
       var reason = disabledReason(st.stock, st.shipment, pageKind);
       if (hintEl) {
-        if (ready) {
+        if (rebuildState === "done") {
+          hintEl.textContent = "再計算が完了しました。優先度監視盤で結果を確認してください。";
+        } else if (ready) {
           hintEl.innerHTML =
             "在庫と出荷のデータが揃いました。第7条を再計算してから、優先度監視盤で確認してください。";
         } else {
@@ -150,12 +163,15 @@
           hintEl.innerHTML = reason + (extra ? " " + extra : "");
         }
       }
-      if (rebuildState === "idle" || rebuildState === "error") {
+      if (rebuildState === "idle") {
+        rebuildBtn.disabled = !ready;
+        setRebuildStatus("", "");
+      } else if (rebuildState === "error") {
         rebuildBtn.disabled = !ready;
       }
       applyRebuildButtonUi();
-      if (boardBtn) {
-        boardBtn.hidden = rebuildState !== "done";
+      if (rebuildState === "done") {
+        showBoardActions(true);
       }
     }
 
@@ -203,7 +219,7 @@
       rebuildState = "loading";
       applyRebuildButtonUi();
       setRebuildStatus("第7条を再計算中…", "loading");
-      if (boardBtn) boardBtn.hidden = true;
+      showBoardActions(false);
 
       try {
         var res = await fetch("/v2/priority/rebuild", {
@@ -231,7 +247,10 @@
         rebuildState = "done";
         setRebuildStatus(line, "ok");
         applyRebuildButtonUi();
-        if (boardBtn) boardBtn.hidden = false;
+        showBoardActions(true);
+        if (hintEl) {
+          hintEl.textContent = "再計算が完了しました。優先度監視盤で結果を確認してください。";
+        }
       } catch (e) {
         rebuildState = "error";
         setRebuildStatus(String(e.message || e), "err");

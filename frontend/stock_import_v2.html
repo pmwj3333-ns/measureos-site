@@ -170,26 +170,26 @@
     gap: 10px 12px;
     align-items: center;
   }
+  .article7-board-actions {
+    margin-top: 4px;
+  }
   .btn-lg {
     padding: 14px 24px;
     font-size: 0.95rem;
     min-width: 240px;
     border-radius: 8px;
   }
-  .btn-rebuild-priority.is-loading {
-    opacity: 0.85;
-    cursor: wait;
-  }
-  .btn-rebuild-priority.is-done {
-    background: #166534;
-    color: #fff;
-    cursor: default;
-  }
   .btn-priority-board {
     display: inline-block;
     text-align: center;
     text-decoration: none;
     line-height: 1.2;
+    width: 100%;
+    max-width: 360px;
+  }
+  .btn-rebuild-priority.is-loading {
+    opacity: 0.85;
+    cursor: wait;
   }
   .article7-rebuild-status.loading {
     color: #1e3a5f;
@@ -488,15 +488,17 @@
       <div class="article7-flow-title">次のステップ — 第7条の再計算</div>
       <div id="article7-flow-readiness" class="article7-flow-readiness"></div>
       <p id="article7-flow-hint" class="article7-flow-hint"></p>
-      <div class="article7-flow-actions">
+      <div id="article7-rebuild-actions" class="article7-flow-actions">
         <button type="button" id="btn-rebuild-priority" class="btn-primary btn-rebuild-priority btn-lg" disabled>
           第7条を再計算する
         </button>
-        <a id="btn-priority-board" class="btn-secondary btn-lg btn-priority-board" href="/priority/v2" hidden>
+      </div>
+      <p id="article7-rebuild-status" class="hint article7-rebuild-status" hidden></p>
+      <div id="article7-board-actions" class="article7-flow-actions article7-board-actions" hidden>
+        <a id="btn-priority-board" class="btn-primary btn-lg btn-priority-board" href="/priority/v2">
           優先度監視盤を見る
         </a>
       </div>
-      <p id="article7-rebuild-status" class="hint article7-rebuild-status"></p>
     </div>
 
     <div id="csv-preview-wrap" class="csv-preview-wrap" hidden>
