@@ -127,6 +127,94 @@
     border-radius: 6px;
     padding: 9px 12px;
   }
+  .article7-flow {
+    margin-top: 16px;
+    padding: 18px 20px;
+    background: #f8fafc;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+  }
+  .article7-flow-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 10px;
+  }
+  .article7-flow-readiness {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    font-size: 0.82rem;
+    color: #374151;
+    margin-bottom: 10px;
+  }
+  .readiness-item { font-weight: 600; }
+  .readiness-mark { font-weight: 800; margin-left: 2px; }
+  .readiness-ok { color: #166534; }
+  .readiness-ng { color: #991b1b; }
+  .article7-flow-hint {
+    font-size: 0.78rem;
+    color: #4b5563;
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+  .article7-flow-link {
+    color: #1e3a5f;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .article7-flow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    align-items: center;
+  }
+  .btn-lg {
+    padding: 14px 24px;
+    font-size: 0.95rem;
+    min-width: 240px;
+    border-radius: 8px;
+  }
+  .btn-rebuild-priority.is-loading {
+    opacity: 0.85;
+    cursor: wait;
+  }
+  .btn-rebuild-priority.is-done {
+    background: #166534;
+    color: #fff;
+    cursor: default;
+  }
+  .btn-priority-board {
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+    line-height: 1.2;
+  }
+  .article7-rebuild-status.loading {
+    color: #1e3a5f;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 9px 12px;
+    margin-top: 12px;
+  }
+  .article7-rebuild-status.ok {
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 9px 12px;
+    margin-top: 12px;
+  }
+  .article7-rebuild-status.err {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 9px 12px;
+    margin-top: 12px;
+  }
   .drop-zone,
   .dropzone {
     position: relative;
@@ -323,9 +411,6 @@
           既存の受注・出荷システムから出力したCSVをそのまま投入してください。会社単位で<strong>全置換</strong>保存します（在庫突合・製造必要数・第7条の自動生成は行いません）。
         </p>
       </div>
-      <div class="toolbar">
-        <button type="button" class="btn-secondary btn-rebuild-priority">第7条を再計算</button>
-      </div>
     </div>
 
     <div class="csv-guide" aria-label="取込ファイルの説明">
@@ -400,6 +485,21 @@
 
     <p id="msg" class="hint"></p>
 
+    <div id="article7-flow" class="article7-flow" hidden>
+      <div class="article7-flow-title">次のステップ — 第7条の再計算</div>
+      <div id="article7-flow-readiness" class="article7-flow-readiness"></div>
+      <p id="article7-flow-hint" class="article7-flow-hint"></p>
+      <div class="article7-flow-actions">
+        <button type="button" id="btn-rebuild-priority" class="btn-primary btn-rebuild-priority btn-lg" disabled>
+          第7条を再計算する
+        </button>
+        <a id="btn-priority-board" class="btn-secondary btn-lg btn-priority-board" href="/priority/v2" hidden>
+          優先度監視盤を見る
+        </a>
+      </div>
+      <p id="article7-rebuild-status" class="hint article7-rebuild-status"></p>
+    </div>
+
     <div id="csv-preview-wrap" class="csv-preview-wrap" hidden>
       <p class="hint" id="csv-preview-caption" style="margin-bottom:8px;">プレビュー（取り込み前に内容を確認してください）</p>
       <table>
@@ -424,6 +524,7 @@
 </div>
 
 <script src="/static/csv_header_resolver.js"></script>
+<script src="/static/article7-csv-import-flow.js"></script>
 <script>
 let fileRef = null;
 
@@ -790,11 +891,15 @@ document.addEventListener("DOMContentLoaded", function () {
     btn.disabled = !!parsed.fatal;
   }
 
+  var article7Flow = window.Article7CsvImportFlow
+    ? window.Article7CsvImportFlow.init({
+        pageKind: "shipment",
+        ensureSessionCompanyForWrite: ensureSessionCompanyForWrite,
+        setImportMsg: setMsg,
+      })
+    : null;
+
   function updateFileStatusUi() {
-    console.log("update時 fileRef:", fileRef);
-    const btn = document.querySelector(".btn-rebuild-priority");
-    if (!btn) return;
-    btn.disabled = !fileRef;
     var nameEl = document.getElementById("csv-file-name");
     var emptyEl = document.getElementById("file-empty-state");
     var selectedEl = document.getElementById("file-selected-state");
@@ -811,7 +916,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function handleFile(file) {
     fileRef = file;
-    console.log("fileRefセット:", fileRef);
     updateFileStatusUi();
   }
 
@@ -893,42 +997,6 @@ document.addEventListener("DOMContentLoaded", function () {
     loadShipmentCsvPreview(null);
   });
 
-  document.querySelector(".btn-rebuild-priority").addEventListener("click", async function () {
-    var check = await ensureSessionCompanyForWrite();
-    if (!check.ok) {
-      setMsg(check.message, "err");
-      return;
-    }
-    var company = check.company;
-    setMsg("第7条を再計算しています…", "");
-    try {
-      var res = await fetch("/v2/priority/rebuild", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company_id: company }),
-      });
-      var data = {};
-      try {
-        data = await res.json();
-      } catch (e) {}
-      if (!res.ok) {
-        var d = data.detail;
-        if (typeof d !== "string") d = JSON.stringify(data.detail || data);
-        setMsg("再生成に失敗しました: " + (d || res.statusText), "err");
-        return;
-      }
-      var n = data.success_count != null ? data.success_count : 0;
-      var line = "第7条データを再生成しました（" + n + "件）";
-      var det = data.detail != null ? String(data.detail).trim() : "";
-      if (det) line += "。" + det;
-      setMsg(line, "ok");
-    } catch (e) {
-      setMsg(String(e.message || e), "err");
-    } finally {
-      updateFileStatusUi();
-    }
-  });
-
   $("btn-import").addEventListener("click", async function () {
     var check = await ensureSessionCompanyForWrite();
     if (!check.ok) {
@@ -977,13 +1045,14 @@ document.addEventListener("DOMContentLoaded", function () {
       var sx = data.success_count != null ? data.success_count : 0;
       var ey = data.error_count != null ? data.error_count : 0;
       setMsg(
-        "出荷予定データ更新完了（成功: " +
+        "✓ 出荷CSV取込完了（成功: " +
           sx +
           "件 / エラー: " +
           ey +
           "件）。成功件数は最終保存されたユニーク件数（同一商品コード・同一納期は後勝ち）です。",
         "ok"
       );
+      if (article7Flow) article7Flow.onImportSuccess(company);
     } catch (e) {
       setMsg(String(e && e.message ? e.message : e), "err");
     } finally {
