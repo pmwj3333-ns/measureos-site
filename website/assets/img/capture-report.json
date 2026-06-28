@@ -1,0 +1,22 @@
+{
+  "captures": [
+    {
+      "file": "field.png",
+      "url": "http://127.0.0.1:8000/field/v2#planned",
+      "bytes": 175842,
+      "ok": true
+    },
+    {
+      "file": "priority.png",
+      "url": "http://127.0.0.1:8000/priority/v2",
+      "bytes": 197128,
+      "ok": true
+    },
+    {
+      "file": "observe.png",
+      "url": "http://127.0.0.1:8000/sr/v2?tab=observe&company=brand_evidence_co",
+      "bytes": 105659,
+      "ok": true
+    }
+  ]
+}

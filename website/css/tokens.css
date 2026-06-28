@@ -1,0 +1,102 @@
+/*
+ * OSTRA Brand Design Tokens
+ * 業務システムの色ではなく、ブランド体験の色。
+ */
+:root {
+  /* ── Color: OSTRA Brand ── */
+  --color-bg: #f7f7f5;
+  --color-bg-elevated: #ffffff;
+  --color-bg-warm: #f0efeb;
+  --color-bg-muted: #ebe8e2;
+  --color-bg-dark: #121214;
+  --color-bg-dark-elevated: #1a1a1e;
+
+  --color-text: #121214;
+  --color-text-secondary: #5a5a62;
+  --color-text-muted: #94949c;
+  --color-text-on-dark: #f4f4f2;
+  --color-text-on-dark-muted: rgba(244, 244, 242, 0.55);
+
+  --color-border: rgba(18, 18, 20, 0.08);
+  --color-border-strong: rgba(18, 18, 20, 0.14);
+  --color-border-dark: rgba(255, 255, 255, 0.1);
+
+  /* Brand accent — quiet ink, not product navy */
+  --color-accent: #3d4654;
+  --color-accent-soft: rgba(61, 70, 84, 0.07);
+  --color-accent-muted: #6b7380;
+  --color-signal: #5c6b7a;
+  --color-signal-soft: rgba(92, 107, 122, 0.12);
+
+  /* ── Typography ── */
+  --font-sans: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: clamp(1.5rem, 3vw, 2rem);
+  --text-3xl: clamp(2rem, 4.5vw, 3rem);
+  --text-4xl: clamp(2.5rem, 6vw, 4rem);
+  --text-hero: clamp(2.75rem, 8vw, 5.25rem);
+  --text-statement: clamp(1.75rem, 4vw, 2.75rem);
+  --text-page-hero: clamp(2.25rem, 5.5vw, 3.75rem);
+
+  --leading-tight: 1.08;
+  --leading-snug: 1.35;
+  --leading-normal: 1.65;
+  --leading-relaxed: 1.85;
+
+  --tracking-tighter: -0.04em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: -0.012em;
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.14em;
+
+  /* ── Spacing & Grid ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  --max-width: 960px;
+  --max-width-narrow: 640px;
+  --max-width-wide: 1120px;
+  --max-width-manifest: 1180px;
+  --max-width-prose: 42em;
+
+  --section-y: clamp(7rem, 18vh, 11rem);
+  --section-y-lg: clamp(9rem, 22vh, 14rem);
+  --section-y-sm: clamp(5rem, 12vh, 7rem);
+  --gutter: clamp(1.5rem, 5vw, 3rem);
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 500ms;
+  --duration-slow: 900ms;
+  --duration-reveal: 1.1s;
+
+  /* ── Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+
+  /* ── Shadow ── */
+  --shadow-soft: 0 24px 80px rgba(18, 18, 20, 0.06);
+  --shadow-frame: 0 32px 80px rgba(18, 18, 20, 0.08);
+  --shadow-card: 0 12px 40px rgba(18, 18, 20, 0.05);
+
+  --header-h: 72px;
+}

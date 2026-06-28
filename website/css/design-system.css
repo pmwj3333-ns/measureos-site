@@ -1,0 +1,155 @@
+/*
+ * OSTRA Brand Design System
+ * Typography · Spacing · Grid · Color · Buttons · Cards · Motion · Icon · Image
+ */
+
+/* ── Grid ── */
+.grid-2 {
+  display: grid;
+  gap: var(--space-8);
+}
+
+@media (min-width: 768px) {
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+}
+
+.grid-3 {
+  display: grid;
+  gap: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+.stack-sm > * + * { margin-top: var(--space-4); }
+.stack-md > * + * { margin-top: var(--space-6); }
+.stack-lg > * + * { margin-top: var(--space-10); }
+
+/* ── Typography roles ── */
+.type-kicker {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.type-display {
+  font-family: var(--font-display);
+  font-size: var(--text-page-hero);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.type-lead {
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+  max-width: var(--max-width-prose);
+}
+
+.type-body {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.type-en {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* ── Buttons (minimal — no CTA spam) ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: var(--tracking-normal);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-strong);
+  padding-bottom: 0.15rem;
+  transition:
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    opacity var(--duration-fast);
+}
+
+.btn:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent-muted);
+}
+
+.btn--muted {
+  color: var(--color-text-secondary);
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  box-shadow: var(--shadow-card);
+}
+
+.card--flat {
+  box-shadow: none;
+  background: transparent;
+  border-color: var(--color-border);
+}
+
+.card__index {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-accent-muted);
+  margin-bottom: var(--space-4);
+}
+
+.card__title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+  margin-bottom: var(--space-4);
+}
+
+.card__body {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+/* ── Icon (mark only — no icon font) ── */
+/* ── Image Style — evidence screenshots (TOP V / measure-os) ── */
+.img-evidence {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-frame);
+  background: #eef1f5;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.img-evidence--soft {
+  box-shadow: var(--shadow-soft);
+}
+
+.img-evidence img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  object-position: center top;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}

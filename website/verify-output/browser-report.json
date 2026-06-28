@@ -1,0 +1,29 @@
+{
+  "url": "http://localhost:8000/",
+  "network": {
+    "/": {
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    "/brand/css/tokens.css": {
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    "/brand/js/main.js": {
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    }
+  },
+  "console_errors": [],
+  "console_warnings": [],
+  "dom": {
+    "title": "空気ではなく、構造で成立する — OSTRA",
+    "h1_text": "空気ではなく、構造で\n成立する。",
+    "h1_opacity": "1",
+    "h1_visible": true,
+    "reveal_total": 29,
+    "reveal_visible_count": 1,
+    "body_text_length": 1175,
+    "html_received": true
+  }
+}

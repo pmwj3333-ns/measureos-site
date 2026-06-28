@@ -494,6 +494,11 @@ app.include_router(working_calendar.router)
 # uvicorn の cwd に依存しない（/static/*.js 等）
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FRONTEND_DIR = _PROJECT_ROOT / "frontend"
+_WEBSITE_DIR = _PROJECT_ROOT / "website"
+
+_BRAND_CACHE = {
+    "Cache-Control": "public, max-age=300",
+}
 
 _NO_CACHE = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
@@ -595,6 +600,36 @@ def _field_v2_html_response(request: Request):
 
 
 # --- 画面ルートは /static マウントより先に登録（404 の取り違え防止） ---
+@app.get("/", summary="ブランドサイト TOP", include_in_schema=False)
+def brand_site_home():
+    return _brand_html("index.html")
+
+
+def _brand_html(name: str) -> FileResponse:
+    path = _WEBSITE_DIR / name
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"website に {name} がありません（期待パス: {path}）",
+        )
+    return FileResponse(path, headers=_BRAND_CACHE)
+
+
+@app.get("/principles", summary="ブランドサイト Principles", include_in_schema=False)
+def brand_site_principles():
+    return _brand_html("principles.html")
+
+
+@app.get("/measure-os", summary="ブランドサイト MEASURE OS", include_in_schema=False)
+def brand_site_measure_os():
+    return _brand_html("measure-os.html")
+
+
+@app.get("/ostra", summary="ブランドサイト OSTRA", include_in_schema=False)
+def brand_site_ostra():
+    return _brand_html("ostra.html")
+
+
 @app.get("/field")
 def field_screen():
     return _field_html()
@@ -699,6 +734,21 @@ def debug_screen_alias():
     return _file_response_or_404("debug.html")
 
 
+app.mount(
+    "/brand/css",
+    StaticFiles(directory=str(_WEBSITE_DIR / "css")),
+    name="brand_css",
+)
+app.mount(
+    "/brand/js",
+    StaticFiles(directory=str(_WEBSITE_DIR / "js")),
+    name="brand_js",
+)
+app.mount(
+    "/brand/assets",
+    StaticFiles(directory=str(_WEBSITE_DIR / "assets")),
+    name="brand_assets",
+)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR / "static")),
