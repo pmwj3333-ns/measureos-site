@@ -54,6 +54,52 @@ def client():
         app.dependency_overrides.pop(get_db, None)
 
 
+def login_office(client: TestClient, cid: str, password: str) -> None:
+    r = client.post(
+        "/v2/office/login",
+        json={"company_id": cid, "password": password},
+    )
+    assert r.status_code == 200, r.text
+
+
+def ensure_tenant_login(
+    client: TestClient,
+    cid: str,
+    password: str = "TestPass1!",
+    *,
+    leaders: list | None = None,
+) -> None:
+    """会社パスワードを設定して session ログインする（tenant API テスト用）。"""
+    leader_rows = leaders if leaders is not None else [{"name": "班長", "process": ""}]
+    r = client.put(
+        f"/v2/company/{cid}/leaders",
+        json={
+            "leaders": leader_rows,
+            "company_name": cid,
+            "company_password": password,
+        },
+    )
+    assert r.status_code == 200, r.text
+    login_office(client, cid, password)
+
+
+@pytest.fixture(autouse=True)
+def _auto_tenant_login_from_module(request, client):
+    """モジュール定数 CO がある integration テスト向けの既定ログイン。"""
+    if request.node.get_closest_marker("no_auth"):
+        return
+    mod = request.module
+    cid = getattr(mod, "CO", None)
+    if not cid or not isinstance(cid, str) or not cid.strip():
+        return
+    password = getattr(mod, "LOGIN_PW", None) or getattr(mod, "PASSWORD", None) or "TestPass1!"
+    leaders = None
+    user = getattr(mod, "USER", None)
+    if isinstance(user, str) and user.strip():
+        leaders = [{"name": user.strip(), "process": (getattr(mod, "PROC", None) or "")}]
+    ensure_tenant_login(client, cid.strip(), str(password), leaders=leaders)
+
+
 def v2_register_planned(
     client: TestClient,
     unit_id: int,

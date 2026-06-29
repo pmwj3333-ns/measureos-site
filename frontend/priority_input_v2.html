@@ -196,9 +196,18 @@
     <p id="save-msg" class="hint"></p>
   </div>
 
+<script src="/static/office_session_expired.js"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
+
+  function sessionExpiredOpts() {
+    return { returnTo: window.location.pathname || "/priority/input/v2" };
+  }
+
+  function onUnauthorized(res) {
+    return OfficeSessionExpired && OfficeSessionExpired.ifUnauthorized(res, sessionExpiredOpts());
+  }
 
   function param(key, fb) {
     var v = new URLSearchParams(location.search).get(key);
@@ -512,6 +521,7 @@
         data = {};
       }
       if (!res.ok) {
+        if (onUnauthorized(res)) return;
         var det =
           data && data.detail
             ? typeof data.detail === "string"
@@ -547,6 +557,10 @@
       data = { detail: text };
     }
     if (!res.ok) {
+      var authErr = onUnauthorized(res);
+      if (authErr) {
+        return { ok: false, detail: authErr.message, data: null, sessionExpired: true };
+      }
       var detail =
         data && data.detail
           ? typeof data.detail === "string"
@@ -687,6 +701,7 @@
         data = null;
       }
       if (!res.ok) {
+        if (onUnauthorized(res)) return;
         setMsg((data && data.detail) ? String(data.detail) : text || String(res.status), true);
         $("editor").hidden = true;
         return;
@@ -732,6 +747,7 @@
     try {
       var pr = await postPriorityReplace(cid, got.items);
       if (!pr.ok) {
+        if (pr.sessionExpired) return;
         setSaveMsg(pr.detail, true);
         return;
       }
@@ -760,6 +776,7 @@
     try {
       var pr = await postPriorityReplace(cid, csvParsedItems);
       if (!pr.ok) {
+        if (pr.sessionExpired) return;
         setCsvSaveMsg(pr.detail, true);
         return;
       }
@@ -774,7 +791,16 @@
   }
 
   $("company").value =
+    (typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
+      ? window.__MO_BOOTSTRAP_COMPANY__.trim()
+      : "") ||
     param("company", localStorage.getItem("priority_input_v2_company") || "");
+  if (
+    typeof window.__MO_BOOTSTRAP_COMPANY__ === "string" &&
+    window.__MO_BOOTSTRAP_COMPANY__.trim()
+  ) {
+    $("company").readOnly = true;
+  }
   $("btn-load").addEventListener("click", loadItems);
   $("btn-add").addEventListener("click", function () {
     addRow("", "", "", "", null);
@@ -829,6 +855,12 @@
   var btn = document.querySelector(".btn-rebuild-priority");
   var msg = document.getElementById("msg");
   if (!btn) return;
+  function sessionExpiredOpts() {
+    return { returnTo: window.location.pathname || "/priority/input/v2" };
+  }
+  function onUnauthorized(res) {
+    return OfficeSessionExpired && OfficeSessionExpired.ifUnauthorized(res, sessionExpiredOpts());
+  }
   function setRebuildMsg(text, isErr, isOk) {
     if (!msg) return;
     msg.textContent = text || "";
@@ -852,6 +884,7 @@
         data = await res.json();
       } catch (e) {}
       if (!res.ok) {
+        if (onUnauthorized(res)) return;
         var d = data.detail;
         if (typeof d !== "string") d = JSON.stringify(data.detail || data);
         setRebuildMsg("再生成に失敗しました: " + (d || res.statusText), true, false);

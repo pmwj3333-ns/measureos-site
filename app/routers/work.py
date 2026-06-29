@@ -6,7 +6,7 @@ import math
 import uuid
 from datetime import datetime, date as date_type, time
 from typing import Dict, List, Optional, Set, Tuple
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 from app import models, schemas
@@ -34,6 +34,10 @@ from app.services.judgement_promote import (
 )
 from app.services.package_rules import is_phase2_enabled
 from app.services.company_validator import validate_company_id, validate_unit_company_id
+from app.services.office_session_scope import (
+    require_session_company_match,
+    require_session_company_row,
+)
 from app.services.article7_deviation import is_actual_deviation_from_article7
 from app.services.product_master import (
     enrich_actual_lines_product_codes,
@@ -55,6 +59,14 @@ from app.services.actual_revision import (
 
 router = APIRouter(tags=["作業記録"])
 logger = logging.getLogger(__name__)
+
+
+def _guard_company_session(request: Request, company_id: str) -> str:
+    return require_session_company_match(request, company_id)
+
+
+def _guard_unit_session(request: Request, unit: models.WorkUnit) -> None:
+    require_session_company_row(request, unit.company_id)
 
 
 def _touch_updated(unit: models.WorkUnit) -> None:
@@ -1192,13 +1204,15 @@ def _unit_to_out_with_hint(
 
 @router.get("/work/next-business-date", summary="次の営業日を返す（行は作らない）")
 def get_next_business_date_only(
+    request: Request,
     company_id: str,
     current_business_date: str,
     db: Session = Depends(get_db),
 ):
-    _get_or_create_settings(company_id, db)
+    cid = _guard_company_session(request, company_id)
+    _get_or_create_settings(cid, db)
     cur = date_type.fromisoformat(current_business_date)
-    nxt = next_business_day(cur, company_id, db)
+    nxt = next_business_day(cur, cid, db)
     return {"business_date": str(nxt)}
 
 
@@ -1206,8 +1220,12 @@ def get_next_business_date_only(
     "/work",
     summary="今日の作業記録の壳（未報告なら既存行を返し、実績済みなら新規 INSERT・append-only）",
 )
-def create_work_shell(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)):
-    validate_company_id(db, body.company_id)
+def create_work_shell(
+    body: schemas.WorkUnitQuery, request: Request, db: Session = Depends(get_db)
+):
+    cid = _guard_company_session(request, body.company_id)
+    validate_company_id(db, cid)
+    body = body.model_copy(update={"company_id": cid})
     logger.warning(
         "[measureos.work.hook] POST /work company_id=%r task_id=%r process_id=%r user_id=%r business_date=%r",
         body.company_id,
@@ -1296,8 +1314,12 @@ def create_work_shell(body: schemas.WorkUnitQuery, db: Session = Depends(get_db)
 
 
 @router.post("/work/next-day", summary="次の営業日を開始する（着手含む）")
-def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
-    validate_company_id(db, body.company_id)
+def start_next_day(
+    body: schemas.NextDayQuery, request: Request, db: Session = Depends(get_db)
+):
+    cid = _guard_company_session(request, body.company_id)
+    validate_company_id(db, cid)
+    body = body.model_copy(update={"company_id": cid})
     settings     = _get_or_create_settings(body.company_id, db)
     current_date = date_type.fromisoformat(body.current_business_date)
     next_date, next_dbg = next_business_day_detailed(current_date, body.company_id, db)
@@ -1345,10 +1367,13 @@ def start_next_day(body: schemas.NextDayQuery, db: Session = Depends(get_db)):
     response_model=List[schemas.WorkUnitStatusHistoryItem],
     summary="status 変化履歴（新しい順・読み取り専用）",
 )
-def get_work_unit_status_history(unit_id: int, db: Session = Depends(get_db)):
+def get_work_unit_status_history(
+    unit_id: int, request: Request, db: Session = Depends(get_db)
+):
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, unit)
     rows = (
         db.query(models.WorkUnitStatusHistory)
         .filter(models.WorkUnitStatusHistory.work_unit_id == unit_id)
@@ -1380,10 +1405,11 @@ def _copy_reflection_snapshot_from_peer(peer: models.WorkUnit, nu: models.WorkUn
     "/work/{unit_id}/close",
     summary="【事務】指定 ID の作業1件を承認・完了（closed スナップショット INSERT）",
 )
-def approve_close_work(unit_id: int, db: Session = Depends(get_db)):
+def approve_close_work(unit_id: int, request: Request, db: Session = Depends(get_db)):
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, src)
     validate_unit_company_id(db, src)
     settings = _get_or_create_settings(src.company_id, db)
     if is_closed(src):
@@ -1436,12 +1462,14 @@ def approve_close_work(unit_id: int, db: Session = Depends(get_db)):
 @router.post("/work/{unit_id}/start", summary="着手を記録する")
 def mark_started(
     unit_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     body: schemas.StartedIn = Body(default_factory=schemas.StartedIn),
 ):
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, src)
     validate_unit_company_id(db, src)
     raise_if_closed(src)
     if getattr(src, "planned_registered_at", None) is None:
@@ -1495,7 +1523,12 @@ def mark_started(
 
 
 @router.post("/work/{unit_id}/actual", summary="実績を記録する")
-def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_db)):
+def save_actual(
+    unit_id: int,
+    body: schemas.ActualIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     patch_preview = body.model_dump(exclude_unset=True)
     logger.warning(
         "[measureos.work.hook] POST /work/%s/actual body_keys=%s lines_in_body=%s",
@@ -1510,6 +1543,7 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
             unit_id,
         )
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, src)
     validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
@@ -1729,10 +1763,16 @@ def save_actual(unit_id: int, body: schemas.ActualIn, db: Session = Depends(get_
 
 
 @router.post("/work/{unit_id}/planned", summary="予告を記録する")
-def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(get_db)):
+def save_planned(
+    unit_id: int,
+    body: schemas.PlannedIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, src)
     validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
@@ -1813,11 +1853,13 @@ def save_planned(unit_id: int, body: schemas.PlannedIn, db: Session = Depends(ge
 def merge_planned_due(
     unit_id: int,
     body: schemas.PlannedDueMergeIn,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     src = db.get(models.WorkUnit, unit_id)
     if not src:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, src)
     validate_unit_company_id(db, src)
     raise_if_closed(src)
     settings = _get_or_create_settings(src.company_id, db)
@@ -1883,6 +1925,7 @@ def merge_planned_due(
     summary="過去営業日の is_missing 再計算（cron・境界後のバッチ用）",
 )
 def recalc_missing_boundary(
+    request: Request,
     company_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -1890,7 +1933,8 @@ def recalc_missing_boundary(
     append-only 方針のため無効化。派生フラグは読み取り時に算出する。
     """
     if company_id is not None and str(company_id).strip():
-        validate_company_id(db, company_id)
+        cid = _guard_company_session(request, company_id)
+        validate_company_id(db, cid)
     logger.info(
         "[measureos.work.recalc_missing_boundary] skipped append_only company_id=%r",
         company_id,
@@ -1980,6 +2024,7 @@ def debug_set_business_date(
 
 @router.get("/work/list", summary="作業記録の一覧を取得する")
 def list_work(
+    request: Request,
     company_id: str,
     hide_office_closed_sources: bool = Query(
         False,
@@ -1991,9 +2036,10 @@ def list_work(
     ),
     db: Session = Depends(get_db),
 ):
-    settings = _get_or_create_settings(company_id, db)
+    cid = _guard_company_session(request, company_id)
+    settings = _get_or_create_settings(cid, db)
 
-    promote_blue_to_red_after_judgement(company_id, db)
+    promote_blue_to_red_after_judgement(cid, db)
 
     dirty_n = len(db.dirty)
     commit_called = False
@@ -2008,7 +2054,7 @@ def list_work(
     )
 
     sort_key = func.coalesce(models.WorkUnit.updated_at, models.WorkUnit.created_at)
-    base_q = db.query(models.WorkUnit).filter(models.WorkUnit.company_id == company_id)
+    base_q = db.query(models.WorkUnit).filter(models.WorkUnit.company_id == cid)
     if hide_office_closed_sources:
         suppressed_sq = db.query(models.OfficeClosedWorkUnitSuppress.peer_unit_id)
         base_q = base_q.filter(~models.WorkUnit.id.in_(suppressed_sq))
@@ -2058,11 +2104,13 @@ def list_work(
 def patch_office_reflection(
     unit_id: int,
     body: schemas.OfficeReflectionPatch,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     unit = db.get(models.WorkUnit, unit_id)
     if not unit:
         raise HTTPException(status_code=404, detail="作業記録が見つかりません")
+    _guard_unit_session(request, unit)
     validate_unit_company_id(db, unit)
     raise_if_closed(unit)
 

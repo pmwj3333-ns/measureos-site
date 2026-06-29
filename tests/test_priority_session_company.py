@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from starlette.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,6 +32,7 @@ def _login(client: TestClient, cid: str, password: str) -> None:
     assert r.status_code == 200, r.text
 
 
+@pytest.mark.no_auth
 def test_priority_v2_redirects_without_session(client: TestClient):
     r = client.get("/priority/v2", follow_redirects=False)
     assert r.status_code == 307

@@ -4,7 +4,7 @@ import math
 from datetime import date as date_type, datetime
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app import models
@@ -27,6 +27,7 @@ from app.services.priority_article7_context import (
 )
 from app.services.priority_rebuild import rebuild_priority_items_for_company
 from app.services.company_validator import validate_company_id
+from app.services.office_session_scope import require_session_company_match
 from app.services.article7_safety_stock import (
     SafetyStockInfo,
     decompose_shortage_for_display,
@@ -163,6 +164,7 @@ def _rows_to_out(
 
 @router.get("/items", summary="第7条・優先指示一覧（会社単位・open のみ）")
 def list_priority_items(
+    request: Request,
     company_id: str = Query(..., description="company_id"),
     article5_progress: bool = Query(
         False,
@@ -174,9 +176,7 @@ def list_priority_items(
     ),
     db: Session = Depends(get_db),
 ):
-    cid = (company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = require_session_company_match(request, company_id)
     rows = (
         db.query(models.PriorityItem)
         .filter(models.PriorityItem.company_id == cid)
@@ -205,13 +205,16 @@ def list_priority_items(
     "/rebuild",
     summary="第7条・在庫×出荷予定から再生成（全置換・OS計算）",
 )
-def rebuild_priority_items(body: PriorityRebuildIn, db: Session = Depends(get_db)):
+def rebuild_priority_items(
+    body: PriorityRebuildIn, request: Request, db: Session = Depends(get_db)
+):
     """
     当該 company_id の **open** の priority_item のみ削除し、出荷×在庫から再生成する（closed は残す）。
     available = stock - safety_stock(product_master) - ship; required_qty = max(0, -available)。
     required_qty > 0 かつ納期が parse_due_date 可能な行のみ保存する。
     """
-    cid = validate_company_id(db, body.company_id)
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     success_count, warning_count, detail = rebuild_priority_items_for_company(cid, db)
     return PriorityRebuildOut(
         ok=True,
@@ -222,11 +225,11 @@ def rebuild_priority_items(body: PriorityRebuildIn, db: Session = Depends(get_db
 
 
 @router.post("/close", summary="第7条・事務クローズ（open → closed）")
-def close_priority_items(body: PriorityCloseIn, db: Session = Depends(get_db)):
+def close_priority_items(
+    body: PriorityCloseIn, request: Request, db: Session = Depends(get_db)
+):
     """第5条では数量を変えず、事務の承認操作でのみ行を閉じる。closed は GET /items に出ない。"""
-    cid = (body.company_id or "").strip()
-    if not cid:
-        raise HTTPException(status_code=422, detail="company_id が空です")
+    cid = require_session_company_match(request, body.company_id)
     raw_ids = [int(x) for x in body.item_ids]
     ids = list(dict.fromkeys(raw_ids))
     if not ids:
@@ -258,8 +261,11 @@ def close_priority_items(body: PriorityCloseIn, db: Session = Depends(get_db)):
 
 
 @router.post("/create", summary="第7条・優先指示を保存（open 全置換）")
-def create_priority_items(body: PriorityItemsCreateIn, db: Session = Depends(get_db)):
-    cid = validate_company_id(db, body.company_id)
+def create_priority_items(
+    body: PriorityItemsCreateIn, request: Request, db: Session = Depends(get_db)
+):
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     to_insert: List[dict] = []
     for it in body.items:
         lb = (it.label or "").strip()

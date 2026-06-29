@@ -1,10 +1,11 @@
 from datetime import time
 from typing import Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services.company_validator import validate_company_id
+from app.services.office_session_scope import require_session_company_match
 
 router = APIRouter(tags=["設定"])
 
@@ -62,8 +63,11 @@ def list_companies(db: Session = Depends(get_db)):
 
 
 @router.post("/settings/field-users", summary="班長リストのみ保存する")
-def save_field_users(body: schemas.FieldUsersIn, db: Session = Depends(get_db)):
-    validate_company_id(db, body.company_id)
+def save_field_users(
+    body: schemas.FieldUsersIn, request: Request, db: Session = Depends(get_db)
+):
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     s = db.query(models.CompanySettings).filter_by(company_id=body.company_id).first()
     if s is None:
         s = models.CompanySettings(company_id=body.company_id)
@@ -75,8 +79,11 @@ def save_field_users(body: schemas.FieldUsersIn, db: Session = Depends(get_db)):
 
 
 @router.post("/settings", summary="会社設定を保存する")
-def save_settings(body: schemas.CompanySettingsIn, db: Session = Depends(get_db)):
-    validate_company_id(db, body.company_id)
+def save_settings(
+    body: schemas.CompanySettingsIn, request: Request, db: Session = Depends(get_db)
+):
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     s = db.query(models.CompanySettings).filter_by(company_id=body.company_id).first()
     if s is None:
         s = models.CompanySettings(company_id=body.company_id)
@@ -97,23 +104,27 @@ def save_settings(body: schemas.CompanySettingsIn, db: Session = Depends(get_db)
 
 
 @router.get("/settings/{company_id}", summary="会社設定を取得する")
-def get_settings(company_id: str, db: Session = Depends(get_db)):
-    s = db.query(models.CompanySettings).filter_by(company_id=company_id).first()
+def get_settings(company_id: str, request: Request, db: Session = Depends(get_db)):
+    cid = require_session_company_match(request, company_id)
+    s = db.query(models.CompanySettings).filter_by(company_id=cid).first()
     if not s:
-        return _default_settings_out(company_id)
+        return _default_settings_out(cid)
     return _to_out(s)
 
 
 @router.post("/calendar", summary="カレンダーを登録する")
-def save_calendar(body: schemas.CalendarIn, db: Session = Depends(get_db)):
-    validate_company_id(db, body.company_id)
+def save_calendar(
+    body: schemas.CalendarIn, request: Request, db: Session = Depends(get_db)
+):
+    cid = require_session_company_match(request, body.company_id)
+    validate_company_id(db, cid)
     from datetime import date as date_type
     d = date_type.fromisoformat(body.date)
     record = db.query(models.CompanyCalendar).filter_by(
-        company_id=body.company_id, date=d
+        company_id=cid, date=d
     ).first()
     if record is None:
-        record = models.CompanyCalendar(company_id=body.company_id, date=d)
+        record = models.CompanyCalendar(company_id=cid, date=d)
         db.add(record)
     record.is_workday = body.is_workday
     db.commit()

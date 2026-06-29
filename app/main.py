@@ -630,9 +630,17 @@ def brand_site_ostra():
     return _brand_html("ostra.html")
 
 
-@app.get("/field")
-def field_screen():
+def _legacy_field_html_response(request: Request):
+    """レガシー現場 HTML。未ログイン時は office_v2 へ return_to 付き redirect。"""
+    company = normalize_company_id(request.session.get("company_id"))
+    if not company:
+        return _unauthenticated_login_redirect(request)
     return _field_html()
+
+
+@app.get("/field")
+def field_screen(request: Request):
+    return _legacy_field_html_response(request)
 
 
 @app.get("/field/v2", summary="現場 v2（第5条フェーズ1・最小）")
@@ -641,9 +649,9 @@ def field_v2_screen(request: Request):
 
 
 @app.get("/現場")
-def field_screen_ja():
+def field_screen_ja(request: Request):
     """従来どおり日本語パス（エディタプレビュー・ブックマーク互換）"""
-    return _field_html()
+    return _legacy_field_html_response(request)
 
 
 @app.get("/現場/v2", summary="現場 v2 日本語パス")
@@ -695,8 +703,8 @@ def priority_v2_screen(request: Request):
     "/priority/input/v2",
     summary="第7条・優先指示の入力（事務・営業・CSV/API）",
 )
-def priority_input_v2_screen():
-    return _file_response_or_404("priority_input_v2.html")
+def priority_input_v2_screen(request: Request):
+    return _session_bootstrap_html_response(request, "priority_input_v2.html")
 
 
 @app.get(

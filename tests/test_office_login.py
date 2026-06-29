@@ -284,11 +284,15 @@ def test_office_reload_without_session_starts_empty():
 
 
 def test_existing_company_password_tests_still_compatible(client: TestClient):
-    """Step1 パスワード基盤と共存（office 未ログインでも v2 API は従来どおり）。"""
+    """Step1 パスワード基盤: GET /v2/company/{id} は session 必須。"""
     cid = "office_compat_co"
     r = client.put(
         f"/v2/company/{cid}/leaders",
-        json={"leaders": [], "company_name": cid},
+        json={"leaders": [], "company_name": cid, "company_password": "CompatPass1!"},
     )
     assert r.status_code == 200, r.text
-    assert client.get(f"/v2/company/{cid}").json()["has_password"] is False
+    assert client.get(f"/v2/company/{cid}").status_code == 401
+    from tests.conftest import login_office
+
+    login_office(client, cid, "CompatPass1!")
+    assert client.get(f"/v2/company/{cid}").json()["has_password"] is True

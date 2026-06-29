@@ -1521,6 +1521,7 @@
 <script src="/static/format-jst-datetime.js"></script>
 <script src="/static/anomaly-classification.js"></script>
 <script src="/static/priority-tier-due.js"></script>
+<script src="/static/office_session_expired.js"></script>
 <script>
 /** session company（サーバー注入のみ・URL/localStorage 不使用） */
 let fieldSessionCompanyId = "";
@@ -1538,6 +1539,16 @@ function redirectToOfficeLogin() {
   window.location.replace(
     "/office/v2?return_to=" + encodeURIComponent(path),
   );
+}
+
+function handleSessionExpired() {
+  OfficeSessionExpired.handleSessionExpired({
+    notify: (msg, ms) => toast(msg, ms),
+  });
+}
+
+function isSessionExpiredError(err) {
+  return OfficeSessionExpired.isSessionExpiredError(err);
 }
 
 let unitId = null;
@@ -4196,6 +4207,13 @@ async function api(method, url, body) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
   if (!res.ok) {
+    const authErr = OfficeSessionExpired.ifUnauthorized(res, {
+      notify: (msg, ms) => toast(msg, ms),
+    });
+    if (authErr) {
+      authErr._data = data;
+      throw authErr;
+    }
     const msg = (data && data.detail) || text || String(res.status);
     const err = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
     err._data = data;
@@ -4248,7 +4266,9 @@ async function bootstrapWork() {
       user_id: cfg.user,
     });
   } catch (e) {
-    toast(e.message || "読み込みに失敗しました");
+    if (!isSessionExpiredError(e)) {
+      toast(e.message || "読み込みに失敗しました");
+    }
     return;
   }
 
@@ -4278,6 +4298,7 @@ async function bootstrapWork() {
         _actualDraftSaveTimer = null;
         await showPlannedScreen(lastWorkData);
       } catch (e) {
+        if (isSessionExpiredError(e)) return;
         await showActualScreen(data, { readOnly: true });
       }
     } else if (data.started_at) {
@@ -4306,6 +4327,7 @@ async function bootstrapWork() {
       _actualDraftSaveTimer = null;
       await showPlannedScreen(lastWorkData);
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       await showActualScreen(data, { readOnly: true });
     }
     return;
@@ -4425,7 +4447,9 @@ async function submitPlannedCore(opts) {
     if (showToast) toast("予告を保存しました");
     return true;
   } catch (e) {
-    if (showToast) toast(e.message || "送信に失敗しました");
+    if (!isSessionExpiredError(e) && showToast) {
+      toast(e.message || "送信に失敗しました");
+    }
     return false;
   }
 }
@@ -4462,7 +4486,9 @@ async function executeStartFromPlanned(pinnedWorkUnitId) {
     toast("着手を記録しました");
     await showActualScreen(row, { blankActualInputs: true });
   } catch (e) {
-    toast(e.message || "着手に失敗しました");
+    if (!isSessionExpiredError(e)) {
+      toast(e.message || "着手に失敗しました");
+    }
   } finally {
     sbtn.disabled = false;
     sbtn.textContent = "着手して実績報告へ";
@@ -4594,7 +4620,9 @@ async function submitActual() {
     _actualDraftSaveTimer = null;
     await showPlannedScreen(blankPlanned);
   } catch (e) {
-    toast(e.message || "実績の送信に失敗しました");
+    if (!isSessionExpiredError(e)) {
+      toast(e.message || "実績の送信に失敗しました");
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = "実績を報告";

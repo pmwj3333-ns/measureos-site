@@ -650,6 +650,7 @@
 
 <script src="/static/format-jst-datetime.js"></script>
 <script src="/static/anomaly-classification.js"></script>
+<script src="/static/office_session_expired.js"></script>
 <script>
 /*
  * ─── 手動 QA（実績「最新のみ」・product_key 単位）────────────────────────────
@@ -711,6 +712,17 @@
   function showOfficeApp() {
     $("office-login-screen").hidden = true;
     $("office-app").hidden = false;
+  }
+
+  function isOfficeAppVisible() {
+    const app = $("office-app");
+    return app && !app.hidden;
+  }
+
+  function onTenantApiUnauthorized(res) {
+    if (!res || res.status !== 401 || !isOfficeAppVisible()) return false;
+    OfficeSessionExpired.handleSessionExpired({ returnTo: "/office/v2" });
+    return true;
   }
 
   function showLoginError(show) {
@@ -2154,6 +2166,7 @@
         data = null;
       }
       if (!res.ok) {
+        if (onTenantApiUnauthorized(res)) return;
         let msg =
           (data && (data.detail || data.message)) ||
           text ||
@@ -2263,6 +2276,7 @@
         return;
       }
       if (!resAnom.ok) {
+        if (onTenantApiUnauthorized(resAnom)) return;
         showErr((dataAnom && dataAnom.detail) || "エラー " + resAnom.status);
         rows = [];
         rowsAll = [];

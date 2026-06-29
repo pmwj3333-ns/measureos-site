@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from starlette.testclient import TestClient
 
-from app.database import SessionLocal
 from app import models
+from app.database import SessionLocal
 from app.services.company_password import verify_company_password
+from tests.conftest import ensure_tenant_login, login_office
 
 
 def test_v2_create_company_auto_generates_id_and_password(client: TestClient):
@@ -76,9 +77,10 @@ def test_v2_create_company_does_not_mutate_existing_company(client: TestClient):
     existing_id = "overwrite_guard_test9"
     setup = client.put(
         f"/v2/company/{existing_id}/leaders",
-        json={"leaders": [], "company_name": "旧株式会社"},
+        json={"leaders": [], "company_name": "旧株式会社", "company_password": "OldCoPass1!"},
     )
     assert setup.status_code == 200, setup.text
+    login_office(client, existing_id, "OldCoPass1!")
 
     created = client.post(
         "/v2/companies",
@@ -91,6 +93,7 @@ def test_v2_create_company_does_not_mutate_existing_company(client: TestClient):
     old = client.get(f"/v2/company/{existing_id}").json()
     assert old["company_name"] == "旧株式会社"
 
+    login_office(client, new_id, created.json()["initial_password"])
     new = client.get(f"/v2/company/{new_id}").json()
     assert new["company_name"] == "株式会社嵐"
 

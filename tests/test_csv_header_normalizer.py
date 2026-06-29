@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+CO = "csv_header_schema_co"
+
 from app.services.csv_header_normalizer import (
     export_schema_for_client,
     normalize_header_cell,

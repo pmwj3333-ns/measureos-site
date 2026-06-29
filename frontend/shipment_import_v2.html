@@ -527,6 +527,7 @@
 
 <script src="/static/csv_header_resolver.js"></script>
 <script src="/static/article7-csv-import-flow.js"></script>
+<script src="/static/office_session_expired.js"></script>
 <script>
 let fileRef = null;
 
@@ -534,6 +535,14 @@ document.addEventListener("DOMContentLoaded", function () {
   var $ = function (id) { return document.getElementById(id); };
   var sessionCompanyId = "";
   var pageBootstrapCompanyId = "";
+
+  function sessionExpiredOpts() {
+    return { returnTo: window.location.pathname || "/shipment/import/v2" };
+  }
+
+  function onUnauthorized(res) {
+    return OfficeSessionExpired && OfficeSessionExpired.ifUnauthorized(res, sessionExpiredOpts());
+  }
 
   function initSessionCompanyFromBootstrap() {
     var boot =
@@ -550,6 +559,10 @@ document.addEventListener("DOMContentLoaded", function () {
         credentials: "same-origin",
         cache: "no-store",
       });
+      if (res.status === 401) {
+        onUnauthorized(res);
+        return "";
+      }
       if (!res.ok) return "";
       var data = await res.json();
       return String(data.company_id || "").trim();
@@ -560,6 +573,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function ensureSessionCompanyForWrite() {
     var liveCid = await resolveSessionCompanyId();
+    if (OfficeSessionExpired && OfficeSessionExpired.isRedirectPending()) {
+      return { ok: false, message: "", company: "", sessionExpired: true };
+    }
     if (!liveCid) {
       return { ok: false, message: "会社セッションがありません。", company: "" };
     }
@@ -1002,6 +1018,7 @@ document.addEventListener("DOMContentLoaded", function () {
   $("btn-import").addEventListener("click", async function () {
     var check = await ensureSessionCompanyForWrite();
     if (!check.ok) {
+      if (check.sessionExpired) return;
       setMsg(check.message, "err");
       return;
     }
@@ -1029,6 +1046,7 @@ document.addEventListener("DOMContentLoaded", function () {
         data = null;
       }
       if (!res.ok) {
+        if (onUnauthorized(res)) return;
         var detail = res.statusText;
         if (data && data.detail != null) {
           if (typeof data.detail === "string") detail = data.detail;

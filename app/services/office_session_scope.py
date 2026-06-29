@@ -36,3 +36,8 @@ def require_session_company_row(request: Request, row_company_id: Optional[str])
     if row_cid != session_cid:
         raise HTTPException(status_code=403, detail="company_id does not match session")
     return session_cid
+
+
+def require_authenticated_session(request: Request) -> str:
+    """ログイン済み session の company_id を返す（company パラメータが無い API 用）。"""
+    return get_session_company_id(request)

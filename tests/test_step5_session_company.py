@@ -33,6 +33,13 @@ SESSION_SCREENS = [
         "ProductMasterPass1",
         "商品マスタ",
     ),
+    (
+        "/priority/input/v2",
+        "priority_input_v2.html",
+        "priority_input_sess_co",
+        "PriorityInputPass1",
+        "第7条入力",
+    ),
 ]
 
 
@@ -60,6 +67,7 @@ def _login(client: TestClient, cid: str, password: str) -> None:
     "path,html_name,cid,password,title",
     SESSION_SCREENS,
 )
+@pytest.mark.no_auth
 def test_step5_redirects_without_session(
     client: TestClient, path: str, html_name: str, cid: str, password: str, title: str
 ):

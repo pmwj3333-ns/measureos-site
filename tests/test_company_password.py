@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from starlette.testclient import TestClient
 
+from tests.conftest import ensure_tenant_login
+
 from app import models
 from app.database import SessionLocal
 from app.services.company_password import verify_company_password
@@ -120,6 +122,7 @@ def test_empty_password_keeps_existing_hash(client: TestClient):
 def test_get_returns_has_password_not_secret(client: TestClient):
     cid = "pwd_get_co"
     _put_leaders(client, cid, company_password="get-test-pw")
+    ensure_tenant_login(client, cid, "get-test-pw")
 
     r = client.get(f"/v2/company/{cid}")
     assert r.status_code == 200, r.text
@@ -143,10 +146,14 @@ def test_existing_company_without_password_still_works(client: TestClient):
     cid = "pwd_legacy_co"
     r = _put_leaders(client, cid, company_name="既存互換テスト")
     assert r.status_code == 200, r.text
+    assert r.json()["has_password"] is False
 
-    g = client.get(f"/v2/company/{cid}")
-    assert g.status_code == 200, r.text
-    assert g.json()["has_password"] is False
+    login = client.post(
+        "/v2/office/login",
+        json={"company_id": cid, "password": "wrong-or-empty"},
+    )
+    assert login.status_code == 401
+    assert client.get(f"/v2/company/{cid}").status_code == 401
 
     db = SessionLocal()
     try:

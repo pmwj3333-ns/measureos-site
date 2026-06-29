@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
+from tests.conftest import ensure_tenant_login
+
 from app.services.package_a_observe import (
     DANGER_SCORE_WEIGHT_AFTER_CUTOFF,
     DANGER_SCORE_WEIGHT_BLUE,
@@ -418,6 +420,7 @@ def test_save_portfolio_weekly_snapshots(client: TestClient):
 
 def test_observe_portfolio_last_activity_after_work(client: TestClient):
     _register_company(client, "pf_activity_co", "Activity")
+    ensure_tenant_login(client, "pf_activity_co", "PortfolioPass1!")
     w = client.post(
         "/v2/work",
         json={

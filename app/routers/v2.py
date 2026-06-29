@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app import models
@@ -21,6 +21,7 @@ from app.services.package_rules import (
     package_targets,
 )
 from app.services.company_validator import ensure_company_registered, normalize_company_id, validate_company_id
+from app.services.office_session_scope import require_session_company_match
 from app.services.company_password import (
     company_has_password,
     get_company_master,
@@ -137,11 +138,12 @@ def v2_reissue_company_password(company_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/company/{company_id}", summary="現場 v2 用・会社スナップショット")
-def v2_get_company(company_id: str, db: Session = Depends(get_db)):
-    s = db.query(models.CompanySettings).filter_by(company_id=company_id).first()
+def v2_get_company(company_id: str, request: Request, db: Session = Depends(get_db)):
+    cid = require_session_company_match(request, company_id)
+    s = db.query(models.CompanySettings).filter_by(company_id=cid).first()
     if not s:
         return {
-            "company_id": company_id,
+            "company_id": cid,
             "company_name": "",
             "field_users": "",
             "input_mode": "manufacturing",
@@ -151,7 +153,7 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
             "tolerance_value": None,
             "phase2_enabled": is_phase2_enabled(None),
             **_package_meta("A"),
-            **_password_meta(db, company_id),
+            **_password_meta(db, cid),
         }
     pkg = get_company_package(s)
     return {
@@ -165,7 +167,7 @@ def v2_get_company(company_id: str, db: Session = Depends(get_db)):
         "tolerance_value": getattr(s, "tolerance_value", None),
         "phase2_enabled": is_phase2_enabled(s),
         **_package_meta(pkg),
-        **_password_meta(db, company_id),
+        **_password_meta(db, cid),
     }
 
 

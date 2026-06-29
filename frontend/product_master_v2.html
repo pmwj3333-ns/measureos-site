@@ -273,10 +273,23 @@
   </div>
 </div>
 
+<script src="/static/office_session_expired.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
   let productMasterSessionCompanyId = "";
+
+  function sessionExpiredOpts() {
+    return { returnTo: window.location.pathname || "/product/master/v2" };
+  }
+
+  function onUnauthorized(res) {
+    return OfficeSessionExpired && OfficeSessionExpired.ifUnauthorized(res, sessionExpiredOpts());
+  }
+
+  function isSessionExpiredError(err) {
+    return OfficeSessionExpired && OfficeSessionExpired.isSessionExpiredError(err);
+  }
 
   function initProductMasterSessionCompanyFromBootstrap() {
     const boot =
@@ -315,6 +328,8 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const authErr = onUnauthorized(res);
+      if (authErr) throw authErr;
       throw new Error(detailToMessage(data.detail) || res.statusText || String(res.status));
     }
     return data;
@@ -343,6 +358,8 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const authErr = onUnauthorized(res);
+      if (authErr) throw authErr;
       throw new Error(detailToMessage(data.detail) || res.statusText || String(res.status));
     }
     return data;
@@ -429,6 +446,7 @@
             setMsg("保存しました（ID " + id + "）", "ok");
             await load();
           } catch (e) {
+            if (isSessionExpiredError(e)) return;
             setMsg(String(e.message || e), "err");
           } finally {
             saveBtn.disabled = false;
@@ -444,6 +462,7 @@
             setMsg("無効にしました（ID " + id + "）", "ok");
             await load();
           } catch (e) {
+            if (isSessionExpiredError(e)) return;
             setMsg(String(e.message || e), "err");
           } finally {
             inactiveBtn.disabled = false;
@@ -459,6 +478,7 @@
             setMsg("有効化しました（ID " + id + "）", "ok");
             await load();
           } catch (e) {
+            if (isSessionExpiredError(e)) return;
             setMsg(String(e.message || e), "err");
           } finally {
             activeBtn.disabled = false;
@@ -505,6 +525,7 @@
       );
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        if (onUnauthorized(res)) return;
         setMsg((data && data.detail) || res.statusText || String(res.status), "err");
         $("tbody").innerHTML = "<tr><td colspan=\"7\" class=\"empty-cell\">取得できませんでした</td></tr>";
         return;
@@ -513,6 +534,7 @@
       renderRows(rows);
       setMsg(rows.length + " 件", "ok");
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       setMsg(String(e.message || e), "err");
     }
   }
@@ -540,6 +562,7 @@
       setMsg("追加しました。一覧を更新します。", "ok");
       await load();
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       setMsg(String(e.message || e), "err");
     } finally {
       btn.disabled = false;

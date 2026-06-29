@@ -56,18 +56,21 @@ def test_build_office_login_url():
     assert build_office_login_url("https://evil.example/") == "/office/v2"
 
 
+@pytest.mark.no_auth
 def test_field_unauthenticated_redirect_includes_return_to(client: TestClient):
     r = client.get("/field/v2", follow_redirects=False)
     assert r.status_code == 307
     assert r.headers.get("location") == "/office/v2?return_to=%2Ffield%2Fv2"
 
 
+@pytest.mark.no_auth
 def test_genba_unauthenticated_redirect_includes_return_to(client: TestClient):
     r = client.get("/genba/v2", follow_redirects=False)
     assert r.status_code == 307
     assert r.headers.get("location") == "/office/v2?return_to=%2Fgenba%2Fv2"
 
 
+@pytest.mark.no_auth
 def test_priority_unauthenticated_redirect_includes_return_to(client: TestClient):
     r = client.get("/priority/v2", follow_redirects=False)
     assert r.status_code == 307

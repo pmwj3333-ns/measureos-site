@@ -314,6 +314,7 @@
   </div>
 
 <script src="/static/priority-tier-due.js"></script>
+<script src="/static/office_session_expired.js"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -321,6 +322,14 @@
   var msg = $("msg");
   var updatedAtEl = $("updated-at");
   var prioritySessionCompanyId = "";
+
+  function sessionExpiredOpts() {
+    return { returnTo: window.location.pathname || "/priority/v2" };
+  }
+
+  function onUnauthorized(res) {
+    return OfficeSessionExpired && OfficeSessionExpired.ifUnauthorized(res, sessionExpiredOpts());
+  }
 
   function initPrioritySessionCompanyFromBootstrap() {
     var boot =
@@ -607,6 +616,7 @@
         dataItems = null;
       }
       if (!resItems.ok) {
+        if (onUnauthorized(resItems)) return;
         msg.hidden = false;
         msg.textContent =
           (dataItems && dataItems.detail) ? String(dataItems.detail) : textItems || String(resItems.status);

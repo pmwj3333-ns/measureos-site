@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from starlette.testclient import TestClient
 
+from tests.conftest import ensure_tenant_login
+
 
 def _register(client: TestClient, cid: str, name: str | None = None) -> None:
     r = client.post(
@@ -14,6 +16,8 @@ def _register(client: TestClient, cid: str, name: str | None = None) -> None:
 
 
 def test_post_work_rejects_unregistered_company(client: TestClient):
+    _register(client, "validator_gate_co", "検証用")
+    ensure_tenant_login(client, "validator_gate_co", "ValidatorPass1!")
     r = client.post(
         "/v2/work",
         json={
@@ -24,12 +28,14 @@ def test_post_work_rejects_unregistered_company(client: TestClient):
             "business_date": "2026-05-01",
         },
     )
-    assert r.status_code == 422
-    assert r.json()["detail"] == "company_id is not registered"
+    assert r.status_code == 403
+    assert r.json()["detail"] == "company_id does not match session"
 
 
 def test_post_work_rejects_inactive_company(client: TestClient):
     _register(client, "inactive_co", "無効会社")
+    _register(client, "validator_active_co", "有効")
+    ensure_tenant_login(client, "validator_active_co", "ValidatorPass1!")
     row = client.get("/admin/companies").json()
     rid = next(x["id"] for x in row if x["company_id"] == "inactive_co")
     r = client.patch(f"/admin/companies/{rid}", json={"is_active": False})
@@ -46,11 +52,12 @@ def test_post_work_rejects_inactive_company(client: TestClient):
         },
     )
     assert r.status_code == 403
-    assert r.json()["detail"] == "company is inactive"
+    assert r.json()["detail"] == "company_id does not match session"
 
 
 def test_post_work_allows_registered_active_company(client: TestClient):
     _register(client, "active_gate_co", "有効会社")
+    ensure_tenant_login(client, "active_gate_co", "ValidatorPass1!")
     r = client.post(
         "/v2/work",
         json={
