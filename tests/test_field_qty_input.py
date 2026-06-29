@@ -28,6 +28,7 @@ def test_field_v2_qty_binding_is_composition_aware():
     assert "addEventListener(\"blur\"" in bind
     assert "function finalizeQtyInputAfterComposition" in html
     assert "requestAnimationFrame" in html
+    assert "maxAttempts = 8" in html
     assert "normalizeNumberInput(qtyIn.value)" not in bind
     assert "qtyIn.value = v" not in bind
 
