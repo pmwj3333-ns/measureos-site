@@ -23,7 +23,11 @@ def test_field_v2_qty_binding_is_composition_aware():
     bind = _extract_fn(html, "function bindQtyInputEvents", "function isLogistics")
     assert "compositionstart" in bind
     assert "compositionend" in bind
+    assert "finalizeQtyInputAfterComposition" in bind
+    assert "normalizeQtyInputIfFullwidthPresent" in bind
     assert "addEventListener(\"blur\"" in bind
+    assert "function finalizeQtyInputAfterComposition" in html
+    assert "requestAnimationFrame" in html
     assert "normalizeNumberInput(qtyIn.value)" not in bind
     assert "qtyIn.value = v" not in bind
 

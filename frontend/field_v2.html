@@ -1976,6 +1976,34 @@ function normalizeQtyInputInPlace(inputEl) {
   return true;
 }
 
+function qtyInputHasFullwidthDigits(inputEl) {
+  if (!inputEl) return false;
+  return /[０-９]/.test(String(inputEl.value || ""));
+}
+
+/** compositionend 直後は Safari 等で .value が未更新のことがあるため、次フレームで正規化 */
+function finalizeQtyInputAfterComposition(inputEl, onDirty) {
+  if (!inputEl) return;
+  delete inputEl.dataset.moQtyComposing;
+  const run = function () {
+    normalizeQtyInputInPlace(inputEl);
+    inputEl.dataset.moQtyDirty = "1";
+    if (typeof onDirty === "function") onDirty();
+  };
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(run);
+  } else {
+    window.setTimeout(run, 0);
+  }
+}
+
+/** composition なしで全角数字が入った場合（直接入力・貼り付け等）の即時正規化 */
+function normalizeQtyInputIfFullwidthPresent(inputEl) {
+  if (!inputEl || isQtyInputComposing(inputEl)) return;
+  if (!qtyInputHasFullwidthDigits(inputEl)) return;
+  normalizeQtyInputInPlace(inputEl);
+}
+
 /**
  * 送信直前などに DOM の数量欄を半角へそろえる。
  * force: true のときはフォーカス中・変換中も正規化（保存直前用）。
@@ -1998,14 +2026,12 @@ function bindQtyInputEvents(qtyIn, onDirty) {
     qtyIn.dataset.moQtyComposing = "1";
   });
   qtyIn.addEventListener("compositionend", function () {
-    delete qtyIn.dataset.moQtyComposing;
-    normalizeQtyInputInPlace(qtyIn);
-    qtyIn.dataset.moQtyDirty = "1";
-    if (typeof onDirty === "function") onDirty();
+    finalizeQtyInputAfterComposition(qtyIn, onDirty);
   });
   qtyIn.addEventListener("input", function fieldQtyOnInput() {
     if (isQtyInputComposing(qtyIn)) return;
     qtyIn.dataset.moQtyDirty = "1";
+    normalizeQtyInputIfFullwidthPresent(qtyIn);
     if (fieldQtyEventDebugEnabled()) {
       _fieldQtyDbgInput++;
       console.log(
