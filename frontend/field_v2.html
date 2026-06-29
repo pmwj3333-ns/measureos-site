@@ -1932,12 +1932,108 @@ function normalizeNumberInput(value) {
   );
 }
 
-/** 送信直前などに DOM の数量欄を半角へそろえる */
-function normalizeQtyInputsInHost(host) {
+function isQtyInputComposing(inputEl) {
+  return Boolean(inputEl && inputEl.dataset.moQtyComposing === "1");
+}
+
+/** 数量欄へ代入（全角→半角のみ。キャレットは文字数が同じなので位置を維持） */
+function assignQtyInputNormalizedValue(inputEl, stringVal, opts) {
+  opts = opts || {};
+  if (!inputEl) return;
+  const normalized =
+    stringVal != null && stringVal !== ""
+      ? normalizeNumberInput(String(stringVal))
+      : "";
+  if (inputEl.value === normalized) return;
+  const restoreCaret = opts.restoreCaret !== false && document.activeElement === inputEl;
+  let selStart = null;
+  let selEnd = null;
+  if (restoreCaret) {
+    try {
+      selStart = inputEl.selectionStart;
+      selEnd = inputEl.selectionEnd;
+    } catch (_) { /* ok */ }
+  }
+  inputEl.value = normalized;
+  if (restoreCaret && selStart != null && selEnd != null) {
+    try {
+      const len = normalized.length;
+      inputEl.setSelectionRange(
+        Math.min(selStart, len),
+        Math.min(selEnd, len),
+      );
+    } catch (_) { /* ok */ }
+  }
+}
+
+/** 入力確定後・blur 時用。IME 変換中は触らない。 */
+function normalizeQtyInputInPlace(inputEl) {
+  if (!inputEl || isQtyInputComposing(inputEl)) return false;
+  const before = inputEl.value;
+  const after = normalizeNumberInput(before);
+  if (before === after) return false;
+  assignQtyInputNormalizedValue(inputEl, after, { restoreCaret: true });
+  return true;
+}
+
+/**
+ * 送信直前などに DOM の数量欄を半角へそろえる。
+ * force: true のときはフォーカス中・変換中も正規化（保存直前用）。
+ */
+function normalizeQtyInputsInHost(host, opts) {
+  opts = opts || {};
+  const force = opts.force === true;
   if (!host) return;
-  host.querySelectorAll("[data-line-qty]").forEach((inputEl) => {
-    const v = normalizeNumberInput(inputEl.value);
-    if (v !== inputEl.value) inputEl.value = v;
+  host.querySelectorAll("[data-line-qty], [data-um-qty]").forEach((inputEl) => {
+    if (!force && isQtyInputComposing(inputEl)) return;
+    if (!force && document.activeElement === inputEl) return;
+    normalizeQtyInputInPlace(inputEl);
+  });
+}
+
+/** 第5条数量欄・使用物数量欄の input / IME / blur を統一 */
+function bindQtyInputEvents(qtyIn, onDirty) {
+  if (!qtyIn) return;
+  qtyIn.addEventListener("compositionstart", function () {
+    qtyIn.dataset.moQtyComposing = "1";
+  });
+  qtyIn.addEventListener("compositionend", function () {
+    delete qtyIn.dataset.moQtyComposing;
+    normalizeQtyInputInPlace(qtyIn);
+    qtyIn.dataset.moQtyDirty = "1";
+    if (typeof onDirty === "function") onDirty();
+  });
+  qtyIn.addEventListener("input", function fieldQtyOnInput() {
+    if (isQtyInputComposing(qtyIn)) return;
+    qtyIn.dataset.moQtyDirty = "1";
+    if (fieldQtyEventDebugEnabled()) {
+      _fieldQtyDbgInput++;
+      console.log(
+        "[field qty dbg] input #" +
+          _fieldQtyDbgInput +
+          " finalValue=" +
+          JSON.stringify(qtyIn.value),
+        fieldQtyDbgCounts(),
+      );
+    }
+    if (typeof onDirty === "function") onDirty();
+  });
+  qtyIn.addEventListener("blur", function () {
+    normalizeQtyInputInPlace(qtyIn);
+  });
+  qtyIn.addEventListener("keydown", function fieldQtyPreventSpinKeys(ev) {
+    if (ev.key === "ArrowUp" || ev.key === "ArrowDown") ev.preventDefault();
+  });
+  qtyIn.addEventListener("change", function fieldQtyOnChangeDbgOnly() {
+    if (!fieldQtyEventDebugEnabled()) return;
+    _fieldQtyDbgChange++;
+    console.log(
+      "[field qty dbg] change #" +
+        _fieldQtyDbgChange +
+        " finalValue=" +
+        JSON.stringify(qtyIn.value),
+      fieldQtyDbgCounts(),
+    );
   });
 }
 
@@ -2029,9 +2125,9 @@ function makeUsedMaterialRow(umHost) {
     '<input class="input-text um-lot" type="text" data-um-lot="" autocomplete="off" placeholder="lot（任意）" />' +
     '<button type="button" class="btn-line-remove btn-um-remove" aria-label="この行を削除">×</button>';
   const qtyIn = wrap.querySelector("[data-um-qty]");
-  qtyIn.addEventListener("input", () => {
-    const v = normalizeNumberInput(qtyIn.value);
-    if (v !== qtyIn.value) qtyIn.value = v;
+  bindQtyInputEvents(qtyIn, () => {
+    const board = wrap.closest(".multi-row-line");
+    if (board) syncActualRowUmSummary(board);
   });
   wrap.querySelector(".btn-um-remove").addEventListener("click", () => removeUsedMaterialRow(wrap, umHost));
   return wrap;
@@ -2128,7 +2224,7 @@ function syncActualPerLineMaterialsReadOnly(ro) {
 function scanProductBlockLinesForSubmit(host, opts) {
   opts = opts || {};
   const allowQtyEmpty = !!opts.allowQtyEmpty;
-  normalizeQtyInputsInHost(host);
+  normalizeQtyInputsInHost(host, { force: true });
   if (!host) return { lines: [] };
   const out = [];
   for (const row of host.querySelectorAll(".multi-row-line")) {
@@ -2300,37 +2396,8 @@ function makeInputLineRow(placeholder, listId, withProductCode, materialsMode) {
   labIn.addEventListener("input", onLabOrQty);
   labIn.addEventListener("change", onLabOrQty);
   if (qtyIn) {
-    qtyIn.addEventListener("input", function fieldQtyOnInput() {
-      const v = normalizeNumberInput(qtyIn.value);
-      if (v !== qtyIn.value) {
-        qtyIn.value = v;
-      }
-      qtyIn.dataset.moQtyDirty = "1";
-      if (fieldQtyEventDebugEnabled()) {
-        _fieldQtyDbgInput++;
-        console.log(
-          "[field qty dbg] input #" +
-            _fieldQtyDbgInput +
-            " finalValue=" +
-            JSON.stringify(qtyIn.value),
-          fieldQtyDbgCounts(),
-        );
-      }
+    bindQtyInputEvents(qtyIn, () => {
       syncDeviationReasonPanel();
-    });
-    qtyIn.addEventListener("keydown", function fieldQtyPreventSpinKeys(ev) {
-      if (ev.key === "ArrowUp" || ev.key === "ArrowDown") ev.preventDefault();
-    });
-    qtyIn.addEventListener("change", function fieldQtyOnChangeDbgOnly() {
-      if (!fieldQtyEventDebugEnabled()) return;
-      _fieldQtyDbgChange++;
-      console.log(
-        "[field qty dbg] change #" +
-          _fieldQtyDbgChange +
-          " finalValue=" +
-          JSON.stringify(qtyIn.value),
-        fieldQtyDbgCounts(),
-      );
     });
   }
   return wrap;
@@ -2439,7 +2506,7 @@ function normalizeScannedLines(lines) {
 
 /** DOM を半角にそろえたうえで scan → 送信直前の lines を返す */
 function scanHostLinesForSubmit(host, opts) {
-  normalizeQtyInputsInHost(host);
+  normalizeQtyInputsInHost(host, { force: true });
   const result = scanHostLines(host, opts);
   if (result.error) return result;
   return { lines: normalizeScannedLines(result.lines) };
@@ -3603,8 +3670,6 @@ function syncDeviationReasonPanel() {
   const ta = document.getElementById("deviation-reason");
   if (!panel || !ta) return;
 
-  normalizeQtyInputsInHost(actualRowsHost());
-
   if (actualScreenReadOnly) {
     panel.style.display = "block";
     const pa = document.getElementById("pattern-a-cb");
@@ -4564,7 +4629,8 @@ async function submitActual() {
   if (memoEl) payload.actual_memo = String(memoEl.value || "").trim() || null;
   if (needDevReason) payload.deviation_reason = reasonVal;
 
-  normalizeQtyInputsInHost(plannedRowsHost());
+  normalizeQtyInputsInHost(plannedRowsHost(), { force: true });
+  normalizeQtyInputsInHost(actualRowsHost(), { force: true });
   const plannedDomScan = scanProductBlockLinesForSubmit(plannedRowsHost(), { allowQtyEmpty: true });
   if (fieldActualSubmitDebugEnabled()) {
     console.log("[field actual submit dbg]", {
