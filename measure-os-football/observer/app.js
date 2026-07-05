@@ -1294,7 +1294,7 @@ function calculateMiniReview() {
 
   if (typeof calculator !== "function") {
     return {
-      formatVersion: 2,
+      formatVersion: 3,
       plan: { text: "プランおおむね維持", tone: "neutral" },
       flow: { text: "拮抗した前半", tone: "neutral" },
       attack: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
@@ -1321,7 +1321,7 @@ function isLegacyMiniReviewSnapshot(snapshot) {
   }
 
   if (!snapshot || typeof snapshot !== "object") return false;
-  return Number(snapshot.formatVersion) !== 2;
+  return Number(snapshot.formatVersion) !== 3;
 }
 
 function refreshMiniReviewSnapshotIfNeeded() {

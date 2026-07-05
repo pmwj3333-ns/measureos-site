@@ -1,5 +1,5 @@
 (function () {
-  const MINI_REVIEW_FORMAT_VERSION = 2;
+  const MINI_REVIEW_FORMAT_VERSION = 3;
   const MINI_REVIEW_FIELD_KEYS = [
     "plan",
     "flow",
@@ -19,6 +19,10 @@
     "Away Dominant": { text: "押し込まれる展開", tone: "negative" },
     Balanced: { text: "拮抗した前半", tone: "neutral" },
     "Momentum Shift": { text: "流れが入れ替わ", tone: "neutral" },
+    Dominant: { text: "主導権を握る", tone: "positive" },
+    SlightlyAdvantaged: { text: "やや優勢", tone: "positive" },
+    SlightlyDisadvantaged: { text: "やや劣勢", tone: "negative" },
+    Pressed: { text: "押し込まれる展開", tone: "negative" },
     "Left Attack": { text: "左攻撃が機能", tone: "positive" },
     "Central Attack": { text: "中央突破が有効", tone: "positive" },
     "Right Attack": { text: "右攻撃が機能", tone: "positive" },
@@ -43,6 +47,13 @@
   };
 
   const PLAN_CATEGORY_KEYS = ["attack", "defense", "buildUp", "transition"];
+
+  const FLOW_CATEGORY_WEIGHTS = {
+    attack: 0.3,
+    buildUp: 0.3,
+    transition: 0.2,
+    defense: 0.2,
+  };
 
   const STATE_STATUS_SCORE = {
     green: 4,
@@ -140,13 +151,6 @@
     const [minutes, seconds] = String(timeValue || "").split(":").map(Number);
     if (Number.isNaN(minutes) || Number.isNaN(seconds)) return 0;
     return Math.max(0, minutes * 60 + seconds);
-  }
-
-  function normalizeTeam(team) {
-    const value = String(team || "").trim().toLowerCase();
-    if (value === "home") return "home";
-    if (value === "away") return "away";
-    return null;
   }
 
   function readPlanCategory(plan, categoryKey) {
@@ -275,68 +279,63 @@
     }
   }
 
-  function countTeamEvents(events, team) {
-    return events.filter((event) => normalizeTeam(event.team) === team).length;
+  function scoreToFlowRating(score) {
+    if (score >= 3.5) return "Dominant";
+    if (score >= 3.15) return "SlightlyAdvantaged";
+    if (score >= 2.85) return "Balanced";
+    if (score >= 2.35) return "SlightlyDisadvantaged";
+    return "Pressed";
   }
 
-  function calculateFlow(events) {
-    const teamEvents = events.filter((event) => normalizeTeam(event.team));
-    if (teamEvents.length === 0) return "Balanced";
+  function calculateFlow(plan, events, liveStatesByRuleId) {
+    if (!plan) return "Balanced";
 
-    const homeCount = countTeamEvents(teamEvents, "home");
-    const awayCount = countTeamEvents(teamEvents, "away");
-    const total = homeCount + awayCount;
-    const homeRatio = homeCount / total;
+    const firstHalfEvents = filterFirstHalfEvents(events);
+    const engineStatesByRuleId = indexStatesByRuleId(
+      evaluateStateEngine(plan, firstHalfEvents),
+    );
 
-    const timedEvents = teamEvents
-      .map((event) => ({ event, seconds: parseMatchTime(event.time) }))
-      .filter((item) => item.seconds > 0 || item.event.time === "00:00");
+    let weightedSum = 0;
+    let totalWeight = 0;
 
-    if (timedEvents.length >= 6) {
-      const sortedSeconds = timedEvents.map((item) => item.seconds).sort((a, b) => a - b);
-      const midpoint = sortedSeconds[Math.floor(sortedSeconds.length / 2)];
-      const firstPeriod = timedEvents.filter((item) => item.seconds <= midpoint);
-      const secondPeriod = timedEvents.filter((item) => item.seconds > midpoint);
+    Object.entries(FLOW_CATEGORY_WEIGHTS).forEach(([categoryKey, weight]) => {
+      const planOptions = readPlanCategory(plan, categoryKey);
+      if (!planOptions.length) return;
 
-      const firstHome = countTeamEvents(firstPeriod.map((item) => item.event), "home");
-      const firstAway = countTeamEvents(firstPeriod.map((item) => item.event), "away");
-      const secondHome = countTeamEvents(secondPeriod.map((item) => item.event), "home");
-      const secondAway = countTeamEvents(secondPeriod.map((item) => item.event), "away");
+      const categoryScore = calculateCategoryPlanScore(
+        planOptions,
+        PLAN_OPTION_RULE_IDS[categoryKey] || {},
+        engineStatesByRuleId,
+        liveStatesByRuleId,
+      );
 
-      const firstLeader = firstHome > firstAway * 1.15
-        ? "home"
-        : firstAway > firstHome * 1.15
-          ? "away"
-          : "balanced";
-      const secondLeader = secondHome > secondAway * 1.15
-        ? "home"
-        : secondAway > secondHome * 1.15
-          ? "away"
-          : "balanced";
+      if (categoryScore == null) return;
 
-      if (
-        firstLeader !== "balanced"
-        && secondLeader !== "balanced"
-        && firstLeader !== secondLeader
-      ) {
-        return "Momentum Shift";
-      }
-    }
+      weightedSum += categoryScore * weight;
+      totalWeight += weight;
+    });
 
-    if (homeRatio >= 0.58) return "Home Dominant";
-    if (homeRatio <= 0.42) return "Away Dominant";
-    return "Balanced";
+    if (totalWeight === 0) return "Balanced";
+
+    return scoreToFlowRating(weightedSum / totalWeight);
   }
 
   function formatFlowReview(flowType) {
     switch (flowType) {
+      case "Dominant":
       case "Home Dominant":
         return createReviewEntry("主導権を握る", "positive");
+      case "SlightlyAdvantaged":
+        return createReviewEntry("やや優勢", "positive");
+      case "Balanced":
+        return createReviewEntry("拮抗した前半", "neutral");
+      case "SlightlyDisadvantaged":
+        return createReviewEntry("やや劣勢", "negative");
+      case "Pressed":
       case "Away Dominant":
         return createReviewEntry("押し込まれる展開", "negative");
       case "Momentum Shift":
         return createReviewEntry("流れが入れ替わ", "neutral");
-      case "Balanced":
       default:
         return createReviewEntry("拮抗した前半", "neutral");
     }
@@ -473,7 +472,7 @@
   function calculateMiniReview({ plan, events, liveStatesByRuleId, generatedAt } = {}) {
     const firstHalfEvents = filterFirstHalfEvents(events);
     const planRating = calculatePlanReview(plan, firstHalfEvents, liveStatesByRuleId);
-    const flowType = calculateFlow(firstHalfEvents);
+    const flowType = calculateFlow(plan, firstHalfEvents, liveStatesByRuleId);
 
     return {
       formatVersion: MINI_REVIEW_FORMAT_VERSION,
@@ -493,6 +492,7 @@
     calculateMiniReview,
     calculatePlanReview,
     calculateFlow,
+    scoreToFlowRating,
     calculateAttackSummary,
     calculateDefenseSummary,
     calculateBuildUpSummary,
