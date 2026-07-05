@@ -495,6 +495,7 @@ app.include_router(working_calendar.router)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FRONTEND_DIR = _PROJECT_ROOT / "frontend"
 _WEBSITE_DIR = _PROJECT_ROOT / "website"
+_FOOTBALL_DIR = _PROJECT_ROOT / "measure-os-football"
 
 _BRAND_CACHE = {
     "Cache-Control": "public, max-age=300",
@@ -742,6 +743,18 @@ def debug_screen_alias():
     return _file_response_or_404("debug.html")
 
 
+@app.get("/football", summary="MEASURE OS Football エントリ", include_in_schema=False)
+@app.get("/measure-os-football", summary="MEASURE OS Football エントリ", include_in_schema=False)
+def football_entry():
+    entry = _FOOTBALL_DIR / "match-setup" / "v0.1" / "index.html"
+    if not entry.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"measure-os-football が配置されていません（期待パス: {entry}）",
+        )
+    return FileResponse(entry, headers=_NO_CACHE)
+
+
 app.mount(
     "/brand/css",
     StaticFiles(directory=str(_WEBSITE_DIR / "css")),
@@ -762,3 +775,9 @@ app.mount(
     StaticFiles(directory=str(_FRONTEND_DIR / "static")),
     name="static",
 )
+if _FOOTBALL_DIR.is_dir():
+    app.mount(
+        "/measure-os-football",
+        StaticFiles(directory=str(_FOOTBALL_DIR), html=True),
+        name="measure_os_football",
+    )

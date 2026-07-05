@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Observer</title>
+  <link rel="stylesheet" href="../shared/page-shell.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="observer-header-shell page-shell">
+    <header class="page-hero" aria-labelledby="page-title">
+      <p class="eyebrow">MEASURE OS Football</p>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1 id="page-title">Observer</h1>
+          <p class="lead">試合中のイベントを観測する。</p>
+        </div>
+        <aside class="philosophy-card" aria-label="MEASURE OS flow guide">
+          <p>MEASURE OS の流れ</p>
+          <div class="philosophy-steps" aria-hidden="true">
+            <span>Plan</span>
+            <span>Operation</span>
+            <span>Deviation</span>
+            <span>Human Decision</span>
+          </div>
+        </aside>
+      </div>
+    </header>
+  </div>
+
+  <main class="page-shell observer-body">
+    <header class="match-command-bar panel" aria-label="match command">
+      <p class="match-time"><span id="phase-label">試合前</span><strong id="clock">00:00</strong></p>
+      <div class="score-control" aria-label="score control">
+        <span class="score-team-label">Home</span>
+        <button type="button" aria-label="Home score minus" data-score-team="home" data-score-delta="-1">−</button>
+        <button type="button" class="primary" aria-label="Home score plus" data-score-team="home" data-score-delta="1">＋</button>
+        <p id="score-board" class="score-board score-board-compact" aria-live="polite">
+          <span id="home-score-mini">0</span>-<span id="away-score-mini">0</span>
+        </p>
+        <button type="button" aria-label="Away score minus" data-score-team="away" data-score-delta="-1">−</button>
+        <button type="button" class="primary" aria-label="Away score plus" data-score-team="away" data-score-delta="1">＋</button>
+        <span class="score-team-label">Away</span>
+        <span class="sr-only">
+          Home <span id="home-score">0</span> - <span id="away-score">0</span> Away
+        </span>
+      </div>
+      <div class="match-control match-action-wrap">
+        <h2 id="match-control-title" class="sr-only">Match Control</h2>
+        <p id="match-phase-text" class="sr-only">Game Plan 確定後、キックオフから観測を開始します。</p>
+        <button id="match-action" type="button" class="primary match-action">キックオフ</button>
+      </div>
+    </header>
+
+    <section id="halftime-panel" class="halftime-panel panel" aria-labelledby="halftime-title" hidden>
+      <div>
+        <h2 id="halftime-title" class="sr-only">ハーフタイム</h2>
+        <p class="sr-only">後半のPlanをどう扱うか選択します。</p>
+      </div>
+      <div class="halftime-actions">
+        <button id="continue-plan" type="button" class="primary">このまま続ける</button>
+        <button id="change-plan" type="button">プラン変更</button>
+      </div>
+    </section>
+
+    <section class="context-strip panel" aria-label="team and game plan">
+      <div class="context-strip-head">
+        <div class="team-toggle" role="group" aria-label="team selection">
+          <button type="button" class="selected" data-team="home">Home</button>
+          <button type="button" data-team="away">Away</button>
+        </div>
+        <div class="game-plan-controls">
+          <div class="current-plan-anchor">
+            <button
+              type="button"
+              id="current-plan-toggle"
+              class="current-plan-toggle"
+              aria-expanded="false"
+              aria-controls="current-plan-popover"
+            >
+              <span class="current-plan-toggle-icon" aria-hidden="true">▼</span>
+              <span id="game-plan-title">Current Plan</span>
+            </button>
+            <div
+              id="current-plan-popover"
+              class="current-plan-popover"
+              role="region"
+              aria-labelledby="game-plan-title"
+              hidden
+            >
+              <div id="game-plan-empty" class="current-plan-empty" hidden></div>
+              <div id="game-plan-content" class="current-plan-card" hidden></div>
+            </div>
+          </div>
+          <button type="button" id="change-plan-action" class="plan-change-button">Plan変更</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="operation-grid" aria-label="operation workspace">
+      <div class="observation-column">
+        <section class="panel event-panel" aria-label="Observation">
+          <div id="event-categories" class="event-categories"></div>
+        </section>
+
+        <section class="match-events-panel panel" aria-labelledby="match-events-title">
+          <h2 id="match-events-title" class="match-events-heading">Match Events</h2>
+          <div id="match-events" class="match-events-grid"></div>
+        </section>
+      </div>
+
+      <aside class="panel live-state-panel" aria-labelledby="live-state-title">
+        <h2 id="live-state-title" class="live-state-heading">LIVE STATE</h2>
+        <div id="live-state-content" class="live-state-content" aria-live="polite"></div>
+        <div id="live-state-detail" class="live-state-detail" hidden></div>
+      </aside>
+    </section>
+
+    <section id="post-match-panel" class="post-match-panel panel" aria-label="post match summary" hidden>
+      <div class="post-match-summary">
+        <h2 class="post-match-title">試合終了</h2>
+        <p class="post-match-stat">最終試合時間 <strong id="post-match-time">00:00</strong></p>
+        <p class="post-match-stat">最終スコア <strong id="post-match-score">Home 0 - 0 Away</strong></p>
+      </div>
+      <div class="post-match-actions">
+        <button id="open-review" type="button" class="primary">Reviewを見る</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="../shared/plan-snapshot.js"></script>
+  <script src="../shared/review-archive.js"></script>
+  <script src="../state-engine/v0.1/engine.js"></script>
+  <script src="../state-engine/v0.1/rules/rule012-attack-left-dominance.js"></script>
+  <script src="../state-engine/v0.1/rules/rule013-attack-right-dominance.js"></script>
+  <script src="../state-engine/v0.1/rules/rule014-attack-central-attack.js"></script>
+  <script src="../state-engine/v0.1/rules/rule015-attack-cross-strategy.js"></script>
+  <script src="../state-engine/v0.1/rules/rule002-defense-high-press.js"></script>
+  <script src="../state-engine/v0.1/rules/rule003-defense-low-block.js"></script>
+  <script src="../state-engine/v0.1/rules/rule016-defense-middle-block.js"></script>
+  <script src="../state-engine/v0.1/rules/rule017-defense-side-guiding.js"></script>
+  <script src="../state-engine/v0.1/rules/rule004-build-up-hold-and-advance.js"></script>
+  <script src="../state-engine/v0.1/rules/rule005-build-up-long-advance.js"></script>
+  <script src="../state-engine/v0.1/rules/rule006-build-up-side-advance.js"></script>
+  <script src="../state-engine/v0.1/rules/rule007-build-up-central-advance.js"></script>
+  <script src="../state-engine/v0.1/rules/rule008-transition-immediate-recovery.js"></script>
+  <script src="../state-engine/v0.1/rules/rule009-transition-retreat.js"></script>
+  <script src="../state-engine/v0.1/rules/rule010-transition-fast-vertical.js"></script>
+  <script src="../state-engine/v0.1/rules/rule011-transition-ball-retention.js"></script>
+  <script src="./events.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

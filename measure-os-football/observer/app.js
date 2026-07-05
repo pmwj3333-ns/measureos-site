@@ -1,0 +1,1195 @@
+const state = {
+  running: false,
+  elapsed: 0,
+  timerId: null,
+  selectedTeam: "home",
+  events: [],
+  match: null,
+};
+
+const planStorageKey = "measure-os-football:plan:v0.1";
+const matchStorageKey = "measure-os-football:match-control:v0.3";
+const planReturnKey = "measure-os-football:plan-return:v0.3";
+const eventStorageKey = "measure-os-football:observer-events:v0.3";
+const planPath = "../plan/v0.1/index.html";
+const reviewPath = "./review.html";
+
+const planCategoryLabels = {
+  attack: "Attack",
+  defense: "Defense",
+  buildUp: "Build Up",
+  transition: "Transition",
+};
+
+const planDisplayCategories = [
+  { key: "attack", label: planCategoryLabels.attack },
+  { key: "defense", label: planCategoryLabels.defense },
+  { key: "buildUp", label: planCategoryLabels.buildUp },
+  { key: "transition", label: planCategoryLabels.transition },
+];
+
+const liveStateCategories = [
+  { key: "attack", label: "ATTACK", aliases: ["Attack", "attack"] },
+  { key: "defense", label: "DEFENSE", aliases: ["Defense", "defense"] },
+  { key: "buildUp", label: "BUILD UP", aliases: ["Build Up", "buildUp", "BuildUp"] },
+  { key: "transition", label: "TRANSITION", aliases: ["Transition", "transition"] },
+];
+
+const buildUpReasonEventFilter = (event) => [
+  "左侵入",
+  "中央侵入",
+  "右侵入",
+  "被左侵入",
+  "被中央侵入",
+  "被右侵入",
+  "カウンター被弾",
+  "即時奪回成功",
+].includes(event.eventName);
+
+const liveStateReasonEventFilters = {
+  rule012: (event) => [
+    "左侵入",
+    "中央侵入",
+    "右侵入",
+    "クロス",
+    "シュート",
+    "カウンター被弾",
+  ].includes(event.eventName),
+  rule013: (event) => [
+    "右侵入",
+    "左侵入",
+    "中央侵入",
+    "クロス",
+    "シュート",
+    "カウンター被弾",
+  ].includes(event.eventName),
+  rule014: (event) => [
+    "中央侵入",
+    "左侵入",
+    "右侵入",
+    "クロス",
+    "シュート",
+    "カウンター被弾",
+  ].includes(event.eventName),
+  rule015: (event) => [
+    "クロス",
+    "シュート",
+    "左侵入",
+    "中央侵入",
+    "右侵入",
+    "カウンター被弾",
+  ].includes(event.eventName),
+  rule002: (event) => ["前線奪取", "被中央侵入", "被シュート"].includes(event.eventName),
+  rule003: (event) => [
+    "被左侵入",
+    "被中央侵入",
+    "被右侵入",
+    "被クロス",
+    "被シュート",
+    "ボール奪取",
+  ].includes(event.eventName),
+  rule016: (event) => [
+    "被中央侵入",
+    "被左侵入",
+    "被右侵入",
+    "被クロス",
+    "被シュート",
+    "ボール奪取",
+    "前線奪取",
+  ].includes(event.eventName),
+  rule017: (event) => [
+    "被左侵入",
+    "被中央侵入",
+    "被右侵入",
+    "被クロス",
+    "被シュート",
+    "ボール奪取",
+    "前線奪取",
+  ].includes(event.eventName),
+  rule004: buildUpReasonEventFilter,
+  rule005: buildUpReasonEventFilter,
+  rule006: (event) => [
+    "左侵入",
+    "右侵入",
+    "中央侵入",
+    "被左侵入",
+    "被右侵入",
+    "被中央侵入",
+    "カウンター被弾",
+    "即時奪回成功",
+  ].includes(event.eventName),
+  rule007: (event) => [
+    "中央侵入",
+    "被中央侵入",
+    "左侵入",
+    "右侵入",
+    "被左侵入",
+    "被右侵入",
+    "カウンター被弾",
+    "即時奪回成功",
+  ].includes(event.eventName),
+  rule008: (event) => [
+    "即時奪回成功",
+    "カウンター開始",
+    "カウンター被弾",
+  ].includes(event.eventName),
+  rule009: (event) => [
+    "被中央侵入",
+    "被シュート",
+    "カウンター被弾",
+    "ボール奪取",
+    "被左侵入",
+    "被右侵入",
+  ].includes(event.eventName),
+  rule010: (event) => [
+    "カウンター開始",
+    "左侵入",
+    "中央侵入",
+    "右侵入",
+    "シュート",
+    "カウンター被弾",
+    "即時奪回成功",
+  ].includes(event.eventName),
+  rule011: (event) => [
+    "左侵入",
+    "中央侵入",
+    "右侵入",
+    "カウンター被弾",
+    "即時奪回成功",
+    "カウンター開始",
+    "シュート",
+  ].includes(event.eventName),
+};
+
+let liveStateSnapshot = {
+  evaluatedAt: null,
+  plan: null,
+  events: [],
+  elapsed: 0,
+  states: [],
+};
+let selectedLiveStateRuleId = null;
+
+const phaseLabels = {
+  before_kickoff: "試合前",
+  first_half: "前半",
+  halftime_decision: "ハーフタイム",
+  halftime_ready: "ハーフタイム",
+  second_half: "後半",
+  fulltime: "試合終了",
+};
+
+const observationCategories = window.MO_OBSERVATION_CATEGORIES || [];
+const matchEvents = [
+  { eventName: "Home イエロー", team: "Home", type: "yellow", icon: "■" },
+  { eventName: "Away イエロー", team: "Away", type: "yellow", icon: "■" },
+  { eventName: "Home レッド", team: "Home", type: "red", icon: "■" },
+  { eventName: "Away レッド", team: "Away", type: "red", icon: "■" },
+  { eventName: "Home 交代", team: "Home", type: "substitution", icon: "↔" },
+  { eventName: "Away 交代", team: "Away", type: "substitution", icon: "↔" },
+  { eventName: "Home 負傷交代", team: "Home", type: "injury", icon: "＋" },
+  { eventName: "Away 負傷交代", team: "Away", type: "injury", icon: "＋" },
+];
+const $ = (id) => document.getElementById(id);
+
+function createInitialMatch() {
+  return {
+    kickoff_at: null,
+    first_half_end_at: null,
+    second_half_start_at: null,
+    fulltime_at: null,
+    match_phase: "before_kickoff",
+    first_half_plan: null,
+    second_half_plan: null,
+    currentPlan: null,
+    planHistory: [],
+    home_score: 0,
+    away_score: 0,
+  };
+}
+
+function formatTime(seconds) {
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+function teamLabel(team) {
+  if (team === "Home" || team === "Away") return team;
+  return team === "home" ? "Home" : "Away";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function loadJson(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function saveJson(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (_) {
+    // Observer is local-only for now. If storage fails, keep the screen usable.
+  }
+}
+
+function removeJson(key) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (_) {
+    // Ignore storage errors in the local prototype.
+  }
+}
+
+function normalizePlanSnapshot(raw) {
+  return window.MO_PLAN_SNAPSHOT?.normalizePlanSnapshot(raw) ?? null;
+}
+
+function clonePlanSnapshot(raw) {
+  return window.MO_PLAN_SNAPSHOT?.clonePlanSnapshot(raw) ?? null;
+}
+
+function isValidPlanSnapshot(plan) {
+  return window.MO_PLAN_SNAPSHOT?.isValidPlanSnapshot(plan) ?? false;
+}
+
+function resolvePlanForDisplay() {
+  return currentPlanForDisplay();
+}
+
+function formatPlanSelections(items) {
+  if (!Array.isArray(items) || items.length === 0) return "-";
+  return items.map((item) => escapeHtml(item)).join("、");
+}
+
+function loadMatch() {
+  const saved = loadJson(matchStorageKey);
+  state.match = saved && saved.match_phase ? saved : createInitialMatch();
+  state.match.home_score = Math.max(0, Number(state.match.home_score) || 0);
+  state.match.away_score = Math.max(0, Number(state.match.away_score) || 0);
+  migrateMatchPlanFields();
+}
+
+function sanitizeStoredPlans() {
+  let changed = false;
+
+  const normalizedCurrent = normalizePlanSnapshot(state.match.currentPlan);
+  if (state.match.currentPlan !== normalizedCurrent) {
+    state.match.currentPlan = normalizedCurrent;
+    changed = true;
+  }
+
+  const normalizedFirstHalf = normalizePlanSnapshot(state.match.first_half_plan);
+  if (state.match.first_half_plan !== normalizedFirstHalf) {
+    state.match.first_half_plan = normalizedFirstHalf;
+    changed = true;
+  }
+
+  const normalizedSecondHalf = normalizePlanSnapshot(state.match.second_half_plan);
+  if (state.match.second_half_plan !== normalizedSecondHalf) {
+    state.match.second_half_plan = normalizedSecondHalf;
+    changed = true;
+  }
+
+  const storedPlan = loadJson(planStorageKey);
+  const normalizedStored = normalizePlanSnapshot(storedPlan);
+  if (!normalizedStored) {
+    if (storedPlan != null) {
+      removeJson(planStorageKey);
+      changed = true;
+    }
+  } else if (JSON.stringify(storedPlan) !== JSON.stringify(normalizedStored)) {
+    saveJson(planStorageKey, normalizedStored);
+    changed = true;
+  }
+
+  if (Array.isArray(state.match.planHistory)) {
+    const sanitizedHistory = state.match.planHistory
+      .map((entry) => {
+        const plan = normalizePlanSnapshot(entry?.plan);
+        if (!plan) return null;
+        return { ...entry, plan };
+      })
+      .filter(Boolean);
+
+    if (JSON.stringify(state.match.planHistory) !== JSON.stringify(sanitizedHistory)) {
+      state.match.planHistory = sanitizedHistory;
+      changed = true;
+    }
+  }
+
+  if (changed) saveMatch();
+}
+
+function migrateMatchPlanFields() {
+  if (!Array.isArray(state.match.planHistory)) {
+    state.match.planHistory = [];
+  }
+
+  sanitizeStoredPlans();
+
+  if (!state.match.currentPlan && state.match.kickoff_at) {
+    const activeHalfPlan =
+      state.match.match_phase === "second_half" || state.match.match_phase === "fulltime"
+        ? state.match.second_half_plan
+        : state.match.first_half_plan;
+    const migrated = clonePlanSnapshot(activeHalfPlan);
+    if (migrated) {
+      state.match.currentPlan = migrated;
+      saveMatch();
+    }
+  }
+
+  if (
+    state.match.planHistory.length === 0 &&
+    state.match.kickoff_at &&
+    isValidPlanSnapshot(state.match.currentPlan)
+  ) {
+    const entry = createPlanHistoryEntry({
+      plan: state.match.currentPlan,
+      matchTime: "00:00",
+      elapsedSeconds: 0,
+      phase: "前半",
+      changedAt: state.match.kickoff_at,
+      reason: "initial",
+      eventBoundaryIndex: 0,
+    });
+    if (entry) {
+      appendPlanHistoryEntry(entry);
+      saveMatch();
+    }
+  }
+}
+
+function createPlanHistoryEntry({
+  plan,
+  matchTime,
+  elapsedSeconds,
+  phase,
+  changedAt,
+  reason,
+  eventBoundaryIndex,
+}) {
+  const normalizedPlan = clonePlanSnapshot(plan);
+  if (!normalizedPlan) return null;
+
+  return {
+    plan: normalizedPlan,
+    matchTime: matchTime || "00:00",
+    elapsedSeconds: Number(elapsedSeconds) || 0,
+    phase: phase || "",
+    changedAt: changedAt || nowIso(),
+    reason: reason || "mid_match",
+    eventBoundaryIndex: Number(eventBoundaryIndex) || 0,
+  };
+}
+
+function appendPlanHistoryEntry(entry) {
+  if (!entry) return;
+  if (!Array.isArray(state.match.planHistory)) {
+    state.match.planHistory = [];
+  }
+  state.match.planHistory.push(entry);
+}
+
+function getPlanEvaluationBoundaryIndex() {
+  const history = state.match.planHistory;
+  if (!Array.isArray(history) || history.length === 0) return 0;
+  const last = history[history.length - 1];
+  return Number(last.eventBoundaryIndex) || 0;
+}
+
+function getEventsForStateEvaluation() {
+  const boundaryIndex = getPlanEvaluationBoundaryIndex();
+  return state.events.slice(boundaryIndex);
+}
+
+function saveMatch() {
+  saveJson(matchStorageKey, state.match);
+}
+
+function loadEvents() {
+  const saved = loadJson(eventStorageKey);
+  state.events = Array.isArray(saved) ? saved : [];
+}
+
+function saveEvents() {
+  saveJson(eventStorageKey, state.events);
+}
+
+function currentPlanForDisplay() {
+  return normalizePlanSnapshot(state.match.currentPlan);
+}
+
+function isObservationOpen() {
+  return state.match.match_phase === "first_half" || state.match.match_phase === "second_half";
+}
+
+function isMatchEventOpen() {
+  return state.match.match_phase !== "before_kickoff" && state.match.match_phase !== "fulltime";
+}
+
+function currentObservationPhaseLabel() {
+  return state.match.match_phase === "second_half" ? "後半" : "前半";
+}
+
+function renderClock() {
+  $("clock").textContent = formatTime(state.elapsed);
+  $("phase-label").textContent = phaseLabels[state.match.match_phase] || "試合前";
+}
+
+function renderTeamButtons() {
+  document.querySelectorAll("[data-team]").forEach((button) => {
+    button.classList.toggle("selected", button.dataset.team === state.selectedTeam);
+  });
+}
+
+function renderScore() {
+  $("home-score").textContent = String(state.match.home_score);
+  $("away-score").textContent = String(state.match.away_score);
+  $("home-score-mini").textContent = String(state.match.home_score);
+  $("away-score-mini").textContent = String(state.match.away_score);
+  document.querySelectorAll("[data-score-team]").forEach((button) => {
+    button.disabled = state.match.match_phase === "fulltime";
+  });
+}
+
+function getCurrentPlanNumber() {
+  const history = state.match.planHistory;
+  if (Array.isArray(history) && history.length > 0) {
+    return history.length;
+  }
+  if (isValidPlanSnapshot(state.match.currentPlan)) {
+    return 1;
+  }
+  return null;
+}
+
+function getCurrentPlanEffectiveMatchTime() {
+  const history = state.match.planHistory;
+  if (Array.isArray(history) && history.length > 0) {
+    return history[history.length - 1].matchTime || "00:00";
+  }
+  return null;
+}
+
+function renderCurrentPlanCardHead({ planNumber = null, effectiveTime = null } = {}) {
+  const planNumberLine = planNumber
+    ? `<p class="current-plan-number">Plan #${planNumber}</p>`
+    : "";
+  const timeLine = effectiveTime
+    ? `<p class="current-plan-effective-time">開始 ${escapeHtml(effectiveTime)}</p>`
+    : "";
+
+  return `
+    <header class="current-plan-card-head">
+      <h3 class="current-plan-card-title">Current Plan</h3>
+      ${planNumberLine}
+      ${timeLine}
+    </header>
+  `;
+}
+
+function renderGamePlan() {
+  const plan = resolvePlanForDisplay();
+  const empty = $("game-plan-empty");
+  const content = $("game-plan-content");
+  if (!empty || !content) return;
+
+  if (!plan) {
+    empty.innerHTML = `
+      ${renderCurrentPlanCardHead()}
+      <p class="current-plan-empty-title">Planが設定されていません</p>
+      <button type="button" id="setup-game-plan" class="current-plan-setup-button">Game Planを設定</button>
+    `;
+    empty.hidden = false;
+    content.hidden = true;
+    content.innerHTML = "";
+    return;
+  }
+
+  const groups = planDisplayCategories.map(({ key, label }) => {
+    const items = Array.isArray(plan.categories[key]) ? plan.categories[key] : [];
+    const value = formatPlanSelections(items);
+    return `
+      <section class="current-plan-row">
+        <p class="current-plan-row-label">${escapeHtml(label)}</p>
+        <p class="current-plan-row-value">${value}</p>
+      </section>
+    `;
+  });
+
+  const memo = typeof plan.memo === "string" ? plan.memo.trim() : "";
+  if (memo) {
+    groups.push(`
+      <section class="current-plan-row current-plan-row-memo">
+        <p class="current-plan-row-label">Free Memo</p>
+        <p class="current-plan-row-value">${escapeHtml(memo)}</p>
+      </section>
+    `);
+  }
+
+  content.innerHTML = `
+    ${renderCurrentPlanCardHead({
+      planNumber: getCurrentPlanNumber(),
+      effectiveTime: getCurrentPlanEffectiveMatchTime(),
+    })}
+    <div class="game-plan-popover-content">
+      ${groups.join("")}
+    </div>
+  `;
+  content.hidden = false;
+  empty.hidden = true;
+}
+
+function isPlanChangeOpen() {
+  return state.match.match_phase !== "fulltime";
+}
+
+function renderPlanChangeButton() {
+  const button = $("change-plan-action");
+  if (!button) return;
+  button.disabled = !isPlanChangeOpen();
+}
+
+function isCurrentPlanPopoverOpen() {
+  const popover = $("current-plan-popover");
+  return Boolean(popover && !popover.hidden);
+}
+
+function setCurrentPlanPopoverOpen(open) {
+  const toggle = $("current-plan-toggle");
+  const popover = $("current-plan-popover");
+  const icon = toggle?.querySelector(".current-plan-toggle-icon");
+  if (!toggle || !popover) return;
+
+  popover.hidden = !open;
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  if (icon) icon.textContent = open ? "▲" : "▼";
+}
+
+function toggleCurrentPlanPopover() {
+  setCurrentPlanPopoverOpen(!isCurrentPlanPopoverOpen());
+}
+
+function closeCurrentPlanPopover() {
+  if (!isCurrentPlanPopoverOpen()) return;
+  setCurrentPlanPopoverOpen(false);
+}
+
+function bindCurrentPlanPopover() {
+  const toggle = $("current-plan-toggle");
+  const popover = $("current-plan-popover");
+  const controls = document.querySelector(".game-plan-controls");
+  if (!toggle || !popover) return;
+
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleCurrentPlanPopover();
+  });
+
+  popover.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (event.target.closest("#setup-game-plan")) {
+      openGamePlanSetup();
+    }
+  });
+
+  controls?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener("click", () => {
+    closeCurrentPlanPopover();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeCurrentPlanPopover();
+  });
+}
+
+function renderMatchControl() {
+  const action = $("match-action");
+  const phaseText = $("match-phase-text");
+  const halftime = $("halftime-panel");
+  const control = action.closest(".match-control");
+  const phase = state.match.match_phase;
+
+  action.hidden = false;
+  action.disabled = false;
+  control.hidden = phase === "halftime_decision";
+  halftime.hidden = phase !== "halftime_decision";
+
+  if (phase === "before_kickoff") {
+    action.textContent = "キックオフ";
+    phaseText.textContent = "Game Plan 確定後、キックオフから観測を開始します。";
+  } else if (phase === "first_half") {
+    action.textContent = "前半終了";
+    phaseText.textContent = "前半 Observation 中です。";
+  } else if (phase === "halftime_decision") {
+    action.hidden = true;
+    phaseText.textContent = "前半終了。イベント入力を停止しています。";
+  } else if (phase === "halftime_ready") {
+    action.textContent = "後半開始";
+    phaseText.textContent = "後半開始待ちです。";
+  } else if (phase === "second_half") {
+    action.textContent = "試合終了";
+    phaseText.textContent = "後半 Observation 中です。";
+  } else {
+    action.textContent = "試合終了済み";
+    action.disabled = true;
+    phaseText.textContent = "試合ライフサイクルは終了しています。";
+  }
+}
+
+function renderPostMatch() {
+  const isFulltime = state.match.match_phase === "fulltime";
+  const panel = $("post-match-panel");
+  if (!panel) return;
+  panel.hidden = !isFulltime;
+  if (!isFulltime) return;
+
+  const timeEl = $("post-match-time");
+  const scoreEl = $("post-match-score");
+  const home = Math.max(0, Number(state.match.home_score) || 0);
+  const away = Math.max(0, Number(state.match.away_score) || 0);
+  if (timeEl) timeEl.textContent = formatTime(state.elapsed);
+  if (scoreEl) scoreEl.textContent = `Home ${home} - ${away} Away`;
+}
+
+function renderObservationLock() {
+  const locked = !isObservationOpen();
+  document.querySelector(".event-panel").classList.toggle("is-locked", locked);
+  document.querySelectorAll("[data-event-name]").forEach((button) => {
+    button.disabled = locked;
+  });
+  const lock = $("observation-lock");
+  if (!lock) return;
+  lock.textContent = locked
+    ? phaseLabels[state.match.match_phase] || "試合前"
+    : `${currentObservationPhaseLabel()} Observation中`;
+}
+
+function renderMatchEventsLock() {
+  const locked = !isMatchEventOpen();
+  document.querySelector(".match-events-panel").classList.toggle("is-locked", locked);
+  document.querySelectorAll("[data-match-event]").forEach((button) => {
+    button.disabled = locked;
+  });
+}
+
+function renderEventButtons() {
+  const host = $("event-categories");
+  host.innerHTML = "";
+  observationCategories.forEach((category) => {
+    const section = document.createElement("section");
+    section.className = "event-category";
+    section.dataset.category = category.label;
+    const title = document.createElement("h3");
+    title.textContent = category.label;
+    const grid = document.createElement("div");
+    grid.className = "event-grid";
+    category.events.forEach((eventName) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.eventName = eventName;
+      button.textContent = eventName;
+      button.addEventListener("click", () => recordEvent(eventName, button));
+      grid.appendChild(button);
+    });
+    section.append(title, grid);
+    host.appendChild(section);
+  });
+}
+
+function renderMatchEventButtons() {
+  const host = $("match-events");
+  host.innerHTML = "";
+  ["Home", "Away"].forEach((team) => {
+    const column = document.createElement("section");
+    column.className = "match-event-column";
+    const title = document.createElement("h3");
+    title.textContent = team;
+    const list = document.createElement("div");
+    list.className = "match-event-list";
+    matchEvents
+      .filter((event) => event.team === team)
+      .forEach((event) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.matchEvent = event.eventName;
+        button.dataset.eventType = event.type;
+        button.innerHTML = `
+          <span class="match-event-icon" aria-hidden="true">${escapeHtml(event.icon)}</span>
+          <span>${escapeHtml(event.eventName.replace(`${team} `, ""))}</span>
+        `;
+        button.addEventListener("click", () => recordMatchEvent(event, button));
+        list.appendChild(button);
+      });
+    column.append(title, list);
+    host.appendChild(column);
+  });
+}
+
+function renderTimeline() {
+  const timeline = $("timeline");
+  if (!timeline) return;
+  timeline.innerHTML = "";
+  state.events.forEach((event) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="time">${escapeHtml(event.time)}</span>
+      <span class="phase">${escapeHtml(event.phase)}</span>
+      <span class="team">${escapeHtml(teamLabel(event.team))}</span>
+      <span class="event-name">${escapeHtml(event.eventName)}</span>
+    `;
+    timeline.appendChild(li);
+  });
+}
+
+function renderSavedStatus() {
+  const status = $("saved-status");
+  if (!status) return;
+  status.textContent = state.events.length > 0
+    ? `記録 ${state.events.length} 件`
+    : "未入力";
+}
+
+function resolveLiveStateCategoryKey(category) {
+  const normalized = String(category || "").trim();
+  if (!normalized) return null;
+
+  const matched = liveStateCategories.find((item) => item.aliases.includes(normalized));
+  if (matched) return matched.key;
+
+  const lower = normalized.toLowerCase();
+  return liveStateCategories.find((item) => item.key.toLowerCase() === lower)?.key || null;
+}
+
+function groupLiveStatesByCategory(liveStates) {
+  const grouped = new Map(liveStateCategories.map((category) => [category.key, []]));
+  liveStates.forEach((item) => {
+    const key = resolveLiveStateCategoryKey(item.category);
+    if (!key) return;
+    grouped.get(key).push(item);
+  });
+  return grouped;
+}
+
+function renderLiveStateValue(items) {
+  if (!items.length) {
+    return `<span class="live-state-empty-value">--</span>`;
+  }
+
+  return items.map((item) => `
+    <button
+      type="button"
+      class="live-state-label${selectedLiveStateRuleId === item.ruleId ? " is-selected" : ""}"
+      data-rule-id="${escapeHtml(item.ruleId)}"
+      data-status="${escapeHtml(item.status)}"
+    >${escapeHtml(item.label)}</button>
+  `).join("");
+}
+
+function formatPlanForDetail(plan) {
+  if (!plan?.categories) return "-";
+
+  return liveStateCategories.map((category) => {
+    const items = Array.isArray(plan.categories[category.key]) ? plan.categories[category.key] : [];
+    const label = planCategoryLabels[category.key] || category.label;
+    return `${label}: ${items.length ? items.join(" / ") : "-"}`;
+  }).join(" ｜ ");
+}
+
+function getReasonEvents(ruleId, events) {
+  const filter = liveStateReasonEventFilters[ruleId];
+  if (typeof filter !== "function") return [];
+  return events.filter(filter);
+}
+
+function formatReasonEventsDetail(liveState) {
+  if (liveState.reasonEventCounts) {
+    return Object.entries(liveState.reasonEventCounts)
+      .map(([eventName, count]) => `${eventName} ${count}`)
+      .join(" ｜ ");
+  }
+
+  const reasonEvents = getReasonEvents(liveState.ruleId, liveStateSnapshot.events);
+  if (reasonEvents.length === 0) return "0";
+
+  const counts = new Map();
+  reasonEvents.forEach((event) => {
+    counts.set(event.eventName, (counts.get(event.eventName) || 0) + 1);
+  });
+  return Array.from(counts.entries())
+    .map(([eventName, count]) => `${eventName} ${count}`)
+    .join(" ｜ ");
+}
+
+function formatGeneratedTime(iso) {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function findLiveStateByRuleId(ruleId) {
+  return liveStateSnapshot.states.find((item) => item.ruleId === ruleId) || null;
+}
+
+function renderLiveStateDetail() {
+  const panel = $("live-state-detail");
+  if (!panel) return;
+
+  const liveState = findLiveStateByRuleId(selectedLiveStateRuleId);
+  if (!liveState) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="live-state-detail-head">
+      <h3>State Detail</h3>
+      <button type="button" id="close-live-state-detail" class="live-state-detail-close">閉じる</button>
+    </div>
+    <dl class="live-state-detail-list">
+      <div class="live-state-detail-item">
+        <dt>Current Plan</dt>
+        <dd>${escapeHtml(formatPlanForDetail(liveStateSnapshot.plan))}</dd>
+      </div>
+      <div class="live-state-detail-item">
+        <dt>State</dt>
+        <dd>${escapeHtml(liveState.label)}</dd>
+      </div>
+      <div class="live-state-detail-item">
+        <dt>Reason Events</dt>
+        <dd>${escapeHtml(formatReasonEventsDetail(liveState))}</dd>
+      </div>
+      <div class="live-state-detail-item">
+        <dt>Generated Time</dt>
+        <dd>${escapeHtml(formatGeneratedTime(liveStateSnapshot.evaluatedAt))}</dd>
+      </div>
+    </dl>
+  `;
+
+  $("close-live-state-detail")?.addEventListener("click", closeLiveStateDetail);
+}
+
+function openLiveStateDetail(ruleId) {
+  selectedLiveStateRuleId = ruleId;
+  renderLiveState();
+  renderLiveStateDetail();
+}
+
+function closeLiveStateDetail() {
+  selectedLiveStateRuleId = null;
+  renderLiveState();
+  renderLiveStateDetail();
+}
+
+function renderLiveState() {
+  const host = $("live-state-content");
+  if (!host) return;
+
+  const evaluate = window.MO_STATE_ENGINE?.evaluateLiveState;
+  const plan = currentPlanForDisplay();
+  const events = getEventsForStateEvaluation();
+  const liveStates = typeof evaluate === "function"
+    ? evaluate({ plan, events, elapsed: state.elapsed })
+    : [];
+
+  liveStateSnapshot = {
+    evaluatedAt: nowIso(),
+    plan,
+    events,
+    elapsed: state.elapsed,
+    states: liveStates,
+  };
+
+  if (selectedLiveStateRuleId && !findLiveStateByRuleId(selectedLiveStateRuleId)) {
+    selectedLiveStateRuleId = null;
+  }
+
+  const groupedStates = groupLiveStatesByCategory(liveStates);
+
+  host.innerHTML = liveStateCategories.map((category) => {
+    const items = groupedStates.get(category.key) || [];
+    return `
+      <article class="live-state-row" data-category="${escapeHtml(category.key)}">
+        <span class="live-state-row-label">${escapeHtml(category.label)}</span>
+        <div class="live-state-row-value">${renderLiveStateValue(items)}</div>
+      </article>
+    `;
+  }).join("");
+
+  renderLiveStateDetail();
+}
+
+function renderAll() {
+  renderClock();
+  renderTeamButtons();
+  renderScore();
+  renderGamePlan();
+  renderPlanChangeButton();
+  renderMatchControl();
+  renderPostMatch();
+  renderObservationLock();
+  renderMatchEventsLock();
+  renderTimeline();
+  renderSavedStatus();
+  renderLiveState();
+}
+
+function startClock(reset = false) {
+  if (reset) state.elapsed = 0;
+  if (state.running) return;
+  state.running = true;
+  state.timerId = window.setInterval(() => {
+    state.elapsed += 1;
+    renderClock();
+  }, 1000);
+  renderClock();
+}
+
+function pauseClock() {
+  state.running = false;
+  if (state.timerId != null) {
+    window.clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  renderClock();
+}
+
+function handleMatchAction() {
+  const phase = state.match.match_phase;
+
+  if (phase === "before_kickoff") {
+    const kickoffPlan = clonePlanSnapshot(state.match.currentPlan);
+    if (!kickoffPlan) return;
+    state.match.kickoff_at = nowIso();
+    state.match.match_phase = "first_half";
+    state.match.first_half_plan = kickoffPlan;
+    state.match.second_half_plan = null;
+    state.match.currentPlan = kickoffPlan;
+    if (!Array.isArray(state.match.planHistory) || state.match.planHistory.length === 0) {
+      const entry = createPlanHistoryEntry({
+        plan: kickoffPlan,
+        matchTime: "00:00",
+        elapsedSeconds: 0,
+        phase: "前半",
+        changedAt: state.match.kickoff_at,
+        reason: "initial",
+        eventBoundaryIndex: 0,
+      });
+      if (entry) appendPlanHistoryEntry(entry);
+    }
+    saveMatch();
+    startClock(true);
+  } else if (phase === "first_half") {
+    state.match.first_half_end_at = nowIso();
+    state.match.match_phase = "halftime_decision";
+    saveMatch();
+    pauseClock();
+  } else if (phase === "halftime_ready") {
+    const secondHalfPlan = clonePlanSnapshot(state.match.currentPlan);
+    if (!secondHalfPlan) return;
+    state.match.second_half_start_at = nowIso();
+    state.match.match_phase = "second_half";
+    state.match.second_half_plan = secondHalfPlan;
+    state.match.currentPlan = secondHalfPlan;
+    saveMatch();
+    startClock(true);
+  } else if (phase === "second_half") {
+    state.match.fulltime_at = nowIso();
+    state.match.match_phase = "fulltime";
+    saveMatch();
+    pauseClock();
+    archiveMatchForReviewIfNeeded();
+  }
+
+  renderAll();
+}
+
+function continuePlan() {
+  const plan = clonePlanSnapshot(state.match.currentPlan);
+  if (!plan) return;
+  state.match.second_half_plan = plan;
+  state.match.currentPlan = plan;
+  state.match.match_phase = "halftime_ready";
+  saveMatch();
+  renderAll();
+}
+
+function openGamePlanSetup() {
+  closeCurrentPlanPopover();
+  const planUrl = new URL(planPath, window.location.href);
+  window.location.assign(planUrl.href);
+}
+
+function openPlanChange(options = {}) {
+  const reason = options.reason || "mid_match_plan_change";
+  const current = clonePlanSnapshot(state.match.currentPlan);
+  if (current) {
+    saveJson(planStorageKey, current);
+  }
+  saveJson(planReturnKey, {
+    reason,
+    returnTo: "observer",
+    matchTime: formatTime(state.elapsed),
+    elapsedSeconds: state.elapsed,
+    phase: currentObservationPhaseLabel() || phaseLabels[state.match.match_phase] || "",
+    eventBoundaryIndex: state.events.length,
+    matchPhase: state.match.match_phase,
+  });
+  const planUrl = new URL(planPath, window.location.href);
+  window.location.assign(planUrl.href);
+}
+
+function changePlan() {
+  openPlanChange({ reason: "halftime_plan_change" });
+}
+
+function flashEventButton(button) {
+  if (!button) return;
+  button.classList.remove("is-feedback");
+  void button.offsetWidth;
+  button.classList.add("is-feedback");
+  window.setTimeout(() => {
+    button.classList.remove("is-feedback");
+  }, 320);
+}
+
+function recordEvent(eventName, button) {
+  if (!isObservationOpen()) return;
+  state.events.push({
+    eventName,
+    time: formatTime(state.elapsed),
+    team: state.selectedTeam,
+    inputOrder: state.events.length + 1,
+    phase: currentObservationPhaseLabel(),
+  });
+  saveEvents();
+  flashEventButton(button);
+  renderAll();
+}
+
+function recordMatchEvent(event, button) {
+  if (!isMatchEventOpen()) return;
+  state.events.push({
+    eventName: event.eventName,
+    time: formatTime(state.elapsed),
+    team: event.team,
+    inputOrder: state.events.length + 1,
+    phase: phaseLabels[state.match.match_phase] || currentObservationPhaseLabel(),
+  });
+  saveEvents();
+  flashEventButton(button);
+  renderAll();
+}
+
+function recordGoalEvent(team) {
+  const label = teamLabel(team);
+  state.events.push({
+    eventName: `${label} Goal`,
+    time: formatTime(state.elapsed),
+    team: label,
+    inputOrder: state.events.length + 1,
+    phase: currentObservationPhaseLabel(),
+  });
+  saveEvents();
+}
+
+function updateScore(team, delta) {
+  const key = team === "home" ? "home_score" : "away_score";
+  const current = Math.max(0, Number(state.match[key]) || 0);
+  if (delta > 0) {
+    state.match[key] = current + 1;
+    recordGoalEvent(team);
+  } else {
+    state.match[key] = Math.max(0, current - 1);
+  }
+  saveMatch();
+  renderAll();
+}
+
+function clearEvents() {
+  state.events = [];
+  saveEvents();
+  renderAll();
+}
+
+function archiveMatchForReviewIfNeeded() {
+  window.MO_REVIEW_ARCHIVE?.upsertFromLiveStorage?.();
+}
+
+function openReview() {
+  archiveMatchForReviewIfNeeded();
+  window.location.assign(reviewPath);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadMatch();
+  loadEvents();
+  renderEventButtons();
+  renderMatchEventButtons();
+
+  document.querySelectorAll("[data-team]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedTeam = button.dataset.team;
+      renderTeamButtons();
+    });
+  });
+
+  document.querySelectorAll("[data-score-team]").forEach((button) => {
+    button.addEventListener("click", () => {
+      updateScore(button.dataset.scoreTeam, Number(button.dataset.scoreDelta));
+    });
+  });
+
+  $("match-action").addEventListener("click", handleMatchAction);
+  $("continue-plan").addEventListener("click", continuePlan);
+  $("change-plan").addEventListener("click", changePlan);
+  $("change-plan-action")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeCurrentPlanPopover();
+    openPlanChange();
+  });
+  $("open-review").addEventListener("click", openReview);
+  const clearButton = $("clear-events");
+  if (clearButton) clearButton.addEventListener("click", clearEvents);
+
+  $("live-state-content")?.addEventListener("click", (event) => {
+    const button = event.target.closest(".live-state-label");
+    if (!button?.dataset.ruleId) return;
+    openLiveStateDetail(button.dataset.ruleId);
+  });
+
+  bindCurrentPlanPopover();
+
+  renderAll();
+});
