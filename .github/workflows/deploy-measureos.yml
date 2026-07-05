@@ -1,0 +1,25 @@
+name: Deploy MEASURE OS to VPS
+
+# Disabled during development — deploy manually on VPS: `deploy-measureos`
+# To re-enable auto-deploy: uncomment the `push` block below.
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - milestone/package-a-phase1
+
+concurrency:
+  group: deploy-measureos
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.MEASUREOS_VPS_HOST }}
+          username: ${{ secrets.MEASUREOS_VPS_USER }}
+          key: ${{ secrets.MEASUREOS_VPS_SSH_KEY }}
+          script: deploy-measureos
