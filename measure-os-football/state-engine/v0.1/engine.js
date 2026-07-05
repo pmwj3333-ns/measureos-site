@@ -19,8 +19,42 @@
   // rule011-transition-ball-retention.js
   const rules = [];
 
+  const CATEGORY_LEGACY_KEYS = {
+    buildUp: ["build_up", "BuildUp", "buildup", "Build Up"],
+  };
+
   function registerRule(rule) {
     rules.push(rule);
+  }
+
+  function readPlanCategory(plan, categoryKey) {
+    const categories = plan?.categories;
+    if (!categories || typeof categories !== "object") return [];
+
+    const direct = categories[categoryKey];
+    if (Array.isArray(direct)) return direct;
+
+    const legacyKeys = CATEGORY_LEGACY_KEYS[categoryKey] || [];
+    for (const legacyKey of legacyKeys) {
+      const legacy = categories[legacyKey];
+      if (Array.isArray(legacy)) return legacy;
+    }
+
+    return [];
+  }
+
+  function planIncludesOption(plan, categoryKey, option) {
+    return readPlanCategory(plan, categoryKey).includes(option);
+  }
+
+  function isRuleEnabled(rule, plan) {
+    if (typeof rule.isEnabled === "function") {
+      return rule.isEnabled(plan);
+    }
+    if (rule.planCategoryKey && rule.planOption) {
+      return planIncludesOption(plan, rule.planCategoryKey, rule.planOption);
+    }
+    return false;
   }
 
   function evaluateLiveState({ plan, events, elapsed = 0 }) {
@@ -31,16 +65,28 @@
     const states = [];
 
     for (const rule of rules) {
-      if (!rule.isEnabled(plan)) continue;
+      if (!isRuleEnabled(rule, plan)) continue;
       const state = rule.evaluate(observationEvents, context);
-      if (state) states.push(state);
+      if (!state) continue;
+
+      states.push({
+        ...state,
+        planCategoryKey: rule.planCategoryKey ?? state.planCategoryKey ?? null,
+      });
     }
 
     return states;
   }
 
+  function evaluateState(input) {
+    return evaluateLiveState(input);
+  }
+
   window.MO_STATE_ENGINE = {
     registerRule,
+    readPlanCategory,
+    planIncludesOption,
     evaluateLiveState,
+    evaluateState,
   };
 })();

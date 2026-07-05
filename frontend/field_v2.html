@@ -1966,82 +1966,16 @@ function assignQtyInputNormalizedValue(inputEl, stringVal, opts) {
   }
 }
 
-/** 入力確定後・blur 時用。IME 変換中は触らない。 */
-function normalizeQtyInputInPlace(inputEl) {
-  if (!inputEl || isQtyInputComposing(inputEl)) return false;
+/** blur 時用。IME 変換中は触らない。 */
+function normalizeQtyInputInPlace(inputEl, opts) {
+  opts = opts || {};
+  if (!inputEl) return false;
+  if (!opts.force && isQtyInputComposing(inputEl)) return false;
   const before = inputEl.value;
   const after = normalizeNumberInput(before);
   if (before === after) return false;
   assignQtyInputNormalizedValue(inputEl, after, { restoreCaret: true });
   return true;
-}
-
-function qtyInputHasFullwidthDigits(inputEl) {
-  if (!inputEl) return false;
-  return /[０-９]/.test(String(inputEl.value || ""));
-}
-
-/**
- * compositionend 直後は Safari 等で .value が未更新のまま rAF が走り、
- * その後 input なしで全角が確定することがある。数フレームまで再試行する。
- */
-function finalizeQtyInputAfterComposition(inputEl, onDirty) {
-  if (!inputEl) return;
-  delete inputEl.dataset.moQtyComposing;
-  let attempts = 0;
-  const maxAttempts = 8;
-  const finish = function () {
-    inputEl.dataset.moQtyDirty = "1";
-    if (typeof onDirty === "function") onDirty();
-  };
-  const tick = function () {
-    attempts++;
-    normalizeQtyInputInPlace(inputEl);
-    const hasFullwidth = qtyInputHasFullwidthDigits(inputEl);
-    if (hasFullwidth && attempts < maxAttempts) {
-      if (typeof window.requestAnimationFrame === "function") {
-        window.requestAnimationFrame(tick);
-      } else {
-        window.setTimeout(tick, 0);
-      }
-      return;
-    }
-    if (
-      !hasFullwidth &&
-      attempts === 1 &&
-      String(inputEl.value || "") === "" &&
-      attempts < maxAttempts
-    ) {
-      if (typeof window.requestAnimationFrame === "function") {
-        window.requestAnimationFrame(tick);
-      } else {
-        window.setTimeout(tick, 0);
-      }
-      return;
-    }
-    if (fieldQtyEventDebugEnabled()) {
-      console.log(
-        "[field qty dbg] composition finalize attempts=" +
-          attempts +
-          " finalValue=" +
-          JSON.stringify(inputEl.value),
-        fieldQtyDbgCounts(),
-      );
-    }
-    finish();
-  };
-  if (typeof window.requestAnimationFrame === "function") {
-    window.requestAnimationFrame(tick);
-  } else {
-    window.setTimeout(tick, 0);
-  }
-}
-
-/** composition なしで全角数字が入った場合（直接入力・貼り付け等）の即時正規化 */
-function normalizeQtyInputIfFullwidthPresent(inputEl) {
-  if (!inputEl || isQtyInputComposing(inputEl)) return;
-  if (!qtyInputHasFullwidthDigits(inputEl)) return;
-  normalizeQtyInputInPlace(inputEl);
 }
 
 /**
@@ -2055,7 +1989,7 @@ function normalizeQtyInputsInHost(host, opts) {
   host.querySelectorAll("[data-line-qty], [data-um-qty]").forEach((inputEl) => {
     if (!force && isQtyInputComposing(inputEl)) return;
     if (!force && document.activeElement === inputEl) return;
-    normalizeQtyInputInPlace(inputEl);
+    normalizeQtyInputInPlace(inputEl, { force });
   });
 }
 
@@ -2066,12 +2000,13 @@ function bindQtyInputEvents(qtyIn, onDirty) {
     qtyIn.dataset.moQtyComposing = "1";
   });
   qtyIn.addEventListener("compositionend", function () {
-    finalizeQtyInputAfterComposition(qtyIn, onDirty);
+    delete qtyIn.dataset.moQtyComposing;
+    qtyIn.dataset.moQtyDirty = "1";
+    if (typeof onDirty === "function") onDirty();
   });
   qtyIn.addEventListener("input", function fieldQtyOnInput() {
     if (isQtyInputComposing(qtyIn)) return;
     qtyIn.dataset.moQtyDirty = "1";
-    normalizeQtyInputIfFullwidthPresent(qtyIn);
     if (fieldQtyEventDebugEnabled()) {
       _fieldQtyDbgInput++;
       console.log(

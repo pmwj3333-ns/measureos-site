@@ -92,6 +92,9 @@
     ) {
       return { label: "🟡 ロング前進停滞", status: "yellow" };
     }
+    if (forward === 0 && pushedBack === 0 && counterConceded === 0) {
+      return { label: "🟡 ロング前進停滞", status: "yellow" };
+    }
     return null;
   }
 
@@ -101,8 +104,7 @@
     planOption: PLAN_OPTION,
 
     isEnabled(plan) {
-      const buildUpPlan = plan?.categories?.[PLAN_CATEGORY_KEY];
-      return Array.isArray(buildUpPlan) && buildUpPlan.includes(PLAN_OPTION);
+      return window.MO_STATE_ENGINE?.planIncludesOption(plan, PLAN_CATEGORY_KEY, PLAN_OPTION) ?? false;
     },
 
     evaluate(events, context = {}) {
@@ -115,6 +117,7 @@
 
       return {
         ruleId: RULE_ID,
+        planCategoryKey: PLAN_CATEGORY_KEY,
         category: STATE_CATEGORY,
         label: resolved.label,
         status: resolved.status,

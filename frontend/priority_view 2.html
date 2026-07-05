@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>MEASURE OS — 優先度監視盤（第7条）</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Meiryo", sans-serif;
+    background: #f4f6f9;
+    color: #1a1a1a;
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+  header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 14px 20px;
+  }
+  header h1 { font-size: 1.05rem; font-weight: 700; }
+  header p { font-size: 0.75rem; opacity: 0.85; margin-top: 4px; }
+  .badge {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.75);
+  }
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 18px 18px 40px;
+  }
+  .panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+  }
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .panel-head h2 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 4px;
+  }
+  .panel-desc {
+    font-size: 0.78rem;
+    color: #6b7280;
+    line-height: 1.5;
+    max-width: 720px;
+  }
+  .updated-at {
+    font-size: 0.72rem;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: #5c6570;
+    margin-bottom: 6px;
+  }
+  input[type="text"] {
+    padding: 10px 12px;
+    border: 1px solid #c5ccd4;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    width: min(220px, 100%);
+    font-family: inherit;
+    background: #fff;
+    color: #1a1a1a;
+  }
+  input:focus { outline: none; border-color: #1e3a5f; }
+  .btn-primary {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    background: #1e3a5f;
+    color: #fff;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  .hint a { color: #1e3a5f; }
+  .err {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+  }
+
+  .monitor-board {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .prio-row {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    border-left-width: 4px;
+    padding: 10px 12px 10px 10px;
+    box-shadow: 0 1px 2px rgba(30, 58, 95, 0.04);
+  }
+  .prio-row--high {
+    border-left-color: #ef4444;
+    background: #fffcfc;
+  }
+  .prio-row--mid {
+    border-left-color: #f59e0b;
+    background: #fff;
+  }
+  .prio-row--low {
+    border-left-color: #60a5fa;
+    background: #fff;
+  }
+  .prio-row-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-bottom: 6px;
+  }
+  .prio-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    line-height: 1.3;
+  }
+  .prio-badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .prio-badge--high {
+    color: #991b1b;
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .prio-badge--mid {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+  }
+  .prio-badge--low {
+    color: #1e40af;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+  }
+  .prio-mode-pill {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .prio-mode-pill--manufacture {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+  .prio-mode-pill--purchase {
+    background: #f9fafb;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+  }
+  .prio-cutoff-obs {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .prio-obs-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+  }
+  .prio-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  .prio-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 0;
+    font-size: 0.78rem;
+    color: #5c6570;
+    line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+  }
+  .prio-metric {
+    white-space: nowrap;
+  }
+  .prio-metric strong {
+    font-weight: 700;
+    color: #374151;
+    font-variant-numeric: tabular-nums;
+  }
+  .prio-sep {
+    color: #d1d5db;
+    margin: 0 8px;
+    user-select: none;
+  }
+  .prio-due--urgent strong { color: #991b1b; }
+
+  .empty-state {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px 18px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(30, 58, 95, 0.06);
+  }
+  .empty-state-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 6px;
+  }
+  .empty-state-sub {
+    font-size: 0.78rem;
+    color: #6b7280;
+  }
+  .empty-fallback {
+    color: #6b7280;
+    padding: 12px 0;
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+  .empty-fallback a { color: #1e3a5f; }
+  .board-meta {
+    font-size: 0.72rem;
+    color: #6b7280;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>MEASURE OS — 優先度監視盤</h1>
+    <p>第7条 · 在庫・出荷・納期から算出された製造優先順位（表示のみ）</p>
+    <span class="badge">v2 · 監視OS</span>
+  </header>
+  <div class="wrap">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>優先順位一覧</h2>
+          <p class="panel-desc">
+            優先度（high / mid / low）は在庫・出荷・納期からサーバが自動算出します。この画面は<strong>何をいつまでに作るか</strong>の監視専用です（現場は変更しません）。ログイン中の会社のデータを自動表示します。
+          </p>
+        </div>
+        <div class="updated-at" id="updated-at" hidden></div>
+      </div>
+      <p class="hint">
+        <a href="/priority/input/v2">第7条の入力（事務）</a>
+        · <a href="/genba/v2">現場 v2</a>
+        · <a href="/office/v2">事務 v2</a>
+        · <a href="/sr/v2">管理者 v2</a>
+        · <a href="/debug/v2">debug v2</a>
+      </p>
+    </div>
+    <div id="msg" class="err" hidden></div>
+    <div id="root"></div>
+  </div>
+
+<script src="/static/priority-tier-due.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var root = $("root");
+  var msg = $("msg");
+  var updatedAtEl = $("updated-at");
+  var prioritySessionCompanyId = "";
+
+  function initPrioritySessionCompanyFromBootstrap() {
+    var boot =
+      typeof window.__MO_BOOTSTRAP_COMPANY__ === "string"
+        ? window.__MO_BOOTSTRAP_COMPANY__.trim()
+        : "";
+    prioritySessionCompanyId = boot;
+  }
+
+  function redirectToOfficeLogin() {
+    var path = window.location.pathname || "/priority/v2";
+    window.location.replace(
+      "/office/v2?return_to=" + encodeURIComponent(path)
+    );
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function pad2(n) {
+    return n < 10 ? "0" + n : String(n);
+  }
+
+  function localTodayYmd() {
+    var x = new Date();
+    return x.getFullYear() + "-" + pad2(x.getMonth() + 1) + "-" + pad2(x.getDate());
+  }
+
+  function tierRank(tier) {
+    if (tier === "high") return 0;
+    if (tier === "mid") return 1;
+    return 2;
+  }
+
+  function sortItems(arr) {
+    arr.sort(function (a, b) {
+      var tr = tierRank(a.tier) - tierRank(b.tier);
+      if (tr !== 0) return tr;
+      if (a.due < b.due) return -1;
+      if (a.due > b.due) return 1;
+      var pa = a.prodNum;
+      var pb = b.prodNum;
+      return pb - pa;
+    });
+    return arr;
+  }
+
+  function tierFromApiOrDue(it, dueStr) {
+    var pl = it.priority_level != null ? String(it.priority_level).trim().toLowerCase() : "";
+    if (pl === "high" || pl === "mid" || pl === "low") return pl;
+    if (!dueStr || !window.priorityTierFromDueDate) return "low";
+    var tierObj = window.priorityTierFromDueDate(String(dueStr).trim());
+    return tierObj && tierObj.tier ? tierObj.tier : "low";
+  }
+
+  function collectItems(payload, unit) {
+    var items = (payload && payload.items) || [];
+    var out = [];
+    var u = unit || "個";
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it || typeof it !== "object") continue;
+      var due = it.due_date;
+      if (!due || !String(due).trim()) continue;
+      var tier = tierFromApiOrDue(it, due);
+      var ship = it.ship_value;
+      var prod = it.prod_value;
+      if ((ship == null || ship === "") && it.value != null) ship = it.value;
+      if ((prod == null || prod === "") && it.value != null) prod = it.value;
+      var stock = it.stock_qty;
+      if (stock == null || stock === "") {
+        var sn = Number(ship);
+        var pn0 = Number(prod);
+        stock = Number.isFinite(sn) && Number.isFinite(pn0) ? Math.max(0, sn - pn0) : 0;
+      }
+      var prodNum = Number(prod);
+      if (!Number.isFinite(prodNum)) prodNum = 0;
+      var stockNum = Number(stock);
+      if (!Number.isFinite(stockNum)) stockNum = 0;
+      var safetyUnset = it.safety_stock_unset === true;
+      var safetyNum = it.safety_stock_value != null ? Number(it.safety_stock_value) : 0;
+      if (!Number.isFinite(safetyNum) || safetyNum < 0) safetyNum = 0;
+      var usable =
+        it.usable_stock_qty != null && it.usable_stock_qty !== ""
+          ? Number(it.usable_stock_qty)
+          : Math.max(0, stockNum - safetyNum);
+      if (!Number.isFinite(usable)) usable = Math.max(0, stockNum - safetyNum);
+      out.push({
+        tier: tier,
+        name: String(it.label || "").trim() || "（無名）",
+        ship_value: ship,
+        stock_qty: stockNum,
+        safety_stock_value: safetyNum,
+        safety_stock_unset: safetyUnset,
+        usable_stock_qty: usable,
+        is_after_cutoff: it.is_after_cutoff === true,
+        production_mode:
+          it.production_mode != null
+            ? String(it.production_mode).trim().toLowerCase()
+            : "manufacture",
+        prod_value: prod,
+        prodNum: prodNum,
+        shortage_from_ship_qty: it.shortage_from_ship_qty,
+        shortage_from_safety_qty: it.shortage_from_safety_qty,
+        shortage_reason_labels: Array.isArray(it.shortage_reason_labels)
+          ? it.shortage_reason_labels
+          : [],
+        unit: u,
+        due: String(due).trim(),
+      });
+    }
+    return out;
+  }
+
+  function productionModePillHtml(mode) {
+    var m = String(mode || "manufacture").trim().toLowerCase();
+    if (m === "purchase") {
+      return '<span class="prio-mode-pill prio-mode-pill--purchase">商社・仕入</span>';
+    }
+    return '<span class="prio-mode-pill prio-mode-pill--manufacture">自社製造</span>';
+  }
+
+  function badgeHtml(tier) {
+    if (tier === "high") {
+      return '<span class="prio-badge prio-badge--high">high</span>';
+    }
+    if (tier === "mid") {
+      return '<span class="prio-badge prio-badge--mid">mid</span>';
+    }
+    return '<span class="prio-badge prio-badge--low">low</span>';
+  }
+
+  function metricSep() {
+    return '<span class="prio-sep">｜</span>';
+  }
+
+  function metric(label, value, unit, extraClass) {
+    var cls = extraClass ? ' class="' + extraClass + '"' : "";
+    return (
+      '<span class="prio-metric"' +
+      cls +
+      ">" +
+      esc(label) +
+      " <strong>" +
+      esc(String(value)) +
+      esc(unit) +
+      "</strong></span>"
+    );
+  }
+
+  function shortageReasonMetricsHtml(it) {
+    var labels = it.shortage_reason_labels || [];
+    if (!labels.length) return "";
+    var shipPart = Number(it.shortage_from_ship_qty);
+    var safetyPart = Number(it.shortage_from_safety_qty);
+    var u = it.unit || "個";
+    var chunks = [];
+    for (var j = 0; j < labels.length; j++) {
+      var key = String(labels[j] || "").trim();
+      if (!key) continue;
+      var qty = NaN;
+      if (key === "出荷不足" || key === "出荷不足（手入力）") qty = shipPart;
+      else if (key === "基準在庫不足") qty = safetyPart;
+      var val = Number.isFinite(qty) && qty > 1e-6 ? String(qty) : "—";
+      chunks.push(esc(key) + " " + esc(val) + esc(u));
+    }
+    if (!chunks.length) return "";
+    return (
+      metricSep() +
+      '<span class="prio-metric">理由 <strong>' +
+      chunks.join(" / ") +
+      "</strong></span>"
+    );
+  }
+
+  function render(payload, unit) {
+    msg.hidden = true;
+    msg.textContent = "";
+    var cid = prioritySessionCompanyId;
+    var rawList = (payload && payload.items) || [];
+    var rawEmpty = rawList.length === 0;
+    var items = sortItems(collectItems(payload, unit));
+
+    if (!items.length && rawEmpty) {
+      root.innerHTML =
+        '<div class="empty-state">' +
+        '<div class="empty-state-title">現在、製造の必要はありません</div>' +
+        '<div class="empty-state-sub">在庫で出荷をカバーできています</div>' +
+        "</div>";
+      return;
+    }
+    if (!items.length) {
+      root.innerHTML =
+        '<p class="empty-fallback">納期を表示できる項目がありません。' +
+        '<a href="/priority/input/v2">第7条の入力（事務）</a>から登録できます。</p>';
+      return;
+    }
+
+    var todayY = localTodayYmd();
+    var html =
+      '<div class="board-meta">' +
+      esc(String(items.length)) +
+      " 件 · company_id=" +
+      esc(cid || "—") +
+      "</div>" +
+      '<ul class="monitor-board">';
+    for (var k = 0; k < items.length; k++) {
+      var it = items[k];
+      var rowMod =
+        it.tier === "high"
+          ? "prio-row--high"
+          : it.tier === "mid"
+            ? "prio-row--mid"
+            : "prio-row--low";
+      var dueMetric =
+        it.due <= todayY
+          ? metric("締切", it.due, "", "prio-due--urgent")
+          : metric("締切", it.due, "");
+      var safetyExtra = it.safety_stock_unset
+        ? '<span class="prio-obs-badge">基準在庫未設定</span>'
+        : "";
+      html +=
+        '<li class="prio-row ' +
+        rowMod +
+        '">' +
+        '<div class="prio-row-head">' +
+        badgeHtml(it.tier) +
+        productionModePillHtml(it.production_mode) +
+        (it.is_after_cutoff
+          ? '<span class="prio-cutoff-obs">締切後投入</span>'
+          : "") +
+        '<span class="prio-name">' +
+        esc(it.name) +
+        "</span>" +
+        "</div>" +
+        '<div class="prio-body">' +
+        '<div class="prio-metrics">' +
+        metric("不足", it.prod_value, it.unit) +
+        metricSep() +
+        metric("在庫", it.stock_qty, it.unit) +
+        safetyExtra +
+        metricSep() +
+        metric("予定", it.ship_value, it.unit) +
+        metricSep() +
+        metric("使用可能", it.usable_stock_qty, it.unit) +
+        metricSep() +
+        dueMetric +
+        shortageReasonMetricsHtml(it) +
+        "</div>" +
+        "</div>" +
+        "</li>";
+    }
+    html += "</ul>";
+    root.innerHTML = html;
+  }
+
+  function showUpdatedAt() {
+    var d = new Date();
+    var t = pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+    updatedAtEl.textContent = "更新 " + t;
+    updatedAtEl.hidden = false;
+  }
+
+  async function load() {
+    var cid = prioritySessionCompanyId;
+    if (!cid) {
+      msg.hidden = false;
+      msg.textContent = "会社セッションがありません";
+      updatedAtEl.hidden = true;
+      return;
+    }
+    try {
+      var resItems = await fetch("/v2/priority/items?company_id=" + encodeURIComponent(cid));
+      var textItems = await resItems.text();
+      var dataItems;
+      try {
+        dataItems = textItems ? JSON.parse(textItems) : {};
+      } catch (_) {
+        dataItems = null;
+      }
+      if (!resItems.ok) {
+        msg.hidden = false;
+        msg.textContent =
+          (dataItems && dataItems.detail) ? String(dataItems.detail) : textItems || String(resItems.status);
+        updatedAtEl.hidden = true;
+        return;
+      }
+      var unit = "個";
+      try {
+        var resCo = await fetch("/v2/company/" + encodeURIComponent(cid));
+        if (resCo.ok) {
+          var co = await resCo.json();
+          if (co && co.unit) unit = co.unit;
+        }
+      } catch (_) { /* ok */ }
+      render(dataItems, unit);
+      showUpdatedAt();
+    } catch (_) {
+      msg.hidden = false;
+      msg.textContent = "読み込みに失敗しました";
+      updatedAtEl.hidden = true;
+    }
+  }
+
+  initPrioritySessionCompanyFromBootstrap();
+  if (!prioritySessionCompanyId) {
+    void (async function bootPriorityWhenBootstrapMissing() {
+      try {
+        var res = await fetch("/v2/office/session", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          var data = await res.json();
+          var sessionCid = String(data.company_id || "").trim();
+          if (sessionCid) {
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (_) { /* fall through */ }
+      redirectToOfficeLogin();
+    })();
+  } else {
+    void load();
+  }
+})();
+</script>
+</body>
+</html>

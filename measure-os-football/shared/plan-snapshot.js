@@ -8,6 +8,22 @@ window.MO_PLAN_SNAPSHOT = (() => {
 
   const CATEGORY_KEYS = Object.keys(PLAN_SCHEMA);
 
+  const CATEGORY_LEGACY_KEYS = {
+    buildUp: ["build_up", "BuildUp", "buildup", "Build Up"],
+  };
+
+  function readRawCategory(rawCategories, key) {
+    if (!rawCategories || typeof rawCategories !== "object") return [];
+    if (Array.isArray(rawCategories[key])) return rawCategories[key];
+
+    const legacyKeys = CATEGORY_LEGACY_KEYS[key] || [];
+    for (const legacyKey of legacyKeys) {
+      if (Array.isArray(rawCategories[legacyKey])) return rawCategories[legacyKey];
+    }
+
+    return [];
+  }
+
   function normalizePlanSnapshot(raw) {
     if (!raw || raw.version !== "0.1" || raw.confirmed !== true || !raw.categories) {
       return null;
@@ -18,7 +34,7 @@ window.MO_PLAN_SNAPSHOT = (() => {
 
     CATEGORY_KEYS.forEach((key) => {
       const allowed = new Set(PLAN_SCHEMA[key]);
-      const source = Array.isArray(raw.categories[key]) ? raw.categories[key] : [];
+      const source = readRawCategory(raw.categories, key);
       const next = [];
       source.forEach((label) => {
         if (typeof label === "string" && allowed.has(label)) {

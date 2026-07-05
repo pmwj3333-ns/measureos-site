@@ -770,7 +770,11 @@ function renderSavedStatus() {
     : "未入力";
 }
 
-function resolveLiveStateCategoryKey(category) {
+function resolveLiveStateCategoryKey(category, planCategoryKey) {
+  if (planCategoryKey && liveStateCategories.some((item) => item.key === planCategoryKey)) {
+    return planCategoryKey;
+  }
+
   const normalized = String(category || "").trim();
   if (!normalized) return null;
 
@@ -778,14 +782,16 @@ function resolveLiveStateCategoryKey(category) {
   if (matched) return matched.key;
 
   const lower = normalized.toLowerCase();
+  if (lower === "build up" || lower === "buildup") return "buildUp";
+
   return liveStateCategories.find((item) => item.key.toLowerCase() === lower)?.key || null;
 }
 
 function groupLiveStatesByCategory(liveStates) {
   const grouped = new Map(liveStateCategories.map((category) => [category.key, []]));
   liveStates.forEach((item) => {
-    const key = resolveLiveStateCategoryKey(item.category);
-    if (!key) return;
+    const key = resolveLiveStateCategoryKey(item.category, item.planCategoryKey);
+    if (!key || !grouped.has(key)) return;
     grouped.get(key).push(item);
   });
   return grouped;
