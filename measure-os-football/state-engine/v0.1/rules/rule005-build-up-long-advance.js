@@ -92,9 +92,6 @@
     ) {
       return { label: "🟡 ロング前進停滞", status: "yellow" };
     }
-    if (forward === 0 && pushedBack === 0 && counterConceded === 0) {
-      return { label: "🟡 ロング前進停滞", status: "yellow" };
-    }
     return null;
   }
 
@@ -111,6 +108,7 @@
       const elapsedSeconds = Math.max(0, Number(context.elapsed) || 0);
       const relevantEvents = eventsInWindow(events, elapsedSeconds)
         .filter((event) => RELEVANT_EVENTS.includes(event.eventName));
+      if (relevantEvents.length === 0) return null;
       const reasonEventCounts = buildReasonEventCounts(relevantEvents);
       const resolved = resolveState(reasonEventCounts);
       if (!resolved) return null;

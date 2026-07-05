@@ -35,6 +35,40 @@ const liveStateCategories = [
   { key: "transition", label: "TRANSITION", aliases: ["Transition", "transition"] },
 ];
 
+const PLAN_OPTION_RULE_IDS = {
+  attack: {
+    "左優位": "rule012",
+    "右優位": "rule013",
+    "中央攻略": "rule014",
+    "クロス攻略": "rule015",
+  },
+  defense: {
+    "ハイプレス": "rule002",
+    "ミドルブロック": "rule016",
+    "ローブロック": "rule003",
+    "サイド誘導": "rule017",
+  },
+  buildUp: {
+    "保持前進": "rule004",
+    "ロング前進": "rule005",
+    "サイド前進": "rule006",
+    "中央前進": "rule007",
+  },
+  transition: {
+    "即時奪回": "rule008",
+    "リトリート": "rule009",
+    "縦に速く": "rule010",
+    "ボール保持": "rule011",
+  },
+};
+
+const PLAN_CATEGORY_STATE_LABELS = {
+  attack: "Attack",
+  defense: "Defense",
+  buildUp: "Build Up",
+  transition: "Transition",
+};
+
 const buildUpReasonEventFilter = (event) => [
   "左侵入",
   "中央侵入",
@@ -169,6 +203,7 @@ let liveStateSnapshot = {
   states: [],
 };
 let selectedLiveStateRuleId = null;
+let confirmedLiveStatesByRuleId = {};
 
 const phaseLabels = {
   before_kickoff: "試合前",
@@ -844,6 +879,71 @@ function groupLiveStatesByCategory(liveStates) {
   return grouped;
 }
 
+function resetConfirmedLiveStates() {
+  confirmedLiveStatesByRuleId = {};
+}
+
+function readPlanCategoryOptions(plan, categoryKey) {
+  if (window.MO_STATE_ENGINE?.readPlanCategory) {
+    return window.MO_STATE_ENGINE.readPlanCategory(plan, categoryKey);
+  }
+  const items = plan?.categories?.[categoryKey];
+  return Array.isArray(items) ? items : [];
+}
+
+function resolveRuleIdForPlanOption(categoryKey, planOption) {
+  return PLAN_OPTION_RULE_IDS[categoryKey]?.[planOption] ?? null;
+}
+
+function createPlanDefaultLiveState(categoryKey, planOption) {
+  const ruleId = resolveRuleIdForPlanOption(categoryKey, planOption);
+  if (!ruleId) return null;
+
+  return {
+    ruleId,
+    planCategoryKey: categoryKey,
+    category: PLAN_CATEGORY_STATE_LABELS[categoryKey] || categoryKey,
+    planOption,
+    label: `🟢 ${planOption}`,
+    status: "green",
+    source: "plan",
+  };
+}
+
+function updateConfirmedLiveStatesFromRuleResults(ruleResults) {
+  if (!Array.isArray(ruleResults)) return;
+
+  ruleResults.forEach((item) => {
+    if (!item?.ruleId) return;
+    confirmedLiveStatesByRuleId[item.ruleId] = {
+      ...item,
+      source: "rule",
+    };
+  });
+}
+
+function buildLiveStateDisplayByCategory(plan) {
+  const grouped = new Map(liveStateCategories.map((category) => [category.key, []]));
+  if (!plan) return grouped;
+
+  liveStateCategories.forEach(({ key: categoryKey }) => {
+    readPlanCategoryOptions(plan, categoryKey).forEach((planOption) => {
+      const ruleId = resolveRuleIdForPlanOption(categoryKey, planOption);
+      if (!ruleId) return;
+
+      const displayState = confirmedLiveStatesByRuleId[ruleId]
+        ?? createPlanDefaultLiveState(categoryKey, planOption);
+      if (displayState) grouped.get(categoryKey).push(displayState);
+    });
+  });
+
+  return grouped;
+}
+
+function flattenGroupedLiveStates(groupedStates) {
+  return liveStateCategories.flatMap(({ key }) => groupedStates.get(key) || []);
+}
+
 function renderLiveStateValue(items) {
   if (!items.length) {
     return `<span class="live-state-empty-value">--</span>`;
@@ -973,23 +1073,26 @@ function renderLiveState() {
   const plan = currentPlanForDisplay();
   const events = getEventsForStateEvaluation();
   const evaluationElapsed = getEvaluationElapsed(events);
-  const liveStates = typeof evaluate === "function"
+  const ruleResults = typeof evaluate === "function"
     ? evaluate({ plan, events, elapsed: evaluationElapsed })
     : [];
+
+  updateConfirmedLiveStatesFromRuleResults(ruleResults);
+
+  const groupedStates = buildLiveStateDisplayByCategory(plan);
+  const displayStates = flattenGroupedLiveStates(groupedStates);
 
   liveStateSnapshot = {
     evaluatedAt: nowIso(),
     plan,
     events,
     elapsed: evaluationElapsed,
-    states: liveStates,
+    states: displayStates,
   };
 
   if (selectedLiveStateRuleId && !findLiveStateByRuleId(selectedLiveStateRuleId)) {
     selectedLiveStateRuleId = null;
   }
-
-  const groupedStates = groupLiveStatesByCategory(liveStates);
 
   debugLiveState("evaluate", {
     clockElapsed: state.elapsed,
@@ -997,12 +1100,19 @@ function renderLiveState() {
     eventCount: events.length,
     boundaryIndex: getPlanEvaluationBoundaryIndex(),
     planCategories: plan?.categories ?? null,
-    liveStateCount: liveStates.length,
-    liveStates: liveStates.map((item) => ({
+    ruleResultCount: ruleResults.length,
+    ruleResults: ruleResults.map((item) => ({
       ruleId: item.ruleId,
       category: item.category,
       planCategoryKey: item.planCategoryKey,
       label: item.label,
+    })),
+    displayStateCount: displayStates.length,
+    displayStates: displayStates.map((item) => ({
+      ruleId: item.ruleId,
+      source: item.source,
+      label: item.label,
+      status: item.status,
     })),
     grouped: Object.fromEntries(
       liveStateCategories.map(({ key }) => [key, (groupedStates.get(key) || []).length]),
@@ -1077,6 +1187,7 @@ function handleMatchAction() {
   if (phase === "before_kickoff") {
     const kickoffPlan = clonePlanSnapshot(state.match.currentPlan);
     if (!kickoffPlan) return;
+    resetConfirmedLiveStates();
     state.match.kickoff_at = nowIso();
     state.match.match_phase = "first_half";
     state.match.first_half_plan = kickoffPlan;
