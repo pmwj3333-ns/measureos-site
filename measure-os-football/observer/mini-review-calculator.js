@@ -1,4 +1,47 @@
 (function () {
+  const MINI_REVIEW_FORMAT_VERSION = 2;
+  const MINI_REVIEW_FIELD_KEYS = [
+    "plan",
+    "flow",
+    "attack",
+    "defense",
+    "buildUp",
+    "transition",
+    "setPiece",
+  ];
+
+  const LEGACY_MINI_REVIEW_TEXT = {
+    Excellent: { text: "計画通り好調", tone: "positive" },
+    Good: { text: "ゲームプラン通り", tone: "positive" },
+    Average: { text: "プランおおむね維持", tone: "neutral" },
+    Poor: { text: "ゲームプラン逸脱", tone: "negative" },
+    "Home Dominant": { text: "主導権を握る", tone: "positive" },
+    "Away Dominant": { text: "押し込まれる展開", tone: "negative" },
+    Balanced: { text: "拮抗した前半", tone: "neutral" },
+    "Momentum Shift": { text: "流れが入れ替わ", tone: "neutral" },
+    "Left Attack": { text: "左攻撃が機能", tone: "positive" },
+    "Central Attack": { text: "中央突破が有効", tone: "positive" },
+    "Right Attack": { text: "右攻撃が機能", tone: "positive" },
+    "Cross Attack": { text: "クロス攻撃有効", tone: "positive" },
+    Shot: { text: "決定力が機能", tone: "positive" },
+    "Left Conceded": { text: "左守備に苦戦", tone: "negative" },
+    "Central Conceded": { text: "中央突破を許す", tone: "negative" },
+    "Right Conceded": { text: "右守備に苦戦", tone: "negative" },
+    "Cross Conceded": { text: "クロス対応に苦戦", tone: "negative" },
+    "Shot Conceded": { text: "シュート許し多い", tone: "negative" },
+    "Ball Won": { text: "守備が安定", tone: "positive" },
+    "High Win": { text: "前線守備が安定", tone: "positive" },
+    "Front Win": { text: "前線守備が安定", tone: "positive" },
+    "Quick Recovery": { text: "即奪回が機能", tone: "positive" },
+    "Counter Started": { text: "カウンター有効", tone: "positive" },
+    "Counter Conceded": { text: "被カウンター多発", tone: "negative" },
+    CK: { text: "CK機会が多い", tone: "neutral" },
+    FK: { text: "FK機会が多い", tone: "neutral" },
+    PK: { text: "PK判定あり", tone: "neutral" },
+    Chance: { text: "決定機を創出", tone: "positive" },
+    決定機: { text: "決定機を創出", tone: "positive" },
+  };
+
   const PLAN_CATEGORY_KEYS = ["attack", "defense", "buildUp", "transition"];
 
   const STATE_STATUS_SCORE = {
@@ -60,6 +103,37 @@
 
   function createReviewEntry(text, tone = "neutral") {
     return { text, tone };
+  }
+
+  function containsJapanese(text) {
+    return /[ぁ-んァ-ン一-龯]/.test(String(text || ""));
+  }
+
+  function isLegacyMiniReviewSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") return false;
+    return Number(snapshot.formatVersion) !== MINI_REVIEW_FORMAT_VERSION;
+  }
+
+  function normalizeMiniReviewEntry(value) {
+    if (!value) {
+      return createReviewEntry("--", "neutral");
+    }
+
+    if (typeof value === "string") {
+      return LEGACY_MINI_REVIEW_TEXT[value]
+        || createReviewEntry(containsJapanese(value) ? value : "--", "neutral");
+    }
+
+    if (value.text) {
+      const legacy = LEGACY_MINI_REVIEW_TEXT[value.text];
+      if (legacy) return legacy;
+      if (!containsJapanese(value.text)) {
+        return createReviewEntry("--", "neutral");
+      }
+      return createReviewEntry(value.text, value.tone || "neutral");
+    }
+
+    return createReviewEntry("--", "neutral");
   }
 
   function parseMatchTime(timeValue) {
@@ -402,6 +476,7 @@
     const flowType = calculateFlow(firstHalfEvents);
 
     return {
+      formatVersion: MINI_REVIEW_FORMAT_VERSION,
       plan: formatPlanReview(planRating),
       flow: formatFlowReview(flowType),
       attack: formatAttackReview(calculateAttackSummary(firstHalfEvents), firstHalfEvents),
@@ -414,6 +489,7 @@
   }
 
   window.MO_MINI_REVIEW = {
+    MINI_REVIEW_FORMAT_VERSION,
     calculateMiniReview,
     calculatePlanReview,
     calculateFlow,
@@ -431,5 +507,7 @@
     formatBuildUpReview,
     formatTransitionReview,
     formatSetPieceReview,
+    isLegacyMiniReviewSnapshot,
+    normalizeMiniReviewEntry,
   };
 })();

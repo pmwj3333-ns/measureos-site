@@ -1294,6 +1294,7 @@ function calculateMiniReview() {
 
   if (typeof calculator !== "function") {
     return {
+      formatVersion: 2,
       plan: { text: "プランおおむね維持", tone: "neutral" },
       flow: { text: "拮抗した前半", tone: "neutral" },
       attack: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
@@ -1313,27 +1314,50 @@ function calculateMiniReview() {
   });
 }
 
+function isLegacyMiniReviewSnapshot(snapshot) {
+  const check = window.MO_MINI_REVIEW?.isLegacyMiniReviewSnapshot;
+  if (typeof check === "function") {
+    return check(snapshot);
+  }
+
+  if (!snapshot || typeof snapshot !== "object") return false;
+  return Number(snapshot.formatVersion) !== 2;
+}
+
+function refreshMiniReviewSnapshotIfNeeded() {
+  if (!state.match?.first_half_end_at) return;
+
+  if (!state.match.firstHalfMiniReview || isLegacyMiniReviewSnapshot(state.match.firstHalfMiniReview)) {
+    state.match.firstHalfMiniReview = calculateMiniReview();
+    saveMatch();
+  }
+}
+
 function resetFirstHalfMiniReview() {
   if (!state.match) return;
   state.match.firstHalfMiniReview = null;
 }
 
 function generateFirstHalfMiniReview() {
-  if (!state.match || state.match.firstHalfMiniReview) {
-    return state.match?.firstHalfMiniReview ?? null;
-  }
-
-  state.match.firstHalfMiniReview = calculateMiniReview();
-  saveMatch();
+  if (!state.match) return null;
+  refreshMiniReviewSnapshotIfNeeded();
   return state.match.firstHalfMiniReview;
 }
 
 function ensureFirstHalfMiniReviewForRestoredMatch() {
-  if (!state.match?.first_half_end_at || state.match.firstHalfMiniReview) return;
-  generateFirstHalfMiniReview();
+  refreshMiniReviewSnapshotIfNeeded();
 }
 
 function normalizeMiniReviewEntry(value) {
+  const normalize = window.MO_MINI_REVIEW?.normalizeMiniReviewEntry;
+  if (typeof normalize === "function") {
+    const entry = normalize(value);
+    return {
+      text: entry.text || MINI_REVIEW_PLACEHOLDER,
+      tone: entry.tone || "neutral",
+    };
+  }
+
   if (!value) {
     return { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" };
   }
@@ -1349,6 +1373,7 @@ function normalizeMiniReviewEntry(value) {
 }
 
 function renderMiniReview() {
+  refreshMiniReviewSnapshotIfNeeded();
   const snapshot = state.match?.firstHalfMiniReview;
   document.querySelectorAll("[data-mini-review-key]").forEach((row) => {
     const key = row.dataset.miniReviewKey;
