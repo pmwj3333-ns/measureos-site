@@ -205,6 +205,7 @@ function createInitialMatch() {
     planHistory: [],
     home_score: 0,
     away_score: 0,
+    elapsedSeconds: 0,
   };
 }
 
@@ -212,6 +213,41 @@ function formatTime(seconds) {
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
   return `${mm}:${ss}`;
+}
+
+function parseMatchTime(timeValue) {
+  const [minutes, seconds] = String(timeValue || "").split(":").map(Number);
+  if (Number.isNaN(minutes) || Number.isNaN(seconds)) return 0;
+  return Math.max(0, minutes * 60 + seconds);
+}
+
+function getLastEventElapsed(events) {
+  if (!Array.isArray(events) || events.length === 0) return 0;
+  return events.reduce((max, event) => Math.max(max, parseMatchTime(event.time)), 0);
+}
+
+function getEvaluationElapsed(events) {
+  const clockElapsed = Math.max(0, Number(state.elapsed) || 0);
+  const lastEventElapsed = getLastEventElapsed(events);
+  return Math.max(clockElapsed, lastEventElapsed);
+}
+
+function syncMatchElapsed() {
+  if (!state.match) return;
+  state.match.elapsedSeconds = Math.max(0, Number(state.elapsed) || 0);
+}
+
+function isLiveStateDebugEnabled() {
+  try {
+    return window.localStorage.getItem("measure-os-football:live-state-debug") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function debugLiveState(label, payload) {
+  if (!isLiveStateDebugEnabled()) return;
+  console.log(`[LIVE STATE] ${label}`, payload);
 }
 
 function teamLabel(team) {
@@ -282,7 +318,17 @@ function loadMatch() {
   state.match = saved && saved.match_phase ? saved : createInitialMatch();
   state.match.home_score = Math.max(0, Number(state.match.home_score) || 0);
   state.match.away_score = Math.max(0, Number(state.match.away_score) || 0);
+  state.elapsed = Math.max(0, Number(state.match.elapsedSeconds) || 0);
   migrateMatchPlanFields();
+}
+
+function restoreElapsedFromEventsIfNeeded() {
+  if (state.elapsed > 0) return;
+  const inferred = getLastEventElapsed(state.events);
+  if (inferred <= 0) return;
+  state.elapsed = inferred;
+  syncMatchElapsed();
+  saveMatch();
 }
 
 function sanitizeStoredPlans() {
@@ -420,6 +466,7 @@ function getEventsForStateEvaluation() {
 }
 
 function saveMatch() {
+  syncMatchElapsed();
   saveJson(matchStorageKey, state.match);
 }
 
@@ -925,15 +972,16 @@ function renderLiveState() {
   const evaluate = window.MO_STATE_ENGINE?.evaluateLiveState;
   const plan = currentPlanForDisplay();
   const events = getEventsForStateEvaluation();
+  const evaluationElapsed = getEvaluationElapsed(events);
   const liveStates = typeof evaluate === "function"
-    ? evaluate({ plan, events, elapsed: state.elapsed })
+    ? evaluate({ plan, events, elapsed: evaluationElapsed })
     : [];
 
   liveStateSnapshot = {
     evaluatedAt: nowIso(),
     plan,
     events,
-    elapsed: state.elapsed,
+    elapsed: evaluationElapsed,
     states: liveStates,
   };
 
@@ -942,6 +990,24 @@ function renderLiveState() {
   }
 
   const groupedStates = groupLiveStatesByCategory(liveStates);
+
+  debugLiveState("evaluate", {
+    clockElapsed: state.elapsed,
+    evaluationElapsed,
+    eventCount: events.length,
+    boundaryIndex: getPlanEvaluationBoundaryIndex(),
+    planCategories: plan?.categories ?? null,
+    liveStateCount: liveStates.length,
+    liveStates: liveStates.map((item) => ({
+      ruleId: item.ruleId,
+      category: item.category,
+      planCategoryKey: item.planCategoryKey,
+      label: item.label,
+    })),
+    grouped: Object.fromEntries(
+      liveStateCategories.map(({ key }) => [key, (groupedStates.get(key) || []).length]),
+    ),
+  });
 
   host.innerHTML = liveStateCategories.map((category) => {
     const items = groupedStates.get(category.key) || [];
@@ -972,12 +1038,17 @@ function renderAll() {
 }
 
 function startClock(reset = false) {
-  if (reset) state.elapsed = 0;
+  if (reset) {
+    state.elapsed = 0;
+    syncMatchElapsed();
+  }
   if (state.running) return;
   state.running = true;
   state.timerId = window.setInterval(() => {
     state.elapsed += 1;
+    syncMatchElapsed();
     renderClock();
+    renderLiveState();
   }, 1000);
   renderClock();
 }
@@ -988,7 +1059,16 @@ function pauseClock() {
     window.clearInterval(state.timerId);
     state.timerId = null;
   }
+  syncMatchElapsed();
+  saveMatch();
   renderClock();
+}
+
+function resumeClockIfNeeded() {
+  const phase = state.match?.match_phase;
+  if (phase === "first_half" || phase === "second_half") {
+    startClock(false);
+  }
 }
 
 function handleMatchAction() {
@@ -1161,6 +1241,8 @@ function openReview() {
 document.addEventListener("DOMContentLoaded", () => {
   loadMatch();
   loadEvents();
+  restoreElapsedFromEventsIfNeeded();
+  resumeClockIfNeeded();
   renderEventButtons();
   renderMatchEventButtons();
 
