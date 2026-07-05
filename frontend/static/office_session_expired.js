@@ -79,6 +79,41 @@
     return createSessionExpiredError();
   }
 
+  function responseUrlPath(res) {
+    try {
+      return new URL(res.url, global.location.origin).pathname;
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function shouldIgnoreFetch401(res) {
+    var path = responseUrlPath(res);
+    if (path === "/v2/office/login" || path === "/v2/office/logout") return true;
+    if (
+      path === "/v2/office/session" &&
+      global.location.pathname === "/office/v2"
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function installFetch401Handler() {
+    if (global.__MO_OFFICE_SESSION_FETCH_401_INSTALLED__) return;
+    if (typeof global.fetch !== "function") return;
+    global.__MO_OFFICE_SESSION_FETCH_401_INSTALLED__ = true;
+    var originalFetch = global.fetch;
+    global.fetch = function () {
+      return originalFetch.apply(this, arguments).then(function (res) {
+        if (res && res.status === 401 && !shouldIgnoreFetch401(res)) {
+          handleSessionExpired();
+        }
+        return res;
+      });
+    };
+  }
+
   global.OfficeSessionExpired = {
     MSG: MSG,
     REDIRECT_MS: REDIRECT_MS,
@@ -89,4 +124,5 @@
     createSessionExpiredError: createSessionExpiredError,
     ifUnauthorized: ifUnauthorized,
   };
+  installFetch401Handler();
 })(typeof window !== "undefined" ? window : this);

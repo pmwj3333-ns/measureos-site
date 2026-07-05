@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Game Plan</title>
+  <link rel="stylesheet" href="../../shared/page-shell.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="plan-shell page-shell">
+    <header class="page-hero" aria-labelledby="page-title">
+      <p class="eyebrow">MEASURE OS Football</p>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1 id="page-title">Game Plan</h1>
+          <p class="lead">試合前に戦略を設定する。</p>
+        </div>
+        <aside class="philosophy-card" aria-label="MEASURE OS flow guide">
+          <p>MEASURE OS の流れ</p>
+          <div class="philosophy-steps" aria-hidden="true">
+            <span>Plan</span>
+            <span>Operation</span>
+            <span>Deviation</span>
+            <span>Human Decision</span>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <section class="plan-grid" aria-label="plan categories">
+      <article class="category-card" data-category="attack">
+        <div class="category-head">
+          <span class="category-index">01</span>
+          <div>
+            <h2>攻撃</h2>
+            <p>どの形で決定機を創出するか</p>
+          </div>
+        </div>
+        <div class="option-grid" data-options></div>
+      </article>
+
+      <article class="category-card" data-category="defense">
+        <div class="category-head">
+          <span class="category-index">02</span>
+          <div>
+            <h2>守備</h2>
+            <p>どこで守り、どこへ誘導するか</p>
+          </div>
+        </div>
+        <div class="option-grid" data-options></div>
+      </article>
+
+      <article class="category-card" data-category="buildUp">
+        <div class="category-head">
+          <span class="category-index">03</span>
+          <div>
+            <h2>ビルドアップ</h2>
+            <p>どのような前進を目指すか</p>
+          </div>
+        </div>
+        <div class="option-grid" data-options></div>
+      </article>
+
+      <article class="category-card" data-category="transition">
+        <div class="category-head">
+          <span class="category-index">04</span>
+          <div>
+            <h2>トランジション</h2>
+            <p>切り替え直後に何を優先するか</p>
+          </div>
+        </div>
+        <div class="option-grid" data-options></div>
+      </article>
+    </section>
+
+    <section class="memo-card" aria-labelledby="memo-title">
+      <div>
+        <h2 id="memo-title">Free Memo</h2>
+        <p>戦術（How）を書く場所。GK参加 / CB3枚化 / SB内側 / 可変システム / マンツーマン / 選手への細かな役割 など。</p>
+      </div>
+      <textarea
+        id="free-memo"
+        rows="4"
+        maxlength="240"
+        placeholder="例: GK参加でビルド / CB3枚化 / SB内側 / 可変システム / マンツーマン / 10番を消す"
+      ></textarea>
+    </section>
+
+    <footer class="bottom-bar" aria-label="plan summary">
+      <div class="status-info">
+        <span id="selection-count">選択 0 件</span>
+        <strong id="plan-readiness">まだプランは設定されていません</strong>
+        <span id="plan-meta" class="status-meta" hidden></span>
+      </div>
+      <div class="bottom-actions">
+        <button id="clear-plan" type="button">クリア</button>
+        <button id="confirm-plan" type="button" class="primary-action" disabled>プランを確定</button>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../../shared/plan-snapshot.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Observer v0.3</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">MEASURE OS Football</p>
+        <h1>Observer v0.3</h1>
+      </div>
+      <div class="match-clock" aria-label="match clock">
+        <span id="phase-label">Before Kickoff</span>
+        <strong id="clock">00:00</strong>
+      </div>
+    </header>
+
+    <section class="match-control panel" aria-labelledby="match-control-title">
+      <div>
+        <h2 id="match-control-title">Match Control</h2>
+        <p id="match-phase-text" class="muted">Game Plan 確定後、キックオフから観測を開始します。</p>
+      </div>
+      <button id="match-action" type="button" class="primary match-action">キックオフ</button>
+    </section>
+
+    <section id="halftime-panel" class="halftime-panel panel" aria-labelledby="halftime-title" hidden>
+      <div>
+        <h2 id="halftime-title">ハーフタイム</h2>
+        <p class="muted">後半のPlanをどう扱うか選択します。</p>
+      </div>
+      <div class="halftime-actions">
+        <button id="continue-plan" type="button" class="primary">このまま続ける</button>
+        <button id="change-plan" type="button">プラン変更</button>
+      </div>
+    </section>
+
+    <section class="game-plan-card panel" aria-labelledby="game-plan-title">
+      <div class="game-plan-head">
+        <h2 id="game-plan-title">Game Plan</h2>
+        <p id="game-plan-empty" class="muted">Game Plan が登録されていません</p>
+      </div>
+      <div id="game-plan-content" class="game-plan-content" hidden></div>
+    </section>
+
+    <section class="control-strip panel" aria-label="observation controls">
+      <div class="team-toggle" role="group" aria-label="team selection">
+        <button type="button" class="selected" data-team="home">Home</button>
+        <button type="button" data-team="away">Away</button>
+      </div>
+      <p id="observation-lock" class="observation-lock">キックオフ前です</p>
+    </section>
+
+    <section class="panel event-panel" aria-labelledby="event-title">
+      <div class="panel-head">
+        <div>
+          <h2 id="event-title">Observation</h2>
+          <p class="muted">客観的イベントのみを1タップで記録します。</p>
+        </div>
+        <p id="saved-status" class="saved-status" aria-live="polite">未入力</p>
+      </div>
+      <div id="event-categories" class="event-categories"></div>
+    </section>
+
+    <section class="panel timeline-panel" aria-labelledby="timeline-title">
+      <div class="panel-head">
+        <div>
+          <h2 id="timeline-title">イベントタイムライン</h2>
+          <p class="muted">前半・後半のObservationログを保持します。</p>
+        </div>
+        <button id="clear-events" type="button">Clear Events</button>
+      </div>
+      <ol id="timeline" class="timeline" aria-live="polite"></ol>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

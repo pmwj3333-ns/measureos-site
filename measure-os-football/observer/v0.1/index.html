@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Observer v0.1</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">MEASURE OS Football</p>
+        <h1>Observer v0.1</h1>
+      </div>
+      <div class="match-clock" aria-label="match clock">
+        <span id="phase-label">1st Half</span>
+        <strong id="clock">00:00</strong>
+      </div>
+    </header>
+
+    <section class="match-setup panel" aria-labelledby="setup-title">
+      <div>
+        <h2 id="setup-title">Match</h2>
+        <p class="muted">観察対象とフェーズを設定します。</p>
+      </div>
+      <div class="setup-grid">
+        <label>
+          Home
+          <input id="home-team" type="text" value="Home" autocomplete="off" />
+        </label>
+        <label>
+          Away
+          <input id="away-team" type="text" value="Away" autocomplete="off" />
+        </label>
+        <label>
+          Phase
+          <select id="phase">
+            <option>1st Half</option>
+            <option>2nd Half</option>
+            <option>Extra Time</option>
+            <option>Training</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="clock-toggle" type="button" class="primary">Start</button>
+        <button id="clock-reset" type="button">Reset</button>
+      </div>
+    </section>
+
+    <section class="game-plan-card panel" aria-labelledby="game-plan-title">
+      <div class="game-plan-head">
+        <h2 id="game-plan-title">Game Plan</h2>
+        <p id="game-plan-empty" class="muted">Game Plan が登録されていません</p>
+      </div>
+      <div id="game-plan-content" class="game-plan-content" hidden></div>
+    </section>
+
+    <section class="observer-grid">
+      <section class="panel" aria-labelledby="observe-title">
+        <div class="panel-head">
+          <div>
+            <h2 id="observe-title">Observe</h2>
+            <p class="muted">Version 0.1 はイベント記録の最小単位だけを扱います。</p>
+          </div>
+          <div class="team-toggle" role="group" aria-label="team selection">
+            <button type="button" class="selected" data-team="home">Home</button>
+            <button type="button" data-team="away">Away</button>
+          </div>
+        </div>
+
+        <div class="event-buttons" aria-label="observation events">
+          <button type="button" data-event="press">Press</button>
+          <button type="button" data-event="recover">Recover</button>
+          <button type="button" data-event="progress">Progress</button>
+          <button type="button" data-event="entry">Box Entry</button>
+          <button type="button" data-event="shot">Shot</button>
+          <button type="button" data-event="loss">Loss</button>
+        </div>
+
+        <label class="note-field">
+          Note
+          <textarea id="note" rows="4" placeholder="状況、場所、判断理由など"></textarea>
+        </label>
+
+        <div class="actions">
+          <button id="record-event" type="button" class="primary">Record Event</button>
+          <button id="clear-note" type="button">Clear Note</button>
+        </div>
+      </section>
+
+      <aside class="panel dashboard" aria-labelledby="dashboard-title">
+        <h2 id="dashboard-title">Live State</h2>
+        <div class="state-card">
+          <span>Momentum</span>
+          <strong id="momentum">Neutral</strong>
+        </div>
+        <div class="metric-row">
+          <div>
+            <span id="home-label">Home</span>
+            <strong id="home-count">0</strong>
+          </div>
+          <div>
+            <span id="away-label">Away</span>
+            <strong id="away-count">0</strong>
+          </div>
+        </div>
+        <div class="metric-row">
+          <div>
+            <span>Total Events</span>
+            <strong id="total-count">0</strong>
+          </div>
+          <div>
+            <span>Last Event</span>
+            <strong id="last-event">-</strong>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="panel" aria-labelledby="timeline-title">
+      <div class="panel-head">
+        <div>
+          <h2 id="timeline-title">Timeline</h2>
+          <p class="muted">最新の観察から順に表示します。</p>
+        </div>
+        <button id="clear-events" type="button">Clear Events</button>
+      </div>
+      <ol id="timeline" class="timeline" aria-live="polite"></ol>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

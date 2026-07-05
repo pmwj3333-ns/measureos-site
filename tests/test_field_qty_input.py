@@ -23,14 +23,13 @@ def test_field_v2_qty_binding_is_composition_aware():
     bind = _extract_fn(html, "function bindQtyInputEvents", "function isLogistics")
     assert "compositionstart" in bind
     assert "compositionend" in bind
-    assert "finalizeQtyInputAfterComposition" in bind
-    assert "normalizeQtyInputIfFullwidthPresent" in bind
     assert "addEventListener(\"blur\"" in bind
-    assert "function finalizeQtyInputAfterComposition" in html
-    assert "requestAnimationFrame" in html
-    assert "maxAttempts = 8" in html
+    assert "finalizeQtyInputAfterComposition" not in bind
+    assert "normalizeQtyInputIfFullwidthPresent" not in bind
+    assert "requestAnimationFrame" not in bind
     assert "normalizeNumberInput(qtyIn.value)" not in bind
     assert "qtyIn.value = v" not in bind
+    assert "normalizeQtyInputInPlace(qtyIn)" in bind
 
 
 def test_sync_deviation_reason_panel_does_not_normalize_dom_on_read():

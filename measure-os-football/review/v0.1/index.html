@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Review</title>
+  <link rel="stylesheet" href="../../shared/page-shell.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="page-shell review-shell">
+    <header class="page-hero review-hero" aria-labelledby="page-title">
+      <p class="eyebrow">MEASURE OS Football</p>
+      <h1 id="page-title">Review</h1>
+      <p class="lead">試合後の振り返りから、次の Game Plan へ繋ぐ PDCA の Check 画面です。</p>
+    </header>
+
+    <section id="review-search-view" class="review-view panel" aria-label="試合検索">
+      <h2 class="review-section-title">試合検索</h2>
+      <form id="review-search-form" class="review-search-form">
+        <label>
+          大会名
+          <input id="search-competition" type="search" placeholder="例: TRM" autocomplete="off" />
+        </label>
+        <label>
+          対戦相手
+          <input id="search-opponent" type="search" placeholder="例: ○○高校" autocomplete="off" />
+        </label>
+        <label>
+          試合日
+          <input id="search-match-date" type="date" />
+        </label>
+      </form>
+      <div class="review-search-actions">
+        <button id="search-submit" type="submit" form="review-search-form" class="primary">検索</button>
+        <button id="search-reset" type="button">条件クリア</button>
+      </div>
+
+      <h2 class="review-section-title">試合一覧</h2>
+      <p id="review-list-empty" class="review-empty" hidden>該当する試合がありません。試合終了後に Review へ保存されます。</p>
+      <ul id="review-match-list" class="review-match-list"></ul>
+    </section>
+
+    <section id="review-detail-view" class="review-view panel" aria-label="試合詳細" hidden>
+      <div class="review-detail-head">
+        <div>
+          <h2 id="review-detail-title" class="review-detail-title">試合詳細</h2>
+          <p id="review-detail-subtitle" class="muted"></p>
+        </div>
+        <button id="review-back-list" type="button">一覧へ戻る</button>
+      </div>
+
+      <div class="review-tabs-bar" role="tablist" aria-label="Review tabs">
+        <button type="button" class="review-tab is-active" data-tab="match" role="tab" aria-selected="true">Match</button>
+        <button type="button" class="review-tab" data-tab="plan" role="tab" aria-selected="false">Plan</button>
+        <button type="button" class="review-tab" data-tab="state" role="tab" aria-selected="false">State</button>
+        <button type="button" class="review-tab" data-tab="events" role="tab" aria-selected="false">Events</button>
+        <button type="button" class="review-tab" data-tab="deviation" role="tab" aria-selected="false">Deviation</button>
+      </div>
+
+      <div class="review-tab-panels">
+        <div id="review-tab-match" class="review-tab-panel" role="tabpanel"></div>
+        <div id="review-tab-plan" class="review-tab-panel" role="tabpanel" hidden></div>
+        <div id="review-tab-state" class="review-tab-panel" role="tabpanel" hidden></div>
+        <div id="review-tab-events" class="review-tab-panel" role="tabpanel" hidden></div>
+        <div id="review-tab-deviation" class="review-tab-panel" role="tabpanel" hidden></div>
+      </div>
+    </section>
+
+    <section id="review-next-match" class="review-next-match panel" aria-label="次の試合">
+      <h2 class="review-section-title">次の試合</h2>
+
+      <div class="review-learning-memo">
+        <label for="review-learning-notes">今回の学び（任意）</label>
+        <textarea
+          id="review-learning-notes"
+          class="review-learning-textarea"
+          rows="4"
+          placeholder="例:&#10;・前プレが機能しなかった&#10;・左SB裏を使われた&#10;・10番を消せなかった"
+        ></textarea>
+        <p class="review-future-note muted">※ 将来実装予定（保存機能なし）</p>
+      </div>
+
+      <article class="review-next-card">
+        <h3 class="review-next-card-title">同じ大会で続ける</h3>
+        <div class="review-field review-field-readonly">
+          <span>大会名</span>
+          <strong id="next-competition-display">-</strong>
+        </div>
+        <label class="review-next-label">
+          対戦相手
+          <input id="next-opponent" type="text" placeholder="例: ○○高校" autocomplete="off" />
+        </label>
+        <div class="review-next-datetime">
+          <label class="review-next-label">
+            試合日
+            <input id="next-match-date" type="date" />
+          </label>
+          <label class="review-next-label">
+            キックオフ
+            <input id="next-kickoff-time" type="time" />
+          </label>
+        </div>
+        <button id="next-same-competition" type="button" class="primary">Game Planへ</button>
+      </article>
+
+      <article class="review-next-card review-next-card-secondary">
+        <h3 class="review-next-card-title">新しい大会を開始</h3>
+        <p class="muted review-next-card-lead">大会名・対戦相手・試合日時を新規入力してから Game Plan へ進みます。</p>
+        <button id="next-new-competition" type="button">Match Setupへ</button>
+      </article>
+    </section>
+  </main>
+
+  <script src="../../shared/plan-snapshot.js"></script>
+  <script src="../../shared/review-archive.js"></script>
+  <script src="../../state-engine/v0.1/engine.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule012-attack-left-dominance.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule013-attack-right-dominance.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule014-attack-central-attack.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule015-attack-cross-strategy.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule002-defense-high-press.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule003-defense-low-block.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule016-defense-middle-block.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule017-defense-side-guiding.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule004-build-up-hold-and-advance.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule005-build-up-long-advance.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule006-build-up-side-advance.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule007-build-up-central-advance.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule008-transition-immediate-recovery.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule009-transition-retreat.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule010-transition-fast-vertical.js"></script>
+  <script src="../../state-engine/v0.1/rules/rule011-transition-ball-retention.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
