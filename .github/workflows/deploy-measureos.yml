@@ -1,9 +1,12 @@
 name: Deploy MEASURE OS to VPS
 
+# Disabled during development — deploy manually on VPS: `deploy-measureos`
+# To re-enable auto-deploy: uncomment the `push` block below.
 on:
-  push:
-    branches:
-      - milestone/package-a-phase1
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - milestone/package-a-phase1
 
 concurrency:
   group: deploy-measureos
