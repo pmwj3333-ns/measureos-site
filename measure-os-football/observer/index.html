@@ -99,22 +99,76 @@
     </section>
 
     <section class="operation-grid" aria-label="operation workspace">
-      <div class="observation-column">
+      <div class="observer-workspace">
         <section class="panel event-panel" aria-label="Observation">
-          <div id="event-categories" class="event-categories"></div>
+          <div class="event-input-layout">
+            <div id="event-categories" class="event-categories"></div>
+
+            <div class="insight-center" aria-label="match insight">
+              <aside class="live-state-panel" aria-labelledby="live-state-title">
+                <h2 id="live-state-title" class="live-state-heading">LIVE STATE</h2>
+                <div id="live-state-content" class="live-state-content" aria-live="polite"></div>
+                <div id="live-state-detail" class="live-state-detail" hidden></div>
+              </aside>
+
+              <aside class="mini-review-panel" aria-labelledby="mini-review-title">
+                <h2 id="mini-review-title" class="mini-review-heading">Mini Review</h2>
+                <div class="mini-review-body">
+                  <div class="mini-review-primary">
+                    <article class="mini-review-row mini-review-row-plan" data-mini-review-key="plan">
+                      <span class="mini-review-label">Plan</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                    <article class="mini-review-row mini-review-row-flow" data-mini-review-key="flow">
+                      <span class="mini-review-label">Flow</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                  </div>
+                  <div class="mini-review-divider" aria-hidden="true"></div>
+                  <div class="mini-review-metrics">
+                    <article class="mini-review-row" data-mini-review-key="attack">
+                      <span class="mini-review-label">Attack</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                    <article class="mini-review-row" data-mini-review-key="defense">
+                      <span class="mini-review-label">Defense</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                    <article class="mini-review-row" data-mini-review-key="buildUp">
+                      <span class="mini-review-label">Build Up</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                    <article class="mini-review-row" data-mini-review-key="transition">
+                      <span class="mini-review-label">Transition</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                    <article class="mini-review-row" data-mini-review-key="setPiece">
+                      <span class="mini-review-label">Set Piece</span>
+                      <span class="mini-review-value">--</span>
+                    </article>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
         </section>
 
-        <section class="match-events-panel panel" aria-labelledby="match-events-title">
-          <h2 id="match-events-title" class="match-events-heading">Match Events</h2>
-          <div id="match-events" class="match-events-grid"></div>
+        <section class="match-events-panel panel is-collapsed" aria-labelledby="match-events-title">
+          <button
+            type="button"
+            id="match-events-toggle"
+            class="match-events-toggle"
+            aria-expanded="false"
+            aria-controls="match-events-body"
+          >
+            <span class="match-events-toggle-icon" aria-hidden="true">▼</span>
+            <span id="match-events-title">Match Events</span>
+          </button>
+          <div id="match-events-body" class="match-events-body" hidden>
+            <div id="match-events" class="match-events-grid"></div>
+          </div>
         </section>
       </div>
-
-      <aside class="panel live-state-panel" aria-labelledby="live-state-title">
-        <h2 id="live-state-title" class="live-state-heading">LIVE STATE</h2>
-        <div id="live-state-content" class="live-state-content" aria-live="polite"></div>
-        <div id="live-state-detail" class="live-state-detail" hidden></div>
-      </aside>
     </section>
 
     <section id="post-match-panel" class="post-match-panel panel" aria-label="post match summary" hidden>
@@ -148,6 +202,8 @@
   <script src="../state-engine/v0.1/rules/rule009-transition-retreat.js"></script>
   <script src="../state-engine/v0.1/rules/rule010-transition-fast-vertical.js"></script>
   <script src="../state-engine/v0.1/rules/rule011-transition-ball-retention.js"></script>
+  <script src="./mini-review-calculator.js"></script>
+  <script src="./live-state-explain.js"></script>
   <script src="./events.js"></script>
   <script src="./app.js"></script>
 </body>

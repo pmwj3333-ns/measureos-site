@@ -21,6 +21,7 @@ window.MO_OBSERVATION_CATEGORIES = [
   },
   {
     label: "セットプレー",
+    layout: "team-split",
     events: ["CK", "FK", "PK", "決定機"],
   },
 ];

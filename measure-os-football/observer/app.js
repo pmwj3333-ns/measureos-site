@@ -35,6 +35,47 @@ const liveStateCategories = [
   { key: "transition", label: "TRANSITION", aliases: ["Transition", "transition"] },
 ];
 
+const observationEventDisplay = {
+  左侵入: { icon: "←", label: "左", tier: "intrusion" },
+  中央侵入: { icon: "↑", label: "中央", tier: "intrusion" },
+  右侵入: { icon: "→", label: "右", tier: "intrusion" },
+  クロス: { icon: "↗", label: "クロス", tier: "cross" },
+  シュート: {
+    icon: `<svg class="event-action-svg" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="6" width="14" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="11.5" r="1.8" fill="currentColor"/></svg>`,
+    label: "シュート",
+    tier: "shoot",
+    iconHtml: true,
+  },
+  被左侵入: { icon: "←", label: "左", tier: "intrusion" },
+  被中央侵入: { icon: "↑", label: "中央", tier: "intrusion" },
+  被右侵入: { icon: "→", label: "右", tier: "intrusion" },
+  被クロス: { icon: "↗", label: "クロス", tier: "cross" },
+  被シュート: {
+    icon: `<svg class="event-action-svg" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="6" width="14" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="11.5" r="1.8" fill="currentColor"/></svg>`,
+    label: "シュート",
+    tier: "shoot",
+    iconHtml: true,
+  },
+  ボール奪取: {
+    icon: `<svg class="event-action-svg" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5.2v4.8c0 3.8-2.6 6.4-6 7-3.4-.6-6-3.2-6-7V5.2Z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>`,
+    label: "奪取",
+    tier: "recovery",
+    iconHtml: true,
+  },
+  前線奪取: { icon: "⬆", label: "高奪取", tier: "recovery" },
+  即時奪回成功: { icon: "↺", label: "即奪回", tier: "transition" },
+  カウンター開始: { icon: "⇢", label: "カウンター", tier: "transition" },
+  カウンター被弾: { icon: "⇠", label: "被カウンター", tier: "transition" },
+};
+
+const observationEventDisplayOrder = {
+  トランジション: ["カウンター開始", "即時奪回成功", "カウンター被弾"],
+};
+
+function getCategoryDisplayEvents(category) {
+  return observationEventDisplayOrder[category.label] || category.events;
+}
+
 const PLAN_OPTION_RULE_IDS = {
   attack: {
     "左優位": "rule012",
@@ -205,6 +246,8 @@ let liveStateSnapshot = {
 let selectedLiveStateRuleId = null;
 let confirmedLiveStatesByRuleId = {};
 
+const MINI_REVIEW_PLACEHOLDER = "--";
+
 const phaseLabels = {
   before_kickoff: "試合前",
   first_half: "前半",
@@ -241,6 +284,7 @@ function createInitialMatch() {
     home_score: 0,
     away_score: 0,
     elapsedSeconds: 0,
+    firstHalfMiniReview: null,
   };
 }
 
@@ -296,6 +340,39 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function getObservationEventDisplay(eventName) {
+  return (
+    observationEventDisplay[eventName] || {
+      icon: "•",
+      label: eventName,
+      tier: "default",
+    }
+  );
+}
+
+function renderObservationEventIcon(display) {
+  if (display.iconHtml) {
+    return `<span class="event-action-icon event-action-icon-svg">${display.icon}</span>`;
+  }
+  return `<span class="event-action-icon" aria-hidden="true">${escapeHtml(display.icon)}</span>`;
+}
+
+function createObservationEventButton(eventName, onClick) {
+  const display = getObservationEventDisplay(eventName);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "event-action-button";
+  button.dataset.eventName = eventName;
+  button.dataset.eventTier = display.tier;
+  button.setAttribute("aria-label", eventName);
+  button.innerHTML = `
+    ${renderObservationEventIcon(display)}
+    <span class="event-action-label">${escapeHtml(display.label)}</span>
+  `;
+  button.addEventListener("click", onClick);
+  return button;
 }
 
 function nowIso() {
@@ -775,23 +852,70 @@ function renderMatchEventsLock() {
   });
 }
 
+function renderSetPieceCategory(category) {
+  const section = document.createElement("section");
+  section.className = "event-category event-category-set-piece";
+  section.dataset.category = category.label;
+
+  const title = document.createElement("h3");
+  title.textContent = category.label;
+
+  const columns = document.createElement("div");
+  columns.className = "set-piece-columns";
+
+  [
+    { team: "home", label: "Home" },
+    { team: "away", label: "Away" },
+  ].forEach(({ team, label }) => {
+    const block = document.createElement("section");
+    block.className = `set-piece-team-block is-${team}`;
+
+    const teamLabel = document.createElement("p");
+    teamLabel.className = "set-piece-team-label";
+    teamLabel.textContent = label;
+
+    const grid = document.createElement("div");
+    grid.className = "set-piece-grid";
+    grid.dataset.eventCount = String(category.events.length);
+
+    category.events.forEach((eventName) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "set-piece-button";
+      button.dataset.eventName = eventName;
+      button.dataset.eventTeam = team;
+      button.textContent = eventName;
+      button.addEventListener("click", () => recordEvent(eventName, button, team));
+      grid.appendChild(button);
+    });
+
+    block.append(teamLabel, grid);
+    columns.appendChild(block);
+  });
+
+  section.append(title, columns);
+  return section;
+}
+
 function renderEventButtons() {
   const host = $("event-categories");
   host.innerHTML = "";
   observationCategories.forEach((category) => {
+    if (category.layout === "team-split") {
+      host.appendChild(renderSetPieceCategory(category));
+      return;
+    }
+
     const section = document.createElement("section");
     section.className = "event-category";
     section.dataset.category = category.label;
     const title = document.createElement("h3");
     title.textContent = category.label;
     const grid = document.createElement("div");
-    grid.className = "event-grid";
-    category.events.forEach((eventName) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.eventName = eventName;
-      button.textContent = eventName;
-      button.addEventListener("click", () => recordEvent(eventName, button));
+    const isPitchGrid = category.label === "攻撃" || category.label === "守備";
+    grid.className = isPitchGrid ? "event-grid event-grid-pitch" : "event-grid";
+    getCategoryDisplayEvents(category).forEach((eventName) => {
+      const button = createObservationEventButton(eventName, () => recordEvent(eventName, button));
       grid.appendChild(button);
     });
     section.append(title, grid);
@@ -1065,6 +1189,32 @@ function closeLiveStateDetail() {
   renderLiveStateDetail();
 }
 
+function enrichLiveStateForExplain(liveState, plan) {
+  if (!liveState?.ruleId || liveState.planOption) return liveState;
+
+  for (const { key: categoryKey } of liveStateCategories) {
+    for (const planOption of readPlanCategoryOptions(plan, categoryKey)) {
+      if (resolveRuleIdForPlanOption(categoryKey, planOption) === liveState.ruleId) {
+        return { ...liveState, planOption, planCategoryKey: categoryKey };
+      }
+    }
+  }
+
+  return liveState;
+}
+
+function renderLiveStateExplain(items, context, plan) {
+  const buildExplain = window.MO_LIVE_STATE_EXPLAIN?.buildLiveStateExplainLine;
+  const pickPrimary = window.MO_LIVE_STATE_EXPLAIN?.pickPrimaryLiveStateItem;
+  if (typeof buildExplain !== "function") return "--";
+
+  const primary = typeof pickPrimary === "function" ? pickPrimary(items) : items[0];
+  const enriched = enrichLiveStateForExplain(primary, plan);
+  return buildExplain(enriched, context, {
+    getReasonEvents,
+  });
+}
+
 function renderLiveState() {
   const host = $("live-state-content");
   if (!host) return;
@@ -1121,15 +1271,76 @@ function renderLiveState() {
 
   host.innerHTML = liveStateCategories.map((category) => {
     const items = groupedStates.get(category.key) || [];
+    const explainLine = renderLiveStateExplain(items, {
+      events,
+      elapsed: evaluationElapsed,
+    }, plan);
     return `
       <article class="live-state-row" data-category="${escapeHtml(category.key)}">
         <span class="live-state-row-label">${escapeHtml(category.label)}</span>
         <div class="live-state-row-value">${renderLiveStateValue(items)}</div>
+        <p class="live-state-explain">${escapeHtml(explainLine)}</p>
       </article>
     `;
   }).join("");
 
   renderLiveStateDetail();
+}
+
+function calculateMiniReview() {
+  const plan = normalizePlanSnapshot(state.match?.first_half_plan)
+    || currentPlanForDisplay();
+  const calculator = window.MO_MINI_REVIEW?.calculateMiniReview;
+
+  if (typeof calculator !== "function") {
+    return {
+      plan: "Average",
+      flow: "Balanced",
+      attack: "--",
+      defense: "--",
+      buildUp: "--",
+      transition: "--",
+      setPiece: "--",
+      generatedAt: nowIso(),
+    };
+  }
+
+  return calculator({
+    plan,
+    events: state.events,
+    liveStatesByRuleId: confirmedLiveStatesByRuleId,
+    generatedAt: nowIso(),
+  });
+}
+
+function resetFirstHalfMiniReview() {
+  if (!state.match) return;
+  state.match.firstHalfMiniReview = null;
+}
+
+function generateFirstHalfMiniReview() {
+  if (!state.match || state.match.firstHalfMiniReview) {
+    return state.match?.firstHalfMiniReview ?? null;
+  }
+
+  state.match.firstHalfMiniReview = calculateMiniReview();
+  saveMatch();
+  return state.match.firstHalfMiniReview;
+}
+
+function ensureFirstHalfMiniReviewForRestoredMatch() {
+  if (!state.match?.first_half_end_at || state.match.firstHalfMiniReview) return;
+  generateFirstHalfMiniReview();
+}
+
+function renderMiniReview() {
+  const snapshot = state.match?.firstHalfMiniReview;
+  document.querySelectorAll("[data-mini-review-key]").forEach((row) => {
+    const key = row.dataset.miniReviewKey;
+    const valueEl = row.querySelector(".mini-review-value");
+    if (!key || !valueEl) return;
+    valueEl.textContent = snapshot?.[key] ?? MINI_REVIEW_PLACEHOLDER;
+  });
 }
 
 function renderAll() {
@@ -1145,6 +1356,7 @@ function renderAll() {
   renderTimeline();
   renderSavedStatus();
   renderLiveState();
+  renderMiniReview();
 }
 
 function startClock(reset = false) {
@@ -1188,6 +1400,7 @@ function handleMatchAction() {
     const kickoffPlan = clonePlanSnapshot(state.match.currentPlan);
     if (!kickoffPlan) return;
     resetConfirmedLiveStates();
+    resetFirstHalfMiniReview();
     state.match.kickoff_at = nowIso();
     state.match.match_phase = "first_half";
     state.match.first_half_plan = kickoffPlan;
@@ -1210,6 +1423,7 @@ function handleMatchAction() {
   } else if (phase === "first_half") {
     state.match.first_half_end_at = nowIso();
     state.match.match_phase = "halftime_decision";
+    generateFirstHalfMiniReview();
     saveMatch();
     pauseClock();
   } else if (phase === "halftime_ready") {
@@ -1278,15 +1492,15 @@ function flashEventButton(button) {
   button.classList.add("is-feedback");
   window.setTimeout(() => {
     button.classList.remove("is-feedback");
-  }, 320);
+  }, 180);
 }
 
-function recordEvent(eventName, button) {
+function recordEvent(eventName, button, teamOverride) {
   if (!isObservationOpen()) return;
   state.events.push({
     eventName,
     time: formatTime(state.elapsed),
-    team: state.selectedTeam,
+    team: teamOverride ?? state.selectedTeam,
     inputOrder: state.events.length + 1,
     phase: currentObservationPhaseLabel(),
   });
@@ -1349,10 +1563,33 @@ function openReview() {
   window.location.assign(reviewPath);
 }
 
+function bindMatchEventsCollapse() {
+  const toggle = $("match-events-toggle");
+  const body = $("match-events-body");
+  const panel = document.querySelector(".match-events-panel");
+  const icon = toggle?.querySelector(".match-events-toggle-icon");
+  if (!toggle || !body || !panel) return;
+
+  const setExpanded = (expanded) => {
+    body.hidden = !expanded;
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    panel.classList.toggle("is-collapsed", !expanded);
+    panel.classList.toggle("is-expanded", expanded);
+    if (icon) icon.textContent = expanded ? "▲" : "▼";
+  };
+
+  toggle.addEventListener("click", () => {
+    setExpanded(body.hidden);
+  });
+
+  setExpanded(false);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   loadMatch();
   loadEvents();
   restoreElapsedFromEventsIfNeeded();
+  ensureFirstHalfMiniReviewForRestoredMatch();
   resumeClockIfNeeded();
   renderEventButtons();
   renderMatchEventButtons();
@@ -1389,6 +1626,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   bindCurrentPlanPopover();
+  bindMatchEventsCollapse();
 
   renderAll();
 });

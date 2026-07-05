@@ -362,8 +362,243 @@ button:focus-visible {
   padding: 6px;
 }
 
+.observer-workspace {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.event-input-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1.7fr) minmax(0, 1.85fr);
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  row-gap: 7px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
 .event-panel .event-categories {
+  display: contents;
   margin: 0;
+}
+
+.insight-center {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 0;
+  min-width: 0;
+  align-self: stretch;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 5px 6px;
+  overflow: hidden;
+}
+
+.insight-center .live-state-panel,
+.insight-center .mini-review-panel {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.insight-center .live-state-panel {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 7px;
+}
+
+.insight-center .mini-review-panel {
+  padding-left: 7px;
+}
+
+.insight-center .live-state-heading,
+.insight-center .mini-review-heading {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+
+.insight-center .mini-review-heading {
+  color: var(--accent-2);
+}
+
+.insight-center .mini-review-body {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.insight-center .mini-review-primary,
+.insight-center .mini-review-metrics {
+  display: contents;
+}
+
+.insight-center .mini-review-divider {
+  display: none;
+}
+
+.insight-center .mini-review-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 0;
+  padding: 4px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.insight-center .mini-review-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  color: var(--muted);
+  text-align: left;
+}
+
+.insight-center .mini-review-value {
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insight-center .mini-review-row-plan .mini-review-label {
+  color: var(--accent);
+  font-size: 0.6rem;
+}
+
+.insight-center .mini-review-row-plan .mini-review-value {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: var(--accent);
+  padding: 0;
+}
+
+.insight-center .mini-review-row-flow .mini-review-value {
+  font-size: 0.82rem;
+}
+
+.mini-review-panel {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+
+.mini-review-heading {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+
+.mini-review-body {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mini-review-primary,
+.mini-review-metrics {
+  display: grid;
+  gap: 2px;
+}
+
+.mini-review-divider {
+  height: 1px;
+  margin: 2px 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mini-review-row {
+  display: grid;
+  grid-template-columns: minmax(3.4rem, 36%) minmax(4.2rem, 1fr);
+  column-gap: 6px;
+  align-items: center;
+  min-height: 1.15rem;
+}
+
+.mini-review-label {
+  justify-self: start;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.mini-review-value {
+  justify-self: end;
+  width: 100%;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-review-row-plan {
+  grid-template-columns: minmax(2.2rem, 24%) minmax(5.5rem, 1fr);
+  min-height: 1.5rem;
+}
+
+.mini-review-row-plan .mini-review-label {
+  color: var(--accent);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+}
+
+.mini-review-row-plan .mini-review-value {
+  padding: 2px 0 2px 4px;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.mini-review-row-flow {
+  grid-template-columns: minmax(2.2rem, 24%) minmax(6rem, 1fr);
+}
+
+.mini-review-row-flow .mini-review-value {
+  font-size: 0.76rem;
+}
+
+.mini-review-metrics .mini-review-row {
+  grid-template-columns: minmax(3.6rem, 38%) minmax(3.8rem, 1fr);
 }
 
 .score-board-compact {
@@ -643,19 +878,11 @@ details[open] summary::before {
 
 .operation-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--observer-live-state-width);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--observer-column-gap);
   align-items: stretch;
   width: 100%;
   margin-bottom: 4px;
-}
-
-.observation-column {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
-  min-width: 0;
-  width: 100%;
 }
 
 .match-events-panel {
@@ -664,6 +891,48 @@ details[open] summary::before {
   width: 100%;
   margin: 0;
   padding: 5px 6px;
+}
+
+.match-events-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: auto;
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.match-events-toggle:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent-2);
+}
+
+.match-events-toggle-icon {
+  flex: 0 0 auto;
+  color: var(--accent-2);
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.match-events-body {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.match-events-body[hidden] {
+  display: none;
 }
 
 .match-events-heading {
@@ -702,7 +971,8 @@ details[open] summary::before {
   color: var(--accent);
 }
 
-.event-panel.is-locked .event-grid button {
+.event-panel.is-locked .event-grid button,
+.event-panel.is-locked .event-action-button {
   opacity: 0.42;
 }
 
@@ -710,13 +980,13 @@ details[open] summary::before {
   display: grid;
   align-content: start;
   min-width: 0;
-  width: var(--observer-live-state-width);
-  max-width: var(--observer-live-state-width);
-  padding: 6px;
+  width: auto;
+  max-width: none;
+  padding: 0;
 }
 
 .live-state-heading {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: var(--accent);
   font-size: 0.82rem;
   letter-spacing: 0.12em;
@@ -724,14 +994,51 @@ details[open] summary::before {
 
 .live-state-content {
   display: grid;
+  gap: 4px;
+  min-height: 92px;
+}
+
+.insight-center .live-state-content {
+  min-height: 0;
+  gap: 3px;
+  flex: 1 1 auto;
+}
+
+.insight-center .live-state-row {
+  padding: 4px 5px;
+  gap: 2px;
+  border-radius: 8px;
+}
+
+.insight-center .live-state-row-label {
+  font-size: 0.62rem;
+}
+
+.insight-center .live-state-label {
+  font-size: 0.9rem;
+  line-height: 1.22;
+}
+
+.insight-center .live-state-row-value {
+  gap: 2px;
+  min-height: 0;
+}
+
+.insight-center .live-state-heading {
+  margin-bottom: 4px;
+  font-size: 0.76rem;
+}
+
+.insight-center .live-state-detail {
+  margin-top: 4px;
+  padding: 6px 7px;
   gap: 6px;
-  min-height: 160px;
 }
 
 .live-state-row {
   display: grid;
-  gap: 6px;
-  padding: 12px 14px;
+  gap: 4px;
+  padding: 9px 11px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
@@ -745,14 +1052,30 @@ details[open] summary::before {
 
 .live-state-row-value {
   display: grid;
-  gap: 4px;
-  min-height: 1.35rem;
+  gap: 3px;
+  min-height: 1.15rem;
+}
+
+.live-state-explain {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insight-center .live-state-explain {
+  font-size: 0.58rem;
 }
 
 .live-state-empty-value {
   color: var(--muted);
   font-size: 1rem;
-  line-height: 1.35;
+  line-height: 1.22;
 }
 
 .live-state-label {
@@ -765,7 +1088,7 @@ details[open] summary::before {
   font: inherit;
   font-size: 1rem;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.22;
   text-align: left;
   cursor: pointer;
 }
@@ -867,18 +1190,16 @@ details[open] summary::before {
 }
 
 .event-categories {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--observer-column-gap);
   width: 100%;
   min-width: 0;
 }
 
 .event-category {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgba(0, 0, 0, 0.12);
   padding: 8px;
+  min-width: 0;
 }
 
 .event-category h3 {
@@ -888,25 +1209,586 @@ details[open] summary::before {
   letter-spacing: 0.08em;
 }
 
-.event-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+/* Attack zone — left, green */
+.event-category[data-category="攻撃"] {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+  border-color: rgba(87, 227, 137, 0.34);
+  background:
+    linear-gradient(180deg, rgba(87, 227, 137, 0.12), rgba(87, 227, 137, 0.04)),
+    rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(87, 227, 137, 0.08),
+    0 0 0 1px rgba(87, 227, 137, 0.06);
+  padding: 10px;
+}
+
+.event-category[data-category="攻撃"] h3 {
+  font-size: 0;
+  line-height: 0;
+  margin-bottom: 7px;
+}
+
+.event-category[data-category="攻撃"] h3::before {
+  content: "ATTACK";
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  color: var(--accent);
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(87, 227, 137, 0.24);
+}
+
+.event-category[data-category="攻撃"] .event-grid button {
+  border-color: rgba(87, 227, 137, 0.18);
+  background: rgba(87, 227, 137, 0.06);
+}
+
+.event-category[data-category="攻撃"] .event-grid button:active {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #062014;
+}
+
+.event-category[data-category="攻撃"] .event-grid-pitch,
+.event-category[data-category="守備"] .event-grid-pitch {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr) minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 5px;
+  padding: 2px 0 4px;
+}
+
+.event-category[data-category="攻撃"] .event-grid-pitch {
+  grid-template-rows:
+    minmax(44px, auto)
+    minmax(44px, auto)
+    6px
+    minmax(42px, auto)
+    10px
+    minmax(46px, auto);
+}
+
+.event-category[data-category="守備"] .event-grid-pitch {
+  grid-template-rows:
+    minmax(44px, auto)
+    minmax(44px, auto)
+    6px
+    minmax(42px, auto)
+    10px
+    minmax(46px, auto)
+    8px
+    minmax(44px, auto);
+}
+
+.event-category[data-category="攻撃"] .event-grid-pitch::before,
+.event-category[data-category="守備"] .event-grid-pitch::before {
+  content: "";
+  position: absolute;
+  inset: 6% 14% 18% 14%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.event-category[data-category="攻撃"] .event-grid-pitch::before {
+  border-color: rgba(87, 227, 137, 0.1);
+}
+
+.event-category[data-category="守備"] .event-grid-pitch::before {
+  border-color: rgba(239, 68, 68, 0.08);
+}
+
+/* Attack pitch map — front to goal */
+.event-category[data-category="攻撃"] .event-action-button[data-event-name="中央侵入"] {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: stretch;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-name="左侵入"] {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: stretch;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-name="右侵入"] {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: stretch;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-name="クロス"] {
+  grid-column: 2;
+  grid-row: 4;
+  justify-self: stretch;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-name="シュート"] {
+  grid-column: 2;
+  grid-row: 6;
+  justify-self: stretch;
+}
+
+/* Defense pitch map — front to goal, then recovery */
+.event-category[data-category="守備"] .event-action-button[data-event-name="被中央侵入"] {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: stretch;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-name="被左侵入"] {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: stretch;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-name="被右侵入"] {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: stretch;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-name="被クロス"] {
+  grid-column: 2;
+  grid-row: 4;
+  justify-self: stretch;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-name="被シュート"] {
+  grid-column: 2;
+  grid-row: 6;
+  justify-self: stretch;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-name="ボール奪取"] {
+  grid-column: 1;
+  grid-row: 8;
+  justify-self: stretch;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-name="前線奪取"] {
+  grid-column: 3;
+  grid-row: 8;
+  justify-self: stretch;
+}
+
+.event-category[data-category="攻撃"] .event-grid-pitch .event-action-button,
+.event-category[data-category="守備"] .event-grid-pitch .event-action-button {
+  position: relative;
+  z-index: 1;
   width: 100%;
 }
 
-.event-grid button {
-  min-height: 62px;
+.event-category[data-category="攻撃"] .event-grid button,
+.event-category[data-category="守備"] .event-grid button,
+.event-category[data-category="攻撃"] .event-action-button,
+.event-category[data-category="守備"] .event-action-button {
+  min-height: 44px;
+  font-size: clamp(0.86rem, 1.4vw, 0.98rem);
+  padding: 5px 4px;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-tier="intrusion"] {
+  background: rgba(87, 227, 137, 0.1);
+  border-color: rgba(87, 227, 137, 0.28);
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-tier="intrusion"] .event-action-icon {
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-tier="cross"] {
+  background: rgba(87, 227, 137, 0.07);
+  border-color: rgba(87, 227, 137, 0.2);
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-tier="cross"] .event-action-icon {
+  font-size: 1.18rem;
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-tier="shoot"] {
+  background: rgba(87, 227, 137, 0.08);
+  border-color: rgba(87, 227, 137, 0.32);
+}
+
+.event-category[data-category="攻撃"] .event-action-button[data-event-tier="shoot"] .event-action-icon-svg {
+  width: 1.28rem;
+  height: 1.28rem;
+}
+
+/* Defense zone — right, red */
+.event-category[data-category="守備"] {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: stretch;
+  border-color: rgba(239, 68, 68, 0.32);
+  background:
+    linear-gradient(180deg, rgba(239, 68, 68, 0.11), rgba(239, 68, 68, 0.03)),
+    rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(239, 68, 68, 0.08),
+    0 0 0 1px rgba(239, 68, 68, 0.06);
+  padding: 10px;
+}
+
+.event-category[data-category="守備"] h3 {
+  font-size: 0;
+  line-height: 0;
+  margin-bottom: 7px;
+}
+
+.event-category[data-category="守備"] h3::before {
+  content: "DEFENSE";
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  color: #f08a8a;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.24);
+}
+
+.event-category[data-category="守備"] .event-grid button {
+  border-color: rgba(239, 68, 68, 0.16);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.event-category[data-category="守備"] .event-grid button:active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f08a8a, #ef4444);
+  color: #1a0505;
+}
+
+.event-category[data-category="守備"] .event-grid button.is-feedback,
+.event-category[data-category="守備"] .event-action-button.is-feedback {
+  border-color: rgba(239, 68, 68, 0.88);
+  background: rgba(239, 68, 68, 0.28);
+  box-shadow:
+    inset 0 0 14px rgba(239, 68, 68, 0.22),
+    0 0 0 2px rgba(239, 68, 68, 0.2),
+    0 0 22px rgba(239, 68, 68, 0.36);
+  transform: scale(1.04);
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="intrusion"] {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.26);
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="intrusion"] .event-action-icon {
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="cross"] {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="cross"] .event-action-icon {
+  font-size: 1.18rem;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="shoot"] {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="shoot"] .event-action-icon-svg {
+  width: 1.24rem;
+  height: 1.24rem;
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="recovery"] {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.14);
+}
+
+.event-category[data-category="守備"] .event-action-button[data-event-tier="recovery"] .event-action-icon,
+.event-category[data-category="守備"] .event-action-button[data-event-tier="recovery"] .event-action-icon-svg {
+  opacity: 0.88;
+}
+
+/* Transition — full width */
+.event-category[data-category="トランジション"] {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.14);
+  padding: 5px 8px;
+}
+
+.event-category[data-category="トランジション"] h3 {
+  font-size: 0;
+  line-height: 0;
+}
+
+.event-category[data-category="トランジション"] h3::before {
+  content: "TRANSITION";
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.event-category[data-category="トランジション"] .event-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.event-category[data-category="トランジション"] .event-grid button,
+.event-category[data-category="トランジション"] .event-action-button {
+  min-height: 44px;
+  padding: 5px 5px;
+}
+
+.event-category[data-category="トランジション"] .event-action-button .event-action-icon {
+  font-size: 1.16rem;
+}
+
+.event-category[data-category="トランジション"] .event-action-button .event-action-label {
+  font-size: clamp(0.82rem, 1.2vw, 0.94rem);
+}
+
+.event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+}
+
+.event-action-button {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 52px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.07);
   font-size: clamp(0.95rem, 1.8vw, 1.08rem);
   font-weight: 800;
-  line-height: 1.25;
-  padding: 10px 6px;
+  line-height: 1;
+  padding: 8px 8px;
+  white-space: nowrap;
+  transform-origin: center;
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    background 90ms ease,
+    border-color 90ms ease;
+}
+
+.event-action-icon {
+  display: block;
+  flex: 0 0 auto;
+  font-size: 1.24rem;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 1;
+}
+
+.event-action-icon-svg {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.22rem;
+  height: 1.22rem;
+}
+
+.event-action-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.event-action-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  opacity: 0.84;
+}
+
+.event-grid button {
+  min-height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 8px 5px;
   transform-origin: center;
 }
 
-.event-grid button.is-feedback {
+.event-grid button.is-feedback,
+.event-action-button.is-feedback {
+  border-color: rgba(87, 227, 137, 0.82);
+  background: rgba(87, 227, 137, 0.24);
+  box-shadow:
+    inset 0 0 14px rgba(87, 227, 137, 0.18),
+    0 0 0 2px rgba(87, 227, 137, 0.16),
+    0 0 22px rgba(87, 227, 137, 0.32);
+  transform: scale(1.04);
+}
+
+.event-category[data-category="攻撃"] .event-action-button.is-feedback {
+  border-color: rgba(87, 227, 137, 0.92);
+  background: rgba(87, 227, 137, 0.32);
+  box-shadow:
+    inset 0 0 16px rgba(87, 227, 137, 0.24),
+    0 0 0 2px rgba(87, 227, 137, 0.22),
+    0 0 24px rgba(87, 227, 137, 0.42);
+  color: #eafff2;
+}
+
+.event-grid button:active,
+.event-action-button:active {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #062014;
+}
+
+.event-category[data-category="守備"] .event-action-button:active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f08a8a, #ef4444);
+  color: #1a0505;
+}
+
+.event-category-set-piece {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.14);
+  padding: 5px 8px;
+}
+
+.event-category-set-piece h3 {
+  font-size: 0;
+  line-height: 0;
+}
+
+.event-category-set-piece h3::before {
+  content: "SET PIECE";
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.set-piece-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  width: 100%;
+}
+
+.set-piece-team-block {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 5px 6px;
+}
+
+.set-piece-team-block.is-home {
+  border-color: rgba(87, 227, 137, 0.22);
+  background: rgba(87, 227, 137, 0.05);
+}
+
+.set-piece-team-block.is-away {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.set-piece-team-label {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.set-piece-team-block.is-home .set-piece-team-label {
+  color: var(--accent);
+}
+
+.set-piece-team-block.is-away .set-piece-team-label {
+  color: #f08a8a;
+}
+
+.set-piece-grid {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+}
+
+.set-piece-grid[data-event-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.set-piece-grid[data-event-count="4"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.set-piece-grid:not([data-event-count="3"]):not([data-event-count="4"]) {
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+}
+
+.set-piece-button {
+  position: relative;
+  min-height: 58px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 8px 5px;
+  transform-origin: center;
+}
+
+.set-piece-button::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: "";
+  opacity: 0.95;
+}
+
+.set-piece-team-block.is-home .set-piece-button {
+  border-color: rgba(87, 227, 137, 0.24);
+}
+
+.set-piece-team-block.is-home .set-piece-button::before {
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+}
+
+.set-piece-team-block.is-away .set-piece-button {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+
+.set-piece-team-block.is-away .set-piece-button::before {
+  background: #ef4444;
+}
+
+.set-piece-button.is-feedback {
   border-color: rgba(87, 227, 137, 0.82);
   background: rgba(87, 227, 137, 0.2);
   box-shadow:
@@ -915,10 +1797,30 @@ details[open] summary::before {
   transform: scale(0.95);
 }
 
-.event-grid button:active {
+.set-piece-team-block.is-away .set-piece-button.is-feedback {
+  border-color: rgba(239, 68, 68, 0.72);
+  background: rgba(239, 68, 68, 0.16);
+  box-shadow:
+    0 0 0 2px rgba(239, 68, 68, 0.1),
+    0 0 18px rgba(239, 68, 68, 0.18);
+}
+
+.set-piece-team-block.is-home .set-piece-button:active {
   border-color: transparent;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #062014;
+}
+
+.set-piece-team-block.is-away .set-piece-button:active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  color: #1a0505;
+}
+
+.event-panel.is-locked .set-piece-button {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
 }
 
 .match-event-column {
@@ -1105,13 +2007,13 @@ details[open] summary::before {
 
 @media (min-width: 901px) {
   .operation-grid {
-    grid-template-columns: minmax(0, 1fr) var(--observer-live-state-width);
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--observer-column-gap);
   }
 
-  .event-categories {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--observer-column-gap);
+  .event-input-layout {
+    grid-template-columns: minmax(0, 1.85fr) minmax(300px, 1.7fr) minmax(0, 1.85fr);
+    column-gap: 10px;
   }
 
   .event-grid {
@@ -1119,12 +2021,36 @@ details[open] summary::before {
     gap: var(--observer-column-gap);
   }
 
+  .event-category[data-category="攻撃"] .event-grid-pitch,
+  .event-category[data-category="守備"] .event-grid-pitch {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr) minmax(0, 1fr);
+    column-gap: 10px;
+    row-gap: 5px;
+  }
+
+  .event-category[data-category="攻撃"] .event-grid-pitch .event-action-button,
+  .event-category[data-category="守備"] .event-grid-pitch .event-action-button {
+    min-height: 44px;
+  }
+
   .event-grid button {
-    min-height: 56px;
+    min-height: 48px;
+  }
+
+  .event-category[data-category="トランジション"] .event-grid button {
+    min-height: 44px;
+  }
+
+  .set-piece-button {
+    min-height: 54px;
   }
 
   .live-state-content {
-    min-height: 140px;
+    min-height: 92px;
+  }
+
+  .insight-center .live-state-content {
+    min-height: 0;
   }
 }
 
@@ -1163,12 +2089,27 @@ details[open] summary::before {
     margin-bottom: 0;
   }
 
-  .observation-column {
-    gap: 3px;
+  .observer-workspace {
+    gap: 4px;
+  }
+
+  .event-input-layout {
+    column-gap: 8px;
+    row-gap: 6px;
+  }
+
+  .insight-center {
+    gap: 0;
+    padding: 4px 5px;
   }
 
   .event-category {
-    padding: 6px;
+    padding: 7px;
+  }
+
+  .event-category[data-category="攻撃"],
+  .event-category[data-category="守備"] {
+    padding: 8px;
   }
 
   .event-category h3 {
@@ -1180,12 +2121,30 @@ details[open] summary::before {
   }
 
   .event-grid button {
-    min-height: 48px;
-    padding: 8px 4px;
+    min-height: 44px;
+    padding: 6px 4px;
   }
 
   .live-state-content {
     min-height: 0;
+  }
+
+  .insight-center .live-state-content {
+    min-height: 0;
+  }
+
+  .event-category[data-category="攻撃"] .event-grid button,
+  .event-category[data-category="守備"] .event-grid button {
+    min-height: 38px;
+    padding: 5px 4px;
+  }
+
+  .event-category[data-category="トランジション"] .event-grid button {
+    min-height: 42px;
+  }
+
+  .set-piece-button {
+    min-height: 48px;
   }
 
   .match-events-panel {
@@ -1233,18 +2192,22 @@ details[open] summary::before {
     width: auto;
   }
 
-  .game-plan-content,
-  .event-categories {
+  .game-plan-content {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .operation-grid {
-    grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.8fr);
+  .event-input-layout {
+    grid-template-columns: minmax(0, 1.85fr) minmax(240px, 1.6fr) minmax(0, 1.85fr);
+    column-gap: 6px;
   }
 
-  .live-state-panel {
-    width: auto;
-    max-width: none;
+  .insight-center {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 4px 5px;
+  }
+
+  .insight-center .mini-review-value {
+    font-size: 0.76rem;
   }
 
   .halftime-actions {
@@ -1266,9 +2229,65 @@ details[open] summary::before {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .event-categories,
+  .event-input-layout {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .event-category[data-category="攻撃"] {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .insight-center {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .insight-center .mini-review-value {
+    font-size: 0.78rem;
+  }
+
+  .insight-center .mini-review-row-plan .mini-review-value {
+    font-size: 0.88rem;
+  }
+
+  .event-category[data-category="守備"] {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .event-category[data-category="トランジション"] {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .event-category-set-piece {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  .event-category[data-category="攻撃"] .event-grid-pitch,
+  .event-category[data-category="守備"] .event-grid-pitch {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+    column-gap: 12px;
+  }
+
+  .event-category[data-category="トランジション"] .event-grid {
+    grid-template-columns: 1fr;
+  }
+
   .halftime-actions {
     grid-template-columns: 1fr;
+  }
+
+  .mini-review-panel {
+    height: auto;
+  }
+
+  .mini-review-body {
+    gap: 4px;
   }
 
   .operation-grid {
@@ -1305,6 +2324,19 @@ details[open] summary::before {
 
   .event-grid button {
     min-height: 58px;
+  }
+
+  .set-piece-columns {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .set-piece-grid[data-event-count="4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .set-piece-button {
+    min-height: 60px;
   }
 
 }
