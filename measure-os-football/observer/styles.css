@@ -437,7 +437,7 @@ button:focus-visible {
 
 .insight-center .mini-review-body {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -455,49 +455,63 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
+  gap: 4px;
   min-height: 0;
-  padding: 4px 5px;
+  padding: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.14);
 }
 
 .insight-center .mini-review-label {
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: var(--muted);
   text-align: left;
 }
 
 .insight-center .mini-review-value {
   width: 100%;
-  font-size: 0.8rem;
-  font-weight: 800;
-  line-height: 1.2;
-  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
   text-align: left;
   white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.insight-center .mini-review-value.is-positive {
+  color: #8fe8b4;
+}
+
+.insight-center .mini-review-value.is-negative {
+  color: #f08a8a;
+}
+
+.insight-center .mini-review-value.is-neutral {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .insight-center .mini-review-row-plan .mini-review-label {
   color: var(--accent);
-  font-size: 0.6rem;
+  font-size: 0.64rem;
 }
 
 .insight-center .mini-review-row-plan .mini-review-value {
-  font-size: 0.92rem;
-  font-weight: 900;
-  color: var(--accent);
+  font-size: 0.94rem;
+  font-weight: 800;
   padding: 0;
 }
 
 .insight-center .mini-review-row-flow .mini-review-value {
-  font-size: 0.82rem;
+  font-size: 0.88rem;
 }
 
 .mini-review-panel {
@@ -1005,8 +1019,8 @@ details[open] summary::before {
 }
 
 .insight-center .live-state-row {
-  padding: 4px 5px;
-  gap: 2px;
+  padding: 5px 6px;
+  gap: 3px;
   border-radius: 8px;
 }
 
@@ -1057,19 +1071,26 @@ details[open] summary::before {
 }
 
 .live-state-explain {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  white-space: nowrap;
+  margin: 3px 0 1px;
+  padding-top: 2px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .insight-center .live-state-explain {
-  font-size: 0.58rem;
+  margin: 4px 0 2px;
+  padding-top: 3px;
+  font-size: 0.68rem;
+  line-height: 1.42;
 }
 
 .live-state-empty-value {
@@ -2207,7 +2228,8 @@ details[open] summary::before {
   }
 
   .insight-center .mini-review-value {
-    font-size: 0.76rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
   }
 
   .halftime-actions {
@@ -2246,11 +2268,12 @@ details[open] summary::before {
   }
 
   .insight-center .mini-review-value {
-    font-size: 0.78rem;
+    font-size: 0.84rem;
+    line-height: 1.4;
   }
 
   .insight-center .mini-review-row-plan .mini-review-value {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
   }
 
   .event-category[data-category="守備"] {

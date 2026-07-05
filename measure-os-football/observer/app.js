@@ -1294,13 +1294,13 @@ function calculateMiniReview() {
 
   if (typeof calculator !== "function") {
     return {
-      plan: "Average",
-      flow: "Balanced",
-      attack: "--",
-      defense: "--",
-      buildUp: "--",
-      transition: "--",
-      setPiece: "--",
+      plan: { text: "プランおおむね維持", tone: "neutral" },
+      flow: { text: "拮抗した前半", tone: "neutral" },
+      attack: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+      defense: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+      buildUp: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+      transition: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+      setPiece: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
       generatedAt: nowIso(),
     };
   }
@@ -1333,13 +1333,32 @@ function ensureFirstHalfMiniReviewForRestoredMatch() {
   generateFirstHalfMiniReview();
 }
 
+function normalizeMiniReviewEntry(value) {
+  if (!value) {
+    return { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" };
+  }
+
+  if (typeof value === "string") {
+    return { text: value, tone: "neutral" };
+  }
+
+  return {
+    text: value.text || MINI_REVIEW_PLACEHOLDER,
+    tone: value.tone || "neutral",
+  };
+}
+
 function renderMiniReview() {
   const snapshot = state.match?.firstHalfMiniReview;
   document.querySelectorAll("[data-mini-review-key]").forEach((row) => {
     const key = row.dataset.miniReviewKey;
     const valueEl = row.querySelector(".mini-review-value");
     if (!key || !valueEl) return;
-    valueEl.textContent = snapshot?.[key] ?? MINI_REVIEW_PLACEHOLDER;
+
+    const entry = normalizeMiniReviewEntry(snapshot?.[key]);
+    valueEl.textContent = entry.text;
+    valueEl.classList.remove("is-positive", "is-negative", "is-neutral");
+    valueEl.classList.add(`is-${entry.tone}`);
   });
 }
 

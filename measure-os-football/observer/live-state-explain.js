@@ -1,28 +1,15 @@
 (function () {
-  const EXPLAIN_EVENT_LABELS = {
-    左侵入: "左",
-    中央侵入: "中央",
-    右侵入: "右",
-    クロス: "クロス",
-    シュート: "シュート",
-    被左侵入: "左",
-    被中央侵入: "中央",
-    被右侵入: "右",
-    被クロス: "クロス",
-    被シュート: "シュート",
-    ボール奪取: "奪取",
-    前線奪取: "高奪取",
-    即時奪回成功: "即奪回",
-    カウンター開始: "カウンター",
-    カウンター被弾: "被カウンター",
-  };
+  const FLOW_SEPARATOR = " → ";
 
-  const TRANSITION_EXPLAIN_SEQUENCE = {
-    rule008: ["即時奪回成功", "カウンター開始", "カウンター被弾"],
-    rule009: ["被中央侵入", "被シュート", "カウンター被弾", "ボール奪取", "被左侵入", "被右侵入"],
-    rule010: ["カウンター開始", "即時奪回成功", "左侵入", "中央侵入", "右侵入", "シュート", "カウンター被弾"],
-    rule011: ["即時奪回成功", "カウンター開始", "左侵入", "中央侵入", "右侵入", "シュート", "カウンター被弾"],
-  };
+  const ATTACK_DIRECTION_EVENTS = ["左侵入", "中央侵入", "右侵入"];
+  const ATTACK_FLOW_TAIL = ["クロス", "シュート"];
+
+  const DEFENSE_DIRECTION_EVENTS = ["被左侵入", "被中央侵入", "被右侵入"];
+  const DEFENSE_FLOW_TAIL = ["被クロス", "被シュート"];
+  const DEFENSE_RECOVERY_EVENTS = [
+    { eventName: "前線奪取", label: "高奪取" },
+    { eventName: "ボール奪取", label: "奪取" },
+  ];
 
   function parseMatchTime(timeValue) {
     const [minutes, seconds] = String(timeValue || "").split(":").map(Number);
@@ -35,121 +22,191 @@
     return Object.values(counts).some((value) => Number(value) > 0);
   }
 
-  function labelForEvent(eventName) {
-    return EXPLAIN_EVENT_LABELS[eventName] || eventName;
+  function joinFlowParts(parts, limit = 3) {
+    const filtered = parts.filter(Boolean);
+    if (filtered.length === 0) return "--";
+    return filtered.slice(0, limit).join(FLOW_SEPARATOR);
   }
 
-  function pickDominantDirection(counts, candidates) {
-    let bestLabel = null;
+  function pickDominantEventName(counts, eventNames) {
+    let bestEvent = null;
     let bestCount = 0;
 
-    candidates.forEach(({ eventName, label }) => {
+    eventNames.forEach((eventName) => {
       const count = Number(counts[eventName]) || 0;
       if (count > bestCount) {
         bestCount = count;
-        bestLabel = label;
+        bestEvent = eventName;
       }
     });
 
-    return bestLabel;
+    return bestCount > 0 ? bestEvent : null;
   }
 
-  function joinParts(parts, limit = 3) {
-    const filtered = parts.filter(Boolean);
-    if (filtered.length === 0) return "--";
-    return filtered.slice(0, limit).join(" > ");
+  function appendExistingEvents(parts, counts, eventNames) {
+    eventNames.forEach((eventName) => {
+      if ((Number(counts[eventName]) || 0) > 0) {
+        parts.push(eventName);
+      }
+    });
+    return parts;
   }
 
   function summarizeAttackFlow(counts) {
-    const direction = pickDominantDirection(counts, [
-      { eventName: "左侵入", label: "左" },
-      { eventName: "中央侵入", label: "中央" },
-      { eventName: "右侵入", label: "右" },
-    ]);
-
     const parts = [];
+    const direction = pickDominantEventName(counts, ATTACK_DIRECTION_EVENTS);
     if (direction) parts.push(direction);
-    if ((counts.クロス || 0) > 0) parts.push("クロス");
-    if ((counts.シュート || 0) > 0) parts.push("シュート");
-    if (parts.length === 0 && (counts.カウンター被弾 || 0) > 0) parts.push("被カウンター");
-
-    return joinParts(parts);
+    appendExistingEvents(parts, counts, ATTACK_FLOW_TAIL);
+    return joinFlowParts(parts);
   }
 
   function summarizeDefenseFlow(counts) {
-    const direction = pickDominantDirection(counts, [
-      { eventName: "被左侵入", label: "左" },
-      { eventName: "被中央侵入", label: "中央" },
-      { eventName: "被右侵入", label: "右" },
-    ]);
-
     const parts = [];
+    const direction = pickDominantEventName(counts, DEFENSE_DIRECTION_EVENTS);
     if (direction) parts.push(direction);
-    if ((counts.被クロス || 0) > 0) parts.push("クロス");
-    if ((counts.被シュート || 0) > 0) parts.push("シュート");
+    appendExistingEvents(parts, counts, DEFENSE_FLOW_TAIL);
 
-    if (parts.length === 0) {
-      if ((counts.前線奪取 || 0) > 0) parts.push("高奪取");
-      if ((counts.ボール奪取 || 0) > 0) parts.push("奪取");
-      return joinParts(parts);
+    if (parts.length > 0) {
+      return joinFlowParts(parts);
     }
 
-    if ((counts.前線奪取 || 0) > 0 && parts.length < 3) parts.push("高奪取");
-    else if ((counts.ボール奪取 || 0) > 0 && parts.length < 3) parts.push("奪取");
-
-    return joinParts(parts);
-  }
-
-  function summarizeBuildUpFlow(counts, planOption) {
-    const left = (counts.左侵入 || 0) + (counts.被左侵入 || 0);
-    const right = (counts.右侵入 || 0) + (counts.被右侵入 || 0);
-    const central = (counts.中央侵入 || 0) + (counts.被中央侵入 || 0);
-    const parts = [];
-
-    const dominant = Math.max(left, right, central);
-    if (dominant > 0) {
-      if (left >= right && left >= central) parts.push("左");
-      else if (right >= left && right >= central) parts.push("右");
-      else parts.push("中央");
-    }
-
-    if (planOption) parts.push(planOption);
-    if ((counts.即時奪回成功 || 0) > 0 && parts.length < 3) parts.push("即奪回");
-
-    return joinParts(parts) !== "--" ? joinParts(parts) : (planOption || "--");
-  }
-
-  function summarizeTransitionFlow(counts, planOption, ruleId) {
-    const sequence = TRANSITION_EXPLAIN_SEQUENCE[ruleId] || [
-      "前線奪取",
-      "即時奪回成功",
-      "カウンター開始",
-      "カウンター被弾",
-    ];
-    const parts = [];
-
-    sequence.forEach((eventName) => {
-      if ((counts[eventName] || 0) > 0) {
-        parts.push(labelForEvent(eventName));
+    const recoveryParts = [];
+    DEFENSE_RECOVERY_EVENTS.forEach(({ eventName, label }) => {
+      if ((Number(counts[eventName]) || 0) > 0) {
+        recoveryParts.push(label);
       }
     });
 
-    if (parts.length === 0) return planOption || "--";
-    return joinParts(parts);
+    return joinFlowParts(recoveryParts);
   }
 
-  function summarizeByCategory(categoryKey, ruleId, counts, planOption) {
+  function summarizeBuildUpFlow(counts) {
+    const advance = {
+      left: Number(counts.左侵入) || 0,
+      central: Number(counts.中央侵入) || 0,
+      right: Number(counts.右侵入) || 0,
+    };
+    const conceded = {
+      left: Number(counts.被左侵入) || 0,
+      central: Number(counts.被中央侵入) || 0,
+      right: Number(counts.被右侵入) || 0,
+    };
+    const totalAdvance = advance.left + advance.central + advance.right;
+    const totalConceded = conceded.left + conceded.central + conceded.right;
+    const quickRecovery = Number(counts.即時奪回成功) || 0;
+    const counterConceded = Number(counts.カウンター被弾) || 0;
+
+    let holdPart = null;
+    let outcomePart = null;
+
+    if (counterConceded > 0 && counterConceded >= totalAdvance) {
+      holdPart = "後方保持";
+      outcomePart = "停滞";
+      return joinFlowParts([holdPart, outcomePart]);
+    }
+
+    if (totalAdvance > 0 && totalConceded > totalAdvance) {
+      holdPart = "後方保持";
+      outcomePart = "展開";
+      return joinFlowParts([holdPart, outcomePart]);
+    }
+
+    if (totalAdvance > 0) {
+      if (advance.left >= advance.central && advance.left >= advance.right) {
+        holdPart = "左保持";
+      } else if (advance.right >= advance.left && advance.right >= advance.central) {
+        holdPart = "右保持";
+      } else {
+        holdPart = "中央保持";
+      }
+    } else if (totalConceded > 0) {
+      holdPart = "後方保持";
+      outcomePart = "停滞";
+      return joinFlowParts([holdPart, outcomePart]);
+    } else if (quickRecovery > 0) {
+      holdPart = "奪回後";
+      outcomePart = "前進";
+      return joinFlowParts([holdPart, outcomePart]);
+    }
+
+    if (holdPart === "中央保持" && totalAdvance > totalConceded) {
+      outcomePart = totalConceded === 0 && advance.central >= advance.left && advance.central >= advance.right
+        ? "ロング"
+        : "前進";
+    } else if (totalAdvance > totalConceded) {
+      outcomePart = "前進";
+    } else if (holdPart === "右保持" && totalAdvance <= totalConceded + 1) {
+      outcomePart = "保持";
+    } else if (totalAdvance > 0) {
+      outcomePart = totalConceded >= totalAdvance ? "保持" : "前進";
+    }
+
+    return joinFlowParts([holdPart, outcomePart]);
+  }
+
+  function summarizeTransitionFlow(counts, ruleId) {
+    const recovery = Number(counts.即時奪回成功) || 0;
+    const counterStarted = Number(counts.カウンター開始) || 0;
+    const counterConceded = Number(counts.カウンター被弾) || 0;
+    const forward = (Number(counts.左侵入) || 0)
+      + (Number(counts.中央侵入) || 0)
+      + (Number(counts.右侵入) || 0);
+    const shot = Number(counts.シュート) || 0;
+    const centralConceded = Number(counts.被中央侵入) || 0;
+    const shotConceded = Number(counts.被シュート) || 0;
+    const ballWon = Number(counts.ボール奪取) || 0;
+
+    if (counterConceded >= 1) {
+      return "被カウンター注意";
+    }
+
+    switch (ruleId) {
+      case "rule008":
+        if (recovery >= 2 && recovery > counterStarted) return "即奪回優勢";
+        if (recovery >= 1 && recovery >= counterStarted) return "即奪回優勢";
+        if (counterStarted >= 2) return "カウンター多発";
+        if (counterStarted >= 1) return "カウンター多発";
+        return "切り替えは落ち着いている";
+
+      case "rule009":
+        if (shotConceded >= 1) return joinFlowParts(["中央突破", "被シュート"]);
+        if (centralConceded >= 2) return "中央突破を許している";
+        if (ballWon >= 1 && centralConceded <= 1) return "守備ブロックを整備";
+        if (centralConceded >= 1) return "中央突破を許している";
+        return "守備再構築が機能";
+
+      case "rule010":
+        if (counterStarted >= 1 && (forward >= 1 || shot >= 1)) return "縦に速い攻撃";
+        if (counterStarted >= 1) return "カウンター多発";
+        if (forward >= 1 || shot >= 1) return "縦に速い攻撃";
+        if (recovery >= 1) return "奪回後の縦攻撃";
+        return "縦攻撃が滞っている";
+
+      case "rule011":
+        if (recovery >= 1 && counterConceded === 0) return "ボール保持継続";
+        if (counterStarted >= 1) return "カウンター多発";
+        return "保持で試合を落ち着け";
+
+      default:
+        if (recovery > counterStarted && recovery > 0) return "即奪回優勢";
+        if (counterStarted > recovery && counterStarted > 0) return "カウンター多発";
+        if (forward >= 1 || shot >= 1) return "縦に速い攻撃";
+        return "--";
+    }
+  }
+
+  function summarizeByCategory(categoryKey, ruleId, counts) {
     switch (categoryKey) {
       case "attack":
         return summarizeAttackFlow(counts);
       case "defense":
         return summarizeDefenseFlow(counts);
       case "buildUp":
-        return summarizeBuildUpFlow(counts, planOption);
+        return summarizeBuildUpFlow(counts);
       case "transition":
-        return summarizeTransitionFlow(counts, planOption, ruleId);
+        return summarizeTransitionFlow(counts, ruleId);
       default:
-        return planOption || "--";
+        return "--";
     }
   }
 
@@ -170,7 +227,6 @@
   function buildLiveStateExplainLine(liveState, context = {}, helpers = {}) {
     if (!liveState) return "--";
 
-    const planOption = liveState.planOption || null;
     const categoryKey = liveState.planCategoryKey || null;
     const ruleId = liveState.ruleId || null;
     let counts = liveState.reasonEventCounts;
@@ -191,14 +247,18 @@
     }
 
     if (!hasAnyCount(counts)) {
-      return planOption || "--";
+      return "--";
     }
 
-    return summarizeByCategory(categoryKey, ruleId, counts, planOption);
+    return summarizeByCategory(categoryKey, ruleId, counts);
   }
 
   window.MO_LIVE_STATE_EXPLAIN = {
     buildLiveStateExplainLine,
     pickPrimaryLiveStateItem,
+    summarizeAttackFlow,
+    summarizeDefenseFlow,
+    summarizeBuildUpFlow,
+    summarizeTransitionFlow,
   };
 })();
