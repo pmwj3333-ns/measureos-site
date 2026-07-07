@@ -36,6 +36,8 @@
   }
 
   function countEvents(events, eventName) {
+    const counter = window.MO_DEFENSE_PLAN?.countMatchingEvents;
+    if (typeof counter === "function") return counter(events, eventName);
     return events.filter((event) => event.eventName === eventName).length;
   }
 
@@ -86,7 +88,13 @@
     evaluate(events, context = {}) {
       const elapsedSeconds = Math.max(0, Number(context.elapsed) || 0);
       const relevantEvents = eventsInWindow(events, elapsedSeconds)
-        .filter((event) => RELEVANT_EVENTS.includes(event.eventName));
+        .filter((event) => {
+          const matcher = window.MO_DEFENSE_PLAN?.matchesEventName;
+          if (typeof matcher === "function") {
+            return RELEVANT_EVENTS.some((name) => matcher(event.eventName, name));
+          }
+          return RELEVANT_EVENTS.includes(event.eventName);
+        });
       const reasonEventCounts = buildReasonEventCounts(relevantEvents);
       const resolved = resolveState(reasonEventCounts);
       if (!resolved) return null;

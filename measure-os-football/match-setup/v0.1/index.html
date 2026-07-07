@@ -8,18 +8,18 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="setup-shell page-shell">
+  <main class="page-container setup-shell page-shell">
     <header class="page-hero" aria-labelledby="page-title">
-      <p class="eyebrow">MEASURE OS Football</p>
+      <p class="page-eyebrow">MEASURE OS Football</p>
       <div class="hero-grid">
         <div class="hero-copy">
-          <h1 id="page-title">Match Setup</h1>
-          <p class="lead">試合情報を設定する。</p>
+          <h1 id="page-title" class="page-title">Match Setup</h1>
+          <p class="page-description">試合情報を設定する。</p>
         </div>
         <aside class="philosophy-card" aria-label="MEASURE OS flow guide">
           <p>MEASURE OS の流れ</p>
           <div class="philosophy-steps" aria-hidden="true">
-            <span>Plan</span>
+            <span class="is-active">Plan</span>
             <span>Operation</span>
             <span>Deviation</span>
             <span>Human Decision</span>
@@ -84,6 +84,16 @@
             <button id="side-away" type="button" class="option-button" data-side="away" aria-pressed="false">Away</button>
           </div>
           <p id="home-away-error" class="field-error" hidden>Home / Away を選択してください。</p>
+        </fieldset>
+
+        <fieldset class="field field-analyze-mode">
+          <legend>Analyze Mode</legend>
+          <p class="field-hint">分析対象を選択してください。</p>
+          <div class="analyze-mode-toggle" role="group" aria-label="Analyze Mode">
+            <button id="analyze-mode-attack" type="button" class="option-button" data-analyze-mode="attack" aria-pressed="false">Attack</button>
+            <button id="analyze-mode-defense" type="button" class="option-button" data-analyze-mode="defense" aria-pressed="false">Defense</button>
+            <button id="analyze-mode-both" type="button" class="option-button" data-analyze-mode="both" aria-pressed="true">Attack + Defense</button>
+          </div>
         </fieldset>
       </section>
 

@@ -82,6 +82,114 @@ h2 {
   gap: 10px;
 }
 
+.plan-grid[data-layout="two"] {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(18, 20, 38, 0.42);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.plan-grid[data-layout="two"] > .category-card {
+  box-shadow: none;
+}
+
+.plan-grid[data-layout="two"] .category-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-grid[data-layout="two"] [data-category="attack"] .option-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="two"] [data-category="buildUp"] .option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="two"] [data-category="defense"] .option-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="two"] [data-category="transition"] .option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="both"] {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(18, 20, 38, 0.42);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.plan-grid[data-layout="both"] > .category-card {
+  box-shadow: none;
+}
+
+.plan-grid[data-layout="both"] .category-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-grid[data-layout="both"] [data-category="attack"] .option-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="both"] [data-category="buildUp"] .option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="both"] [data-category="defense"] .option-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="both"] [data-category="transition"] .option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-grid[data-layout="three"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(18, 20, 38, 0.42);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.plan-grid[data-layout="three"] > .category-card {
+  box-shadow: none;
+}
+
+.plan-grid[data-layout="three"] [data-category="attack"],
+.plan-grid[data-layout="three"] [data-category="defense"] {
+  grid-column: 1 / -1;
+}
+
+.plan-grid[data-layout="three"] .category-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-grid[data-layout="three"] .option-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex: 1 1 auto;
+  align-content: start;
+}
+
+.category-card[hidden] {
+  display: none !important;
+}
+
 .category-card,
 .memo-card {
   border: 1px solid var(--line);
@@ -282,9 +390,32 @@ textarea::placeholder {
 }
 
 @media (max-width: 860px) {
-  .plan-grid,
+  .plan-grid:not([data-layout="three"]):not([data-layout="two"]):not([data-layout="both"]),
   .memo-card {
     grid-template-columns: 1fr;
+  }
+
+  .plan-grid[data-layout="two"],
+  .plan-grid[data-layout="both"] {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-grid[data-layout="two"] [data-category="attack"],
+  .plan-grid[data-layout="both"] [data-category="attack"] .option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-grid[data-layout="two"] [data-category="defense"],
+  .plan-grid[data-layout="both"] [data-category="defense"] .option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-grid[data-layout="three"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-grid[data-layout="three"] .option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .option-grid {

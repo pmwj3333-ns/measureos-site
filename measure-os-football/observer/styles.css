@@ -1,82 +1,8 @@
+/* Observer screen — layout & match controls (base UI: ../shared/ui-system.css) */
+
 :root {
-  color-scheme: dark;
-  --bg: #070811;
-  --surface: rgba(18, 20, 38, 0.76);
-  --panel: rgba(18, 20, 38, 0.82);
-  --text: #fbf8ff;
-  --muted: #b9b0c9;
-  --line: rgba(255, 255, 255, 0.13);
-  --accent-ui: #d8b4fe;
-  --accent-2: #8be9d6;
-  --accent: #57e389;
-  --accent-strong: #22c55e;
-  --warning: #fbbf24;
-  --shadow: 0 22px 70px rgba(0, 0, 0, 0.3);
   --observer-live-state-width: 240px;
   --observer-column-gap: 6px;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 10% 8%, rgba(216, 180, 254, 0.26), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(139, 233, 214, 0.2), transparent 26%),
-    radial-gradient(circle at 50% 100%, rgba(249, 168, 212, 0.16), transparent 30%),
-    var(--bg);
-  color: var(--text);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-}
-
-button {
-  min-height: 52px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-  padding: 12px 18px;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    opacity 160ms ease,
-    transform 160ms ease,
-    box-shadow 160ms ease;
-}
-
-button:hover {
-  border-color: rgba(216, 180, 254, 0.42);
-}
-
-button:active {
-  transform: scale(0.98);
-}
-
-button:disabled {
-  cursor: default;
-  opacity: 0.55;
-  transform: none;
-}
-
-button.primary,
-button.selected {
-  border-color: transparent;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #062014;
-  font-weight: 800;
-}
-
-button:focus-visible {
-  outline: 3px solid rgba(139, 233, 214, 0.4);
-  outline-offset: 2px;
 }
 
 .observer-body {
@@ -134,9 +60,6 @@ button:focus-visible {
 .match-action {
   width: auto;
   min-width: 108px;
-  min-height: 44px;
-  font-size: 0.9rem;
-  padding: 7px 14px;
   white-space: nowrap;
 }
 
@@ -335,20 +258,7 @@ button:focus-visible {
 }
 
 .plan-change-button {
-  flex: 0 0 auto;
-  min-height: 28px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  font-size: 0.72rem;
-  font-weight: 800;
   white-space: nowrap;
-}
-
-.plan-change-button:hover:not(:disabled) {
-  border-color: rgba(216, 180, 254, 0.42);
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .plan-change-button:disabled {
@@ -625,27 +535,6 @@ button:focus-visible {
   white-space: nowrap;
 }
 
-.eyebrow {
-  margin: 0;
-  color: var(--accent-2);
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-h1,
-h2,
-h3,
-p {
-  margin-top: 0;
-}
-
-h2 {
-  margin-bottom: 6px;
-  font-size: 1.08rem;
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -653,20 +542,6 @@ h2 {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-}
-
-.muted {
-  color: var(--muted);
-  margin-bottom: 0;
-}
-
-.panel {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  padding: 8px;
-  backdrop-filter: blur(18px);
 }
 
 .match-header-state {
@@ -802,12 +677,12 @@ details[open] summary::before {
 .halftime-panel {
   display: grid;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 0;
   border-color: rgba(251, 191, 36, 0.32);
 }
 
 .halftime-panel[hidden] {
-  display: none;
+  display: none !important;
 }
 
 .halftime-actions {
@@ -1992,8 +1867,6 @@ details[open] summary::before {
   margin: 0 auto;
 }
 
-.dialog-actions {
-
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -2435,4 +2308,834 @@ details[open] summary::before {
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.4;
+}
+
+/* ------------------------------------------------------------------ */
+/* Observer layout — Review / Match Setup と同じ page-shell 基準       */
+/* ------------------------------------------------------------------ */
+
+.observer-shell {
+  padding-bottom: 48px;
+}
+
+.observer-command {
+  margin-bottom: 0;
+}
+
+.observer-command-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.observer-command .match-time {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.observer-command .match-control,
+.observer-command .match-action-wrap {
+  margin: 0;
+  justify-self: end;
+}
+
+.observer-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-title-row .review-section-title {
+  margin-bottom: 12px;
+}
+
+.observer-stack > .halftime-panel[hidden] {
+  display: none !important;
+}
+
+.observer-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows:
+    auto
+    auto
+    auto
+    auto
+    auto
+    auto
+    auto
+    auto;
+  gap: 10px;
+  min-height: 0;
+  align-content: start;
+}
+
+.dashboard-panel-group {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+  align-self: start;
+}
+
+.dashboard-panel-group--judgment {
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.85fr);
+}
+
+.dashboard-panel-group--stats {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.dashboard-panel > .review-section-title {
+  margin-bottom: 12px;
+}
+
+.dashboard-panel--state.panel,
+.dashboard-panel--plan.panel,
+.dashboard-panel--reason.panel {
+  padding: 12px 14px;
+  align-self: start;
+}
+
+.dashboard-panel--state > .review-section-title,
+.dashboard-panel--plan > .review-section-title,
+.dashboard-panel--reason > .review-section-title {
+  margin-bottom: 8px;
+}
+
+.dashboard-panel--state .dashboard-panel-body,
+.dashboard-panel--plan .dashboard-panel-body,
+.dashboard-panel--reason .dashboard-panel-body {
+  flex: 0 1 auto;
+}
+
+.dashboard-panel-body,
+.dashboard-zone-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.dashboard-panel-slot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dashboard-panel-foot,
+.dashboard-zone-foot {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.dashboard-zone-body-scroll {
+  overflow: auto;
+}
+
+.dashboard-zone-body-compact {
+  max-height: 72px;
+}
+
+.dashboard-zone-foot-compact {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.dashboard-zone-foot button {
+  width: 100%;
+}
+
+.dashboard-placeholder {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.dashboard-placeholder-reason {
+  min-height: 0;
+  white-space: pre-wrap;
+}
+
+.dashboard-panel-body--reason,
+.dashboard-zone-body-reason {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 6.5rem;
+  overflow-y: auto;
+}
+
+.reason-panel-content {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.reason-panel-slot {
+  min-width: 0;
+}
+
+.reason-panel-slot--primary {
+  flex: 1 1 auto;
+}
+
+.recent-panel-content,
+.half-total-panel-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dashboard-panel--state .dashboard-zone-body-state {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dashboard-panel--state .live-state-panel {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.dashboard-panel--state .live-state-content {
+  flex: 0 1 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
+  gap: 8px;
+  min-height: 0;
+  align-content: start;
+}
+
+.observer-dashboard-grid .live-state-content {
+  min-height: 0;
+}
+
+.dashboard-panel--state .live-state-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  height: auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-panel--state .live-state-row[data-category="attack"] {
+  border-color: rgba(87, 227, 137, 0.24);
+}
+
+.dashboard-panel--state .live-state-row[data-category="defense"] {
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.dashboard-panel--state .live-state-row[data-category="buildUp"] {
+  border-color: rgba(139, 233, 214, 0.22);
+}
+
+.dashboard-panel--state .live-state-row[data-category="transition"] {
+  border-color: rgba(216, 180, 254, 0.22);
+}
+
+.dashboard-panel--state .live-state-row-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.dashboard-panel--state .live-state-row-value {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-panel--state .live-state-label {
+  font-size: clamp(0.94rem, 1.15vw, 1.08rem);
+  line-height: 1.25;
+}
+
+.dashboard-panel--state .live-state-explain {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.dashboard-panel--plan .dashboard-zone-body-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.dashboard-panel--plan .game-plan-controls {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-panel--plan .plan-change-button {
+  width: 100%;
+}
+
+.dashboard-panel--plan .current-plan-popover {
+  z-index: 20;
+}
+
+.dashboard-panel--half-total .mini-review-panel {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashboard-panel--half-total .mini-review-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  height: 100%;
+  align-content: start;
+}
+
+.dashboard-panel--half-total .mini-review-primary,
+.dashboard-panel--half-total .mini-review-metrics {
+  display: contents;
+}
+
+.dashboard-panel--half-total .mini-review-divider {
+  display: none;
+}
+
+.dashboard-panel--half-total .mini-review-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-panel--half-total .mini-review-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.dashboard-panel--half-total .mini-review-value {
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.dashboard-panel--event-log {
+  min-height: 0;
+  padding: 12px 14px;
+  align-self: start;
+}
+
+.dashboard-panel--event-log > .event-log-header {
+  margin-bottom: 8px;
+}
+
+.dashboard-panel--event-log .event-log-header {
+  align-items: center;
+}
+
+.dashboard-panel--event-log .event-log-header .review-section-title {
+  margin-bottom: 0;
+}
+
+.event-log-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.event-log-count {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.event-log-clear-button {
+  min-height: auto;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.event-log-clear-button:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-panel--event-log .event-log-body {
+  flex: 0 0 auto;
+  min-height: 0;
+  height: calc(1.35rem * 5 + 4px * 4);
+  max-height: calc(1.35rem * 5 + 4px * 4);
+  overflow-y: auto;
+  padding: 0;
+}
+
+.event-log-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.event-log-empty[hidden],
+.timeline--live[hidden] {
+  display: none;
+}
+
+.dashboard-panel--event-log .timeline--live {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-panel--event-log .timeline-live-row {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  min-height: 1.35rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.dashboard-panel--event-log .timeline-live-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dashboard-panel--event-log .timeline-live-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-panel--set-piece .dashboard-panel-body,
+.dashboard-panel--match-events .dashboard-panel-body {
+  padding-top: 0;
+}
+
+.dashboard-panel--set-piece .event-category-set-piece {
+  margin: 0;
+}
+
+.dashboard-panel--set-piece .event-category-set-piece h3 {
+  display: none;
+}
+
+.set-piece-categories {
+  width: 100%;
+}
+
+.dashboard-panel--match-events.match-events-panel {
+  padding: 16px 18px;
+}
+
+.dashboard-panel--match-events .match-events-grid {
+  margin-top: 0;
+}
+
+.dashboard-panel--set-piece.is-locked .set-piece-button,
+.dashboard-panel--manual-input.is-locked .event-grid button,
+.dashboard-panel--manual-input.is-locked .event-action-button {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.dashboard-panel--manual-input {
+  min-height: 0;
+  padding: 0;
+}
+
+.dashboard-panel--manual-input > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid transparent;
+}
+
+.dashboard-panel--manual-input > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard-panel--manual-input > summary::before {
+  content: none;
+}
+
+.dashboard-panel--manual-input[open] > summary {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.manual-input-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.manual-input-summary-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.manual-input-summary .review-section-title {
+  margin-bottom: 0;
+}
+
+.manual-input-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.manual-input-chevron::before {
+  content: "▶";
+}
+
+.dashboard-panel--manual-input[open] .manual-input-chevron::before {
+  content: "▼";
+}
+
+.dashboard-panel--manual-input[open] .manual-input-chevron {
+  color: var(--accent);
+}
+
+.observer-input-shell-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.manual-input-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+  padding: 0 18px;
+}
+
+.dashboard-panel--manual-input[open] .manual-input-collapse {
+  grid-template-rows: 1fr;
+  padding: 0 18px 16px;
+}
+
+.manual-input-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.observer-input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+
+.observer-input-toolbar .team-toggle {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.observer-input-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.dashboard-panel--manual-input .event-categories {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+}
+
+.dashboard-panel--manual-input .event-category--attack-mode,
+.dashboard-panel--manual-input .event-category[data-category="攻撃"],
+.dashboard-panel--manual-input .event-category[data-category="守備"],
+.dashboard-panel--manual-input .event-category[data-category="トランジション"],
+.dashboard-panel--manual-input .event-category[data-category="Attack"],
+.dashboard-panel--manual-input .event-category[data-category="Defense"],
+.dashboard-panel--manual-input .event-category[data-category="Build Up"],
+.dashboard-panel--manual-input .event-category[data-category="Finish"],
+.dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"],
+.dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"],
+.dashboard-panel--manual-input .event-category[data-category="Transition"] {
+  grid-column: 1;
+  grid-row: auto;
+}
+
+.dashboard-panel--manual-input.event-panel {
+  min-height: 0;
+}
+
+.dashboard-panel--manual-input.is-locked .event-grid button,
+.dashboard-panel--manual-input.is-locked .event-action-button {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.post-match-panel .post-match-title {
+  margin-bottom: 12px;
+}
+
+.post-match-summary {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.post-match-stat {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.post-match-stat strong {
+  color: var(--text);
+}
+
+.dashboard-zone {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.dashboard-zone-head,
+.dashboard-panel-head,
+.dashboard-zone-head-split,
+.dashboard-panel-head--split {
+  display: contents;
+}
+
+.dashboard-zone-stats-row,
+.dashboard-judgment-row,
+.observer-dashboard-side,
+.observer-dashboard-main {
+  display: contents;
+}
+
+.dashboard-zone-observer-input.observer-input-shell.is-collapsed .observer-input-shell-body {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .observer-command-bar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .observer-command .match-action-wrap {
+    justify-self: stretch;
+  }
+
+  .observer-command .match-action-wrap .match-action {
+    width: 100%;
+  }
+
+  .dashboard-panel-group--judgment {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .dashboard-panel-group--stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .observer-dashboard-grid {
+    grid-template-rows: repeat(8, auto);
+  }
+
+  .dashboard-panel--half-total .mini-review-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .observer-command-bar {
+    gap: 8px;
+  }
+
+  .observer-command .score-control {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-panel--state .live-state-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, auto);
+  }
+
+  .observer-input-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-panel--manual-input .event-categories {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-panel--manual-input .event-category[data-category="攻撃"],
+  .dashboard-panel--manual-input .event-category[data-category="守備"],
+  .dashboard-panel--manual-input .event-category[data-category="トランジション"],
+  .dashboard-panel--manual-input .event-category[data-category="Attack"],
+  .dashboard-panel--manual-input .event-category[data-category="Defense"],
+  .dashboard-panel--manual-input .event-category[data-category="Build Up"],
+  .dashboard-panel--manual-input .event-category[data-category="Finish"],
+  .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"],
+  .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"],
+  .dashboard-panel--manual-input .event-category[data-category="Transition"] {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+body[data-analyze-mode="attack"] .event-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-category--attack-mode {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+.event-category--attack-mode h3 {
+  margin: 0 0 4px;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+}
+
+.event-category-subtitle {
+  margin: 0 0 10px;
+  color: var(--muted, #b9b0c9);
+  font-size: 0.78rem;
+}
+
+.event-grid-attack-slots,
+.event-grid-attack-pitch {
+  grid-template-columns: repeat(var(--event-grid-columns, 4), minmax(0, 1fr));
+}
+
+.event-category--attack-mode .event-grid-attack-pitch {
+  position: relative;
+  min-height: 132px;
+}
+
+.event-category--attack-mode .event-action-button[data-event-code="center"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.event-category--attack-mode .event-action-button[data-event-code="left"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.event-category--attack-mode .event-action-button[data-event-code="right"] {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.event-category--attack-mode .event-action-button[data-event-code="behind"] {
+  grid-column: 4;
+  grid-row: 2;
+}
+
+.event-action-slot--reserved {
+  min-height: 52px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.45;
+}
+
+@media (max-width: 720px) {
+  .event-grid-attack-slots,
+  .event-grid-attack-pitch {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .event-category--attack-mode .event-action-button[data-event-code="center"],
+  .event-category--attack-mode .event-action-button[data-event-code="left"],
+  .event-category--attack-mode .event-action-button[data-event-code="right"],
+  .event-category--attack-mode .event-action-button[data-event-code="behind"] {
+    grid-column: auto;
+    grid-row: auto;
+  }
 }

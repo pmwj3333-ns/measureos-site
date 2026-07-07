@@ -2,6 +2,7 @@ const storageKey = "measure-os-football:match-setup:v1";
 const planPath = "../../plan/v0.1/index.html";
 
 const PRESET_FORMATIONS = new Set(["4-4-2", "4-3-3", "4-2-3-1", "3-4-2-1", "3-5-2"]);
+const ANALYZE_MODES = new Set(["attack", "defense", "both"]);
 
 const form = document.getElementById("match-setup-form");
 const competitionInput = document.getElementById("competition");
@@ -12,6 +13,7 @@ const formationSelect = document.getElementById("formation");
 const formationCustomInput = document.getElementById("formation-custom");
 const sideHomeButton = document.getElementById("side-home");
 const sideAwayButton = document.getElementById("side-away");
+const analyzeModeButtons = document.querySelectorAll("[data-analyze-mode]");
 const setupStatus = document.getElementById("setup-status");
 const nextButton = document.getElementById("next-button");
 
@@ -23,6 +25,7 @@ const errorElements = {
 };
 
 let selectedHomeAway = "";
+let selectedAnalyzeMode = "both";
 
 function generateMatchId() {
   if (window.crypto?.randomUUID) {
@@ -54,6 +57,14 @@ function setHomeAway(side) {
   sideHomeButton.setAttribute("aria-pressed", selectedHomeAway === "home" ? "true" : "false");
   sideAwayButton.setAttribute("aria-pressed", selectedHomeAway === "away" ? "true" : "false");
   updateStatus();
+}
+
+function setAnalyzeMode(mode) {
+  selectedAnalyzeMode = ANALYZE_MODES.has(mode) ? mode : "both";
+  analyzeModeButtons.forEach((button) => {
+    const isSelected = button.dataset.analyzeMode === selectedAnalyzeMode;
+    button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+  });
 }
 
 function resolveFormationValue() {
@@ -100,6 +111,7 @@ function restoreDraft() {
   matchDateInput.value = saved.match_date || "";
   kickoffTimeInput.value = saved.kickoff_time || "";
   setHomeAway(saved.home_away || "");
+  setAnalyzeMode(saved.analyzeMode || "both");
   populateFormationSelect(saved.formation || "");
 }
 
@@ -148,6 +160,7 @@ function buildMatchSetupSnapshot() {
     kickoff_time: kickoffTimeInput.value,
     home_away: selectedHomeAway,
     formation: resolveFormationValue(),
+    analyzeMode: selectedAnalyzeMode,
     match_created_at: new Date().toISOString(),
   };
 }
@@ -179,6 +192,9 @@ function handleSubmit(event) {
 
 sideHomeButton.addEventListener("click", () => setHomeAway("home"));
 sideAwayButton.addEventListener("click", () => setHomeAway("away"));
+analyzeModeButtons.forEach((button) => {
+  button.addEventListener("click", () => setAnalyzeMode(button.dataset.analyzeMode));
+});
 formationSelect.addEventListener("change", syncFormationCustomVisibility);
 form.addEventListener("submit", handleSubmit);
 
@@ -193,4 +209,5 @@ form.addEventListener("submit", handleSubmit);
 });
 
 restoreDraft();
+setAnalyzeMode(selectedAnalyzeMode);
 updateStatus();

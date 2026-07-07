@@ -8,18 +8,18 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="plan-shell page-shell">
+  <main class="page-container plan-shell page-shell">
     <header class="page-hero" aria-labelledby="page-title">
-      <p class="eyebrow">MEASURE OS Football</p>
+      <p class="page-eyebrow">MEASURE OS Football</p>
       <div class="hero-grid">
         <div class="hero-copy">
-          <h1 id="page-title">Game Plan</h1>
-          <p class="lead">試合前に戦略を設定する。</p>
+          <h1 id="page-title" class="page-title">Game Plan</h1>
+          <p class="page-description">試合前に戦略を設定する。</p>
         </div>
         <aside class="philosophy-card" aria-label="MEASURE OS flow guide">
           <p>MEASURE OS の流れ</p>
           <div class="philosophy-steps" aria-hidden="true">
-            <span>Plan</span>
+            <span class="is-active">Plan</span>
             <span>Operation</span>
             <span>Deviation</span>
             <span>Human Decision</span>
@@ -100,6 +100,8 @@
     </footer>
   </main>
 
+  <script src="../../shared/attack-plan.js"></script>
+  <script src="../../shared/defense-plan.js"></script>
   <script src="../../shared/plan-snapshot.js"></script>
   <script src="./app.js"></script>
 </body>

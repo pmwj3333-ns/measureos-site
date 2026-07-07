@@ -1,7 +1,7 @@
-const planCategories = [
+const ALL_PLAN_CATEGORIES = [
   {
     key: "attack",
-    options: ["左優位", "右優位", "中央攻略", "クロス攻略"],
+    options: ["左優位", "右優位", "中央攻略", "クロス攻略", "背後攻略"],
   },
   {
     key: "defense",
@@ -17,25 +17,132 @@ const planCategories = [
   },
 ];
 
-const selectedPlan = new Map(planCategories.map((category) => [category.key, new Set()]));
+const selectedPlan = new Map(ALL_PLAN_CATEGORIES.map((category) => [category.key, new Set()]));
 const storageKey = "measure-os-football:plan:v0.1";
+const matchSetupStorageKey = "measure-os-football:match-setup:v1";
 const matchStorageKey = "measure-os-football:match-control:v0.3";
 const planReturnKey = "measure-os-football:plan-return:v0.3";
 const observerEventStorageKey = "measure-os-football:observer-events:v0.3";
 const observerPath = "../../observer/index.html";
+const ANALYZE_MODES = new Set(["attack", "defense", "both"]);
+const BOTH_CATEGORY_ORDER = ["attack", "buildUp", "defense", "transition"];
+const ANALYZE_MODE_CATEGORIES = {
+  attack: ["attack", "buildUp"],
+  defense: ["defense", "transition"],
+  both: BOTH_CATEGORY_ORDER,
+};
 let confirmFeedbackTimer = null;
 let isPlanConfirmed = false;
 let planEditMode = false;
 let planReturnContext = null;
+let analyzeMode = "both";
 
 function optionId(categoryKey, label) {
   return `${categoryKey}:${label}`;
 }
 
+function loadAnalyzeMode() {
+  const setup = loadJson(matchSetupStorageKey);
+  const mode = setup?.analyzeMode;
+  analyzeMode = ANALYZE_MODES.has(mode) ? mode : "both";
+}
+
+function getCategoryOptions(categoryKey) {
+  if (analyzeMode === "attack" && window.MO_ATTACK_PLAN) {
+    const labels = window.MO_ATTACK_PLAN.getLabels(categoryKey);
+    if (labels.length > 0) return labels;
+  }
+
+  if (analyzeMode === "defense" && window.MO_DEFENSE_PLAN) {
+    const labels = window.MO_DEFENSE_PLAN.getLabels(categoryKey);
+    if (labels.length > 0) return labels;
+  }
+
+  if (analyzeMode === "both") {
+    if (
+      (categoryKey === "attack" || categoryKey === "buildUp")
+      && window.MO_ATTACK_PLAN
+    ) {
+      const labels = window.MO_ATTACK_PLAN.getLabels(categoryKey);
+      if (labels.length > 0) return labels;
+    }
+    if (
+      (categoryKey === "defense" || categoryKey === "transition")
+      && window.MO_DEFENSE_PLAN
+    ) {
+      const labels = window.MO_DEFENSE_PLAN.getLabels(categoryKey);
+      if (labels.length > 0) return labels;
+    }
+  }
+
+  const category = ALL_PLAN_CATEGORIES.find((item) => item.key === categoryKey);
+  return category?.options || [];
+}
+
+function getPlanCategories() {
+  return ALL_PLAN_CATEGORIES.map((category) => ({
+    key: category.key,
+    options: getCategoryOptions(category.key),
+  }));
+}
+
+function getVisibleCategoryKeys() {
+  return ANALYZE_MODE_CATEGORIES[analyzeMode] || ANALYZE_MODE_CATEGORIES.both;
+}
+
+function isCategoryVisible(categoryKey) {
+  return getVisibleCategoryKeys().includes(categoryKey);
+}
+
+function applyAnalyzeModeLayout() {
+  const grid = document.querySelector(".plan-grid");
+  if (!grid) return;
+
+  const visibleKeys = getVisibleCategoryKeys();
+  grid.dataset.analyzeMode = analyzeMode;
+  grid.dataset.layout = analyzeMode === "both"
+    ? "both"
+    : visibleKeys.length === 2
+      ? "two"
+      : visibleKeys.length === 3
+        ? "three"
+        : "four";
+
+  if (analyzeMode === "both") {
+    ALL_PLAN_CATEGORIES.forEach((category) => {
+      const card = document.querySelector(`[data-category="${category.key}"]`);
+      if (!card) return;
+      const orderIndex = BOTH_CATEGORY_ORDER.indexOf(category.key);
+      const visible = orderIndex >= 0;
+      card.hidden = !visible;
+      card.style.order = visible ? String(orderIndex) : "";
+      if (visible) {
+        const indexEl = card.querySelector(".category-index");
+        if (indexEl) indexEl.textContent = String(orderIndex + 1).padStart(2, "0");
+      }
+    });
+    return;
+  }
+
+  let index = 1;
+  ALL_PLAN_CATEGORIES.forEach((category) => {
+    const card = document.querySelector(`[data-category="${category.key}"]`);
+    if (!card) return;
+    const visible = isCategoryVisible(category.key);
+    card.hidden = !visible;
+    card.style.order = "";
+    if (visible) {
+      const indexEl = card.querySelector(".category-index");
+      if (indexEl) indexEl.textContent = String(index).padStart(2, "0");
+      index += 1;
+    }
+  });
+}
+
 function selectedCount() {
   let count = 0;
-  selectedPlan.forEach((items) => {
-    count += items.size;
+  getVisibleCategoryKeys().forEach((key) => {
+    count += selectedPlan.get(key)?.size || 0;
   });
   return count;
 }
@@ -60,6 +167,34 @@ function renderSummary() {
   confirmButton.classList.toggle("is-confirmed", isPlanConfirmed);
 }
 
+function syncCategoryButtons(categoryKey) {
+  const bucket = selectedPlan.get(categoryKey);
+  const card = document.querySelector(`[data-category="${categoryKey}"]`);
+  if (!card) return;
+  card.querySelectorAll(".option-button").forEach((button) => {
+    button.setAttribute(
+      "aria-pressed",
+      bucket?.has(button.dataset.label) ? "true" : "false",
+    );
+  });
+}
+
+function toggleCategoryOption(categoryKey, label) {
+  const bucket = selectedPlan.get(categoryKey);
+  if (!bucket) return;
+
+  if (bucket.has(label)) {
+    bucket.delete(label);
+  } else {
+    bucket.clear();
+    bucket.add(label);
+  }
+
+  syncCategoryButtons(categoryKey);
+  isPlanConfirmed = false;
+  renderSummary();
+}
+
 function normalizePlanSnapshot(raw) {
   return window.MO_PLAN_SNAPSHOT?.normalizePlanSnapshot(raw) ?? null;
 }
@@ -69,19 +204,87 @@ function clonePlanSnapshot(raw) {
 }
 
 function createPlanSnapshot() {
-  const categories = {
-    attack: Array.from(selectedPlan.get("attack") || []),
-    defense: Array.from(selectedPlan.get("defense") || []),
-    buildUp: Array.from(selectedPlan.get("buildUp") || []),
-    transition: Array.from(selectedPlan.get("transition") || []),
-  };
+  const memo = document.getElementById("free-memo").value || "";
+
+  if (analyzeMode === "attack") {
+    const attackLabel = Array.from(selectedPlan.get("attack") || [])[0] || null;
+    const buildUpLabel = Array.from(selectedPlan.get("buildUp") || [])[0] || null;
+    const attackPlan = window.MO_ATTACK_PLAN;
+
+    return {
+      version: "0.1",
+      confirmed: true,
+      confirmedAt: new Date().toISOString(),
+      analyzeMode: "attack",
+      attack: attackLabel ? attackPlan?.labelToCode("attack", attackLabel) : null,
+      buildUp: buildUpLabel ? attackPlan?.labelToCode("buildUp", buildUpLabel) : null,
+      categories: {
+        ...(attackLabel ? { attack: [attackLabel] } : {}),
+        ...(buildUpLabel ? { buildUp: [buildUpLabel] } : {}),
+      },
+      memo,
+    };
+  }
+
+  if (analyzeMode === "defense") {
+    const defenseLabel = Array.from(selectedPlan.get("defense") || [])[0] || null;
+    const transitionLabel = Array.from(selectedPlan.get("transition") || [])[0] || null;
+    const defensePlan = window.MO_DEFENSE_PLAN;
+
+    return {
+      version: "0.1",
+      confirmed: true,
+      confirmedAt: new Date().toISOString(),
+      analyzeMode: "defense",
+      defense: defenseLabel ? defensePlan?.labelToCode("defense", defenseLabel) : null,
+      transition: transitionLabel ? defensePlan?.labelToCode("transition", transitionLabel) : null,
+      categories: {
+        ...(defenseLabel ? { defense: [defenseLabel] } : {}),
+        ...(transitionLabel ? { transition: [transitionLabel] } : {}),
+      },
+      memo,
+    };
+  }
+
+  if (analyzeMode === "both") {
+    const attackLabel = Array.from(selectedPlan.get("attack") || [])[0] || null;
+    const buildUpLabel = Array.from(selectedPlan.get("buildUp") || [])[0] || null;
+    const defenseLabel = Array.from(selectedPlan.get("defense") || [])[0] || null;
+    const transitionLabel = Array.from(selectedPlan.get("transition") || [])[0] || null;
+    const attackPlan = window.MO_ATTACK_PLAN;
+    const defensePlan = window.MO_DEFENSE_PLAN;
+
+    return {
+      version: "0.1",
+      confirmed: true,
+      confirmedAt: new Date().toISOString(),
+      analyzeMode: "both",
+      attack: attackLabel ? attackPlan?.labelToCode("attack", attackLabel) : null,
+      buildUp: buildUpLabel ? attackPlan?.labelToCode("buildUp", buildUpLabel) : null,
+      defense: defenseLabel ? defensePlan?.labelToCode("defense", defenseLabel) : null,
+      transition: transitionLabel ? defensePlan?.labelToCode("transition", transitionLabel) : null,
+      categories: {
+        ...(attackLabel ? { attack: [attackLabel] } : {}),
+        ...(buildUpLabel ? { buildUp: [buildUpLabel] } : {}),
+        ...(defenseLabel ? { defense: [defenseLabel] } : {}),
+        ...(transitionLabel ? { transition: [transitionLabel] } : {}),
+      },
+      memo,
+    };
+  }
+
+  const categories = {};
+  ALL_PLAN_CATEGORIES.forEach(({ key }) => {
+    categories[key] = Array.from(selectedPlan.get(key) || []);
+  });
 
   return {
     version: "0.1",
     confirmed: true,
     confirmedAt: new Date().toISOString(),
+    analyzeMode,
     categories,
-    memo: document.getElementById("free-memo").value || "",
+    memo,
   };
 }
 
@@ -226,17 +429,13 @@ function hydratePlanFromSnapshot(saved) {
   selectedPlan.forEach((items, key) => {
     items.clear();
     const values = Array.isArray(normalized.categories[key]) ? normalized.categories[key] : [];
-    values.forEach((label) => {
-      items.add(label);
-    });
+    const first = values.find((label) => typeof label === "string");
+    if (first) {
+      items.add(first);
+    }
   });
-  document.querySelectorAll(".option-button").forEach((button) => {
-    const key = button.dataset.categoryKey;
-    const label = button.dataset.label;
-    button.setAttribute(
-      "aria-pressed",
-      selectedPlan.get(key)?.has(label) ? "true" : "false",
-    );
+  getPlanCategories().forEach((category) => {
+    syncCategoryButtons(category.key);
   });
   const memo = document.getElementById("free-memo");
   if (memo) memo.value = typeof normalized.memo === "string" ? normalized.memo : "";
@@ -283,23 +482,13 @@ function renderOption(categoryKey, label) {
   button.setAttribute("aria-pressed", "false");
   button.textContent = label;
   button.addEventListener("click", () => {
-    const bucket = selectedPlan.get(categoryKey);
-    if (!bucket) return;
-    if (bucket.has(label)) {
-      bucket.delete(label);
-      button.setAttribute("aria-pressed", "false");
-    } else {
-      bucket.add(label);
-      button.setAttribute("aria-pressed", "true");
-    }
-    isPlanConfirmed = false;
-    renderSummary();
+    toggleCategoryOption(categoryKey, label);
   });
   return button;
 }
 
 function renderCategories() {
-  planCategories.forEach((category) => {
+  getPlanCategories().forEach((category) => {
     const card = document.querySelector(`[data-category="${category.key}"]`);
     if (!card) return;
     const host = card.querySelector("[data-options]");
@@ -349,8 +538,11 @@ function confirmPlan() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  loadAnalyzeMode();
   renderCategories();
+  applyAnalyzeModeLayout();
   restoreSavedPlan();
+  applyAnalyzeModeLayout();
   renderSummary();
   document.getElementById("clear-plan").addEventListener("click", clearPlan);
   document.getElementById("confirm-plan").addEventListener("click", confirmPlan);

@@ -5,184 +5,290 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MEASURE OS Football - Observer</title>
   <link rel="stylesheet" href="../shared/page-shell.css" />
+  <link rel="stylesheet" href="../shared/ui-system.css" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
-<body>
-  <div class="observer-header-shell page-shell">
+<body class="observer-app">
+  <main class="page-container page-shell observer-shell">
     <header class="page-hero" aria-labelledby="page-title">
-      <p class="eyebrow">MEASURE OS Football</p>
+      <p class="page-eyebrow">MEASURE OS Football</p>
       <div class="hero-grid">
         <div class="hero-copy">
-          <h1 id="page-title">Observer</h1>
-          <p class="lead">試合中のイベントを観測する。</p>
+          <h1 id="page-title" class="page-title">Observer</h1>
+          <p class="page-description">試合中の状態を可視化し、Game Plan の判断を支援する OODA の Observe 画面です。</p>
         </div>
         <aside class="philosophy-card" aria-label="MEASURE OS flow guide">
           <p>MEASURE OS の流れ</p>
           <div class="philosophy-steps" aria-hidden="true">
             <span>Plan</span>
-            <span>Operation</span>
+            <span class="is-active">Operation</span>
             <span>Deviation</span>
             <span>Human Decision</span>
           </div>
         </aside>
       </div>
     </header>
-  </div>
 
-  <main class="page-shell observer-body">
-    <header class="match-command-bar panel" aria-label="match command">
-      <p class="match-time"><span id="phase-label">試合前</span><strong id="clock">00:00</strong></p>
-      <div class="score-control" aria-label="score control">
-        <span class="score-team-label">Home</span>
-        <button type="button" aria-label="Home score minus" data-score-team="home" data-score-delta="-1">−</button>
-        <button type="button" class="primary" aria-label="Home score plus" data-score-team="home" data-score-delta="1">＋</button>
-        <p id="score-board" class="score-board score-board-compact" aria-live="polite">
-          <span id="home-score-mini">0</span>-<span id="away-score-mini">0</span>
+    <section class="observer-command panel" aria-label="match command">
+      <div class="observer-command-bar">
+        <p class="match-time">
+          <span id="phase-label">試合前</span>
+          <strong id="clock">00:00</strong>
         </p>
-        <button type="button" aria-label="Away score minus" data-score-team="away" data-score-delta="-1">−</button>
-        <button type="button" class="primary" aria-label="Away score plus" data-score-team="away" data-score-delta="1">＋</button>
-        <span class="score-team-label">Away</span>
-        <span class="sr-only">
-          Home <span id="home-score">0</span> - <span id="away-score">0</span> Away
-        </span>
-      </div>
-      <div class="match-control match-action-wrap">
-        <h2 id="match-control-title" class="sr-only">Match Control</h2>
-        <p id="match-phase-text" class="sr-only">Game Plan 確定後、キックオフから観測を開始します。</p>
-        <button id="match-action" type="button" class="primary match-action">キックオフ</button>
-      </div>
-    </header>
 
-    <section id="halftime-panel" class="halftime-panel panel" aria-labelledby="halftime-title" hidden>
-      <div>
-        <h2 id="halftime-title" class="sr-only">ハーフタイム</h2>
-        <p class="sr-only">後半のPlanをどう扱うか選択します。</p>
-      </div>
-      <div class="halftime-actions">
-        <button id="continue-plan" type="button" class="primary">このまま続ける</button>
-        <button id="change-plan" type="button">プラン変更</button>
-      </div>
-    </section>
-
-    <section class="context-strip panel" aria-label="team and game plan">
-      <div class="context-strip-head">
-        <div class="team-toggle" role="group" aria-label="team selection">
-          <button type="button" class="selected" data-team="home">Home</button>
-          <button type="button" data-team="away">Away</button>
+        <div class="score-control" aria-label="score control">
+          <span class="score-team-label">Home</span>
+          <button type="button" aria-label="Home score minus" data-score-team="home" data-score-delta="-1">−</button>
+          <button type="button" class="primary" aria-label="Home score plus" data-score-team="home" data-score-delta="1">＋</button>
+          <p id="score-board" class="score-board score-board-compact" aria-live="polite">
+            <span id="home-score-mini">0</span>-<span id="away-score-mini">0</span>
+          </p>
+          <button type="button" aria-label="Away score minus" data-score-team="away" data-score-delta="-1">−</button>
+          <button type="button" class="primary" aria-label="Away score plus" data-score-team="away" data-score-delta="1">＋</button>
+          <span class="score-team-label">Away</span>
+          <span class="sr-only">
+            Home <span id="home-score">0</span> - <span id="away-score">0</span> Away
+          </span>
         </div>
-        <div class="game-plan-controls">
-          <div class="current-plan-anchor">
-            <button
-              type="button"
-              id="current-plan-toggle"
-              class="current-plan-toggle"
-              aria-expanded="false"
-              aria-controls="current-plan-popover"
-            >
-              <span class="current-plan-toggle-icon" aria-hidden="true">▼</span>
-              <span id="game-plan-title">Current Plan</span>
-            </button>
-            <div
-              id="current-plan-popover"
-              class="current-plan-popover"
-              role="region"
-              aria-labelledby="game-plan-title"
-              hidden
-            >
-              <div id="game-plan-empty" class="current-plan-empty" hidden></div>
-              <div id="game-plan-content" class="current-plan-card" hidden></div>
-            </div>
-          </div>
-          <button type="button" id="change-plan-action" class="plan-change-button">Plan変更</button>
+
+        <div class="match-control match-action-wrap">
+          <h2 id="match-control-title" class="sr-only">Match Control</h2>
+          <p id="match-phase-text" class="sr-only">Game Plan 確定後、キックオフから観測を開始します。</p>
+          <button id="match-action" type="button" class="primary match-action">キックオフ</button>
         </div>
       </div>
     </section>
 
-    <section class="operation-grid" aria-label="operation workspace">
-      <div class="observer-workspace">
-        <section class="panel event-panel" aria-label="Observation">
-          <div class="event-input-layout">
-            <div id="event-categories" class="event-categories"></div>
+    <div class="observer-stack">
+      <section id="halftime-panel" class="halftime-panel panel" aria-labelledby="halftime-title" hidden>
+        <div>
+          <h2 id="halftime-title" class="sr-only">ハーフタイム</h2>
+          <p class="sr-only">後半のPlanをどう扱うか選択します。</p>
+        </div>
+        <div class="halftime-actions review-search-actions">
+          <button id="continue-plan" type="button" class="primary">このまま続ける</button>
+          <button id="change-plan" type="button">プラン変更</button>
+        </div>
+      </section>
 
-            <div class="insight-center" aria-label="match insight">
+      <div class="observer-dashboard-grid">
+        <div class="dashboard-panel-group dashboard-panel-group--judgment" data-dashboard-group="judgment">
+          <section
+            class="dashboard-panel dashboard-panel--state dashboard-zone dashboard-zone-state panel"
+            data-dashboard-panel="state"
+            aria-labelledby="dashboard-state-title"
+          >
+            <h2 id="dashboard-state-title" class="review-section-title">State</h2>
+            <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body dashboard-zone-body-state">
               <aside class="live-state-panel" aria-labelledby="live-state-title">
-                <h2 id="live-state-title" class="live-state-heading">LIVE STATE</h2>
+                <h3 id="live-state-title" class="live-state-heading sr-only">LIVE STATE</h3>
                 <div id="live-state-content" class="live-state-content" aria-live="polite"></div>
                 <div id="live-state-detail" class="live-state-detail" hidden></div>
               </aside>
+            </div>
+          </section>
 
-              <aside class="mini-review-panel" aria-labelledby="mini-review-title">
-                <h2 id="mini-review-title" class="mini-review-heading">Mini Review</h2>
-                <div class="mini-review-body">
-                  <div class="mini-review-primary">
-                    <article class="mini-review-row mini-review-row-plan" data-mini-review-key="plan">
-                      <span class="mini-review-label">Plan</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
-                    <article class="mini-review-row mini-review-row-flow" data-mini-review-key="flow">
-                      <span class="mini-review-label">Flow</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
-                  </div>
-                  <div class="mini-review-divider" aria-hidden="true"></div>
-                  <div class="mini-review-metrics">
-                    <article class="mini-review-row" data-mini-review-key="attack">
-                      <span class="mini-review-label">Attack</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
-                    <article class="mini-review-row" data-mini-review-key="defense">
-                      <span class="mini-review-label">Defense</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
-                    <article class="mini-review-row" data-mini-review-key="buildUp">
-                      <span class="mini-review-label">Build Up</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
-                    <article class="mini-review-row" data-mini-review-key="transition">
-                      <span class="mini-review-label">Transition</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
-                    <article class="mini-review-row" data-mini-review-key="setPiece">
-                      <span class="mini-review-label">Set Piece</span>
-                      <span class="mini-review-value">--</span>
-                    </article>
+          <section
+            class="dashboard-panel dashboard-panel--plan dashboard-zone dashboard-zone-plan panel"
+            data-dashboard-panel="plan"
+            aria-labelledby="dashboard-plan-title"
+          >
+            <h2 id="dashboard-plan-title" class="review-section-title">Plan</h2>
+            <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body dashboard-zone-body-plan">
+              <div class="game-plan-controls">
+                <div class="current-plan-anchor">
+                  <button
+                    type="button"
+                    id="current-plan-toggle"
+                    class="current-plan-toggle"
+                    aria-expanded="false"
+                    aria-controls="current-plan-popover"
+                  >
+                    <span class="current-plan-toggle-icon" aria-hidden="true">▼</span>
+                    <span id="game-plan-title">Current Plan</span>
+                  </button>
+                  <div
+                    id="current-plan-popover"
+                    class="current-plan-popover"
+                    role="region"
+                    aria-labelledby="game-plan-title"
+                    hidden
+                  >
+                    <div id="game-plan-empty" class="current-plan-empty" hidden></div>
+                    <div id="game-plan-content" class="current-plan-card" hidden></div>
                   </div>
                 </div>
-              </aside>
+                <button type="button" id="change-plan-action" class="plan-change-button">Plan変更</button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section
+          class="dashboard-panel dashboard-panel--reason dashboard-zone dashboard-zone-reason panel"
+          data-dashboard-panel="reason"
+          aria-labelledby="dashboard-reason-title"
+        >
+          <h2 id="dashboard-reason-title" class="review-section-title">Reason</h2>
+          <div class="dashboard-panel-body dashboard-panel-body--reason dashboard-panel-slot dashboard-zone-body dashboard-zone-body-reason">
+            <div class="reason-panel-content">
+              <div class="reason-panel-slot reason-panel-slot--primary" data-reason-slot="primary">
+                <p class="dashboard-placeholder dashboard-placeholder-reason">State の理由がここに表示されます</p>
+              </div>
             </div>
           </div>
         </section>
 
-        <section class="match-events-panel panel is-collapsed" aria-labelledby="match-events-title">
-          <button
-            type="button"
-            id="match-events-toggle"
-            class="match-events-toggle"
-            aria-expanded="false"
-            aria-controls="match-events-body"
+        <div class="dashboard-panel-group dashboard-panel-group--stats" data-dashboard-group="stats">
+          <section
+            class="dashboard-panel dashboard-panel--recent dashboard-zone dashboard-zone-recent panel"
+            data-dashboard-panel="recent"
+            aria-labelledby="dashboard-recent-title"
           >
-            <span class="match-events-toggle-icon" aria-hidden="true">▼</span>
-            <span id="match-events-title">Match Events</span>
-          </button>
-          <div id="match-events-body" class="match-events-body" hidden>
+            <h2 id="dashboard-recent-title" class="review-section-title">直近5分</h2>
+            <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
+              <div class="recent-panel-content">
+                <p class="dashboard-placeholder">割合・グラフ・傾向など（予定）</p>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="dashboard-panel dashboard-panel--half-total dashboard-zone dashboard-zone-half-total panel"
+            data-dashboard-panel="half-total"
+            aria-labelledby="dashboard-half-total-title"
+          >
+            <h2 id="dashboard-half-total-title" class="review-section-title">前半（後半）トータル</h2>
+            <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
+              <div class="half-total-panel-content">
+                <aside class="mini-review-panel" aria-labelledby="mini-review-title">
+                  <h3 id="mini-review-title" class="mini-review-heading sr-only">Mini Review</h3>
+                  <div class="mini-review-body">
+                    <div class="mini-review-primary">
+                      <article class="mini-review-row mini-review-row-plan" data-mini-review-key="plan">
+                        <span class="mini-review-label">Plan</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                      <article class="mini-review-row mini-review-row-flow" data-mini-review-key="flow">
+                        <span class="mini-review-label">Flow</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                    </div>
+                    <div class="mini-review-divider" aria-hidden="true"></div>
+                    <div class="mini-review-metrics">
+                      <article class="mini-review-row" data-mini-review-key="attack">
+                        <span class="mini-review-label">Attack</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                      <article class="mini-review-row" data-mini-review-key="defense">
+                        <span class="mini-review-label">Defense</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                      <article class="mini-review-row" data-mini-review-key="buildUp">
+                        <span class="mini-review-label">Build Up</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                      <article class="mini-review-row" data-mini-review-key="transition">
+                        <span class="mini-review-label">Transition</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                      <article class="mini-review-row" data-mini-review-key="setPiece">
+                        <span class="mini-review-label">Set Piece</span>
+                        <span class="mini-review-value">--</span>
+                      </article>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section
+          class="dashboard-panel dashboard-panel--event-log dashboard-zone dashboard-zone-event-log panel"
+          data-dashboard-panel="event-log"
+          aria-labelledby="dashboard-event-log-title"
+        >
+          <div class="event-log-header panel-title-row">
+            <h2 id="dashboard-event-log-title" class="review-section-title">Event Log</h2>
+            <div class="event-log-header-actions">
+              <p id="event-log-count" class="event-log-count" aria-live="polite">0件</p>
+              <button id="clear-events" type="button" class="event-log-clear-button">Clear</button>
+            </div>
+          </div>
+          <div class="dashboard-panel-body event-log-body">
+            <p id="event-log-empty" class="event-log-empty">イベントはありません</p>
+            <ol id="timeline" class="timeline timeline--live" aria-live="polite" hidden></ol>
+          </div>
+        </section>
+
+        <section
+          class="dashboard-panel dashboard-panel--set-piece dashboard-zone panel event-panel"
+          data-dashboard-panel="set-piece"
+          aria-labelledby="dashboard-set-piece-title"
+        >
+          <h2 id="dashboard-set-piece-title" class="review-section-title">Set Piece</h2>
+          <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
+            <div id="set-piece-categories" class="set-piece-categories"></div>
+          </div>
+        </section>
+
+        <section
+          class="dashboard-panel dashboard-panel--match-events dashboard-zone panel match-events-panel"
+          data-dashboard-panel="match-events"
+          aria-labelledby="dashboard-match-events-title"
+        >
+          <h2 id="dashboard-match-events-title" class="review-section-title">Match Events</h2>
+          <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
             <div id="match-events" class="match-events-grid"></div>
           </div>
         </section>
-      </div>
-    </section>
 
-    <section id="post-match-panel" class="post-match-panel panel" aria-label="post match summary" hidden>
-      <div class="post-match-summary">
-        <h2 class="post-match-title">試合終了</h2>
-        <p class="post-match-stat">最終試合時間 <strong id="post-match-time">00:00</strong></p>
-        <p class="post-match-stat">最終スコア <strong id="post-match-score">Home 0 - 0 Away</strong></p>
+        <details
+          class="dashboard-panel dashboard-panel--manual-input dashboard-zone dashboard-zone-observer-input observer-input-shell event-panel panel"
+          data-dashboard-panel="manual-input"
+        >
+          <summary class="manual-input-summary observer-input-shell-head">
+            <div class="manual-input-summary-main observer-input-shell-title-wrap">
+              <span class="manual-input-chevron" aria-hidden="true"></span>
+              <h2 id="dashboard-observer-input-title" class="review-section-title">Manual Input</h2>
+              <span class="observer-input-shell-badge">手動入力</span>
+            </div>
+            <p id="observation-lock" class="observation-lock">キックオフ前です</p>
+          </summary>
+          <div class="manual-input-collapse dashboard-panel-body observer-input-shell-body dashboard-zone-body dashboard-zone-body-input">
+            <div class="manual-input-collapse-inner">
+              <div class="observer-input-toolbar">
+                <div class="team-toggle" role="group" aria-label="team selection">
+                  <button type="button" class="selected" data-team="home">Home</button>
+                  <button type="button" data-team="away">Away</button>
+                </div>
+              </div>
+
+              <div id="event-categories" class="event-categories"></div>
+            </div>
+          </div>
+        </details>
       </div>
-      <div class="post-match-actions">
-        <button id="open-review" type="button" class="primary">Reviewを見る</button>
-      </div>
-    </section>
+
+      <section id="post-match-panel" class="post-match-panel panel" aria-label="post match summary" hidden>
+        <h2 class="review-section-title post-match-title">試合終了</h2>
+        <div class="post-match-summary">
+          <p class="post-match-stat">最終試合時間 <strong id="post-match-time">00:00</strong></p>
+          <p class="post-match-stat">最終スコア <strong id="post-match-score">Home 0 - 0 Away</strong></p>
+        </div>
+        <div class="post-match-actions review-search-actions">
+          <button id="open-review" type="button" class="primary">Reviewを見る</button>
+        </div>
+      </section>
+    </div>
   </main>
 
+  <script src="../shared/attack-plan.js"></script>
+  <script src="../shared/attack-observer.js"></script>
+  <script src="../shared/defense-plan.js"></script>
+  <script src="../shared/defense-observer.js"></script>
+  <script src="../shared/both-observer.js"></script>
   <script src="../shared/plan-snapshot.js"></script>
   <script src="../shared/review-archive.js"></script>
   <script src="../state-engine/v0.1/engine.js"></script>
@@ -190,6 +296,7 @@
   <script src="../state-engine/v0.1/rules/rule013-attack-right-dominance.js"></script>
   <script src="../state-engine/v0.1/rules/rule014-attack-central-attack.js"></script>
   <script src="../state-engine/v0.1/rules/rule015-attack-cross-strategy.js"></script>
+  <script src="../state-engine/v0.1/rules/rule018-attack-behind-strategy.js"></script>
   <script src="../state-engine/v0.1/rules/rule002-defense-high-press.js"></script>
   <script src="../state-engine/v0.1/rules/rule003-defense-low-block.js"></script>
   <script src="../state-engine/v0.1/rules/rule016-defense-middle-block.js"></script>
@@ -204,6 +311,9 @@
   <script src="../state-engine/v0.1/rules/rule011-transition-ball-retention.js"></script>
   <script src="./mini-review-calculator.js"></script>
   <script src="./live-state-explain.js"></script>
+  <script src="./events-attack.js"></script>
+  <script src="./events-defense.js"></script>
+  <script src="./events-both.js"></script>
   <script src="./events.js"></script>
   <script src="./app.js"></script>
 </body>

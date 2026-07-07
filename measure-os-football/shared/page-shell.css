@@ -1,28 +1,33 @@
+/* MEASURE OS Football — shared page shell & hero (Match Setup baseline) */
+
 :root {
   --shell-width: 1120px;
-  --shell-gutter: 28px;
+  --shell-padding-inline: 24px;
   --shell-padding-top: 18px;
   --shell-padding-bottom: 88px;
+  --hero-content-gap: 24px;
+  --main-content-gap: 22px;
 }
 
+.page-container,
 .page-shell,
 .plan-shell,
 .setup-shell,
-.observer-header-shell,
-.observer-body {
-  width: min(var(--shell-width), calc(100% - var(--shell-gutter)));
+.observer-shell,
+.review-shell {
+  box-sizing: border-box;
+  max-width: var(--shell-width);
+  width: 100%;
   margin: 0 auto;
-  padding: var(--shell-padding-top) 0 var(--shell-padding-bottom);
-}
-
-.observer-header-shell {
-  padding-bottom: 10px;
+  padding: var(--shell-padding-top) var(--shell-padding-inline) var(--shell-padding-bottom);
 }
 
 .page-hero {
-  margin-bottom: 6px;
+  margin-bottom: var(--hero-content-gap);
 }
 
+.page-eyebrow,
+.page-hero .page-eyebrow,
 .page-hero .eyebrow {
   margin: 0 0 6px;
   color: var(--accent-2, #8be9d6);
@@ -32,26 +37,32 @@
   text-transform: uppercase;
 }
 
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-}
-
+.page-title,
+.page-hero .page-title,
+.page-hero h1.page-title,
 .page-hero h1 {
   margin: 0 0 4px;
   font-size: clamp(1.6rem, 4.2vw, 2.8rem);
+  font-weight: inherit;
   letter-spacing: -0.055em;
   line-height: 1;
 }
 
+.page-description,
+.page-hero .page-description,
 .page-hero .lead {
   max-width: 560px;
   margin: 0;
   color: var(--muted, #b9b0c9);
   font-size: clamp(0.9rem, 1.6vw, 1rem);
   line-height: 1.48;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
 }
 
 .philosophy-card,
@@ -100,7 +111,7 @@
   line-height: 1.2;
 }
 
-.philosophy-steps span:first-child {
+.philosophy-steps span.is-active {
   background: rgba(216, 180, 254, 0.16);
   color: var(--accent-ui, #d8b4fe);
 }
@@ -138,6 +149,22 @@
   color: var(--accent-ui, #d8b4fe);
 }
 
+.page-hero + .setup-form,
+.page-hero + .plan-grid,
+.page-hero + .observer-command,
+.page-hero + .review-view {
+  margin-top: 0;
+}
+
+.observer-command + .observer-stack {
+  margin-top: var(--main-content-gap);
+}
+
+.review-shell > .page-hero + .review-view,
+.review-shell > .page-hero + #review-search-view {
+  margin-top: 0;
+}
+
 @media (max-width: 860px) {
   .hero-grid,
   .philosophy-steps,
@@ -155,13 +182,14 @@
 }
 
 @media (max-width: 520px) {
+  .page-container,
   .page-shell,
   .plan-shell,
   .setup-shell,
-  .observer-header-shell,
-  .observer-body {
-    width: min(100% - 20px, var(--shell-width));
+  .observer-shell,
+  .review-shell {
     padding-top: 12px;
+    padding-inline: 20px;
   }
 
   .screen-nav-steps {

@@ -156,6 +156,19 @@ input::placeholder {
   gap: 8px;
 }
 
+.analyze-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-analyze-mode {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
 .option-button {
   display: flex;
   align-items: center;
@@ -333,6 +346,10 @@ input::placeholder {
 }
 
 @media (max-width: 520px) {
+  .analyze-mode-toggle {
+    grid-template-columns: 1fr;
+  }
+
   .bottom-bar {
     border-radius: 24px;
     align-items: stretch;

@@ -42,6 +42,8 @@
   }
 
   function countEvents(events, eventName) {
+    const counter = window.MO_ATTACK_PLAN?.countMatchingEvents;
+    if (typeof counter === "function") return counter(events, eventName);
     return events.filter((event) => event.eventName === eventName).length;
   }
 

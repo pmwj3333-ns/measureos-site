@@ -9,6 +9,7 @@ const state = {
 
 const planStorageKey = "measure-os-football:plan:v0.1";
 const matchStorageKey = "measure-os-football:match-control:v0.3";
+const matchSetupStorageKey = "measure-os-football:match-setup:v1";
 const planReturnKey = "measure-os-football:plan-return:v0.3";
 const eventStorageKey = "measure-os-football:observer-events:v0.3";
 const planPath = "../plan/v0.1/index.html";
@@ -35,7 +36,32 @@ const liveStateCategories = [
   { key: "transition", label: "TRANSITION", aliases: ["Transition", "transition"] },
 ];
 
+const attackLiveStateCategories = [
+  { key: "attack", label: "ATTACK", aliases: ["Attack", "attack"] },
+  { key: "buildUp", label: "BUILD UP", aliases: ["Build Up", "buildUp", "BuildUp"] },
+];
+
+const defenseLiveStateCategories = [
+  { key: "defense", label: "DEFENSE", aliases: ["Defense", "defense"] },
+  { key: "transition", label: "TRANSITION", aliases: ["Transition", "transition"] },
+];
+
+const bothLiveStateCategories = [
+  { key: "attack", label: "ATTACK", aliases: ["Attack", "attack"] },
+  { key: "buildUp", label: "BUILD UP", aliases: ["Build Up", "buildUp", "BuildUp"] },
+  { key: "defense", label: "DEFENSE", aliases: ["Defense", "defense"] },
+  { key: "transition", label: "TRANSITION", aliases: ["Transition", "transition"] },
+];
+
 const observationEventDisplay = {
+  左: { icon: "←", label: "左", tier: "intrusion" },
+  右: { icon: "→", label: "右", tier: "intrusion" },
+  中央: { icon: "↑", label: "中央", tier: "intrusion" },
+  背後: { icon: "↗", label: "背後", tier: "behind" },
+  被左: { icon: "←", label: "被左", tier: "intrusion" },
+  被右: { icon: "→", label: "被右", tier: "intrusion" },
+  被中央: { icon: "↑", label: "被中央", tier: "intrusion" },
+  被背後: { icon: "↗", label: "被背後", tier: "behind" },
   左侵入: { icon: "←", label: "左", tier: "intrusion" },
   中央侵入: { icon: "↑", label: "中央", tier: "intrusion" },
   右侵入: { icon: "→", label: "右", tier: "intrusion" },
@@ -56,6 +82,9 @@ const observationEventDisplay = {
     tier: "shoot",
     iconHtml: true,
   },
+  決定機: { icon: "★", label: "決定機", tier: "finish" },
+  保持前進: { icon: "⟲", label: "保持前進", tier: "build-up" },
+  ロング前進: { icon: "⇢", label: "ロング前進", tier: "build-up" },
   ボール奪取: {
     icon: `<svg class="event-action-svg" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5.2v4.8c0 3.8-2.6 6.4-6 7-3.4-.6-6-3.2-6-7V5.2Z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>`,
     label: "奪取",
@@ -63,6 +92,8 @@ const observationEventDisplay = {
     iconHtml: true,
   },
   前線奪取: { icon: "⬆", label: "高奪取", tier: "recovery" },
+  即時奪回: { icon: "↺", label: "即時奪回", tier: "transition" },
+  リトリート: { icon: "↘", label: "リトリート", tier: "transition" },
   即時奪回成功: { icon: "↺", label: "即奪回", tier: "transition" },
   カウンター開始: { icon: "⇢", label: "カウンター", tier: "transition" },
   カウンター被弾: { icon: "⇠", label: "被カウンター", tier: "transition" },
@@ -82,6 +113,7 @@ const PLAN_OPTION_RULE_IDS = {
     "右優位": "rule013",
     "中央攻略": "rule014",
     "クロス攻略": "rule015",
+    "背後攻略": "rule018",
   },
   defense: {
     "ハイプレス": "rule002",
@@ -123,60 +155,127 @@ const buildUpReasonEventFilter = (event) => [
 
 const liveStateReasonEventFilters = {
   rule012: (event) => [
+    "left",
+    "center",
+    "right",
+    "behind",
+    "shot",
+    "bigChance",
     "左侵入",
+    "左",
     "中央侵入",
+    "中央",
     "右侵入",
+    "右",
     "クロス",
+    "背後",
     "シュート",
+    "決定機",
     "カウンター被弾",
   ].includes(event.eventName),
   rule013: (event) => [
+    "right",
+    "left",
+    "center",
+    "behind",
+    "shot",
+    "bigChance",
     "右侵入",
+    "右",
     "左侵入",
+    "左",
     "中央侵入",
+    "中央",
     "クロス",
+    "背後",
     "シュート",
+    "決定機",
     "カウンター被弾",
   ].includes(event.eventName),
   rule014: (event) => [
+    "center",
+    "left",
+    "right",
+    "behind",
+    "shot",
+    "bigChance",
     "中央侵入",
+    "中央",
     "左侵入",
+    "左",
     "右侵入",
+    "右",
     "クロス",
+    "背後",
     "シュート",
+    "決定機",
     "カウンター被弾",
   ].includes(event.eventName),
   rule015: (event) => [
     "クロス",
     "シュート",
     "左侵入",
+    "左",
     "中央侵入",
+    "中央",
     "右侵入",
+    "右",
     "カウンター被弾",
   ].includes(event.eventName),
-  rule002: (event) => ["前線奪取", "被中央侵入", "被シュート"].includes(event.eventName),
+  rule018: (event) => [
+    "behind",
+    "shot",
+    "bigChance",
+    "left",
+    "center",
+    "right",
+    "背後",
+    "シュート",
+    "決定機",
+    "左",
+    "中央",
+    "右",
+  ].includes(event.eventName),
+  rule002: (event) => [
+    "前線奪取",
+    "被中央侵入",
+    "被中央",
+    "被シュート",
+  ].includes(event.eventName),
   rule003: (event) => [
     "被左侵入",
+    "被左",
     "被中央侵入",
+    "被中央",
     "被右侵入",
+    "被右",
     "被クロス",
+    "被背後",
     "被シュート",
     "ボール奪取",
   ].includes(event.eventName),
   rule016: (event) => [
     "被中央侵入",
+    "被中央",
     "被左侵入",
+    "被左",
     "被右侵入",
+    "被右",
     "被クロス",
+    "被背後",
     "被シュート",
     "ボール奪取",
     "前線奪取",
   ].includes(event.eventName),
   rule017: (event) => [
     "被左侵入",
+    "被左",
     "被中央侵入",
+    "被中央",
     "被右侵入",
+    "被右",
     "被クロス",
+    "被背後",
     "被シュート",
     "ボール奪取",
     "前線奪取",
@@ -205,16 +304,22 @@ const liveStateReasonEventFilters = {
   ].includes(event.eventName),
   rule008: (event) => [
     "即時奪回成功",
+    "即時奪回",
     "カウンター開始",
     "カウンター被弾",
   ].includes(event.eventName),
   rule009: (event) => [
     "被中央侵入",
+    "被中央",
     "被シュート",
     "カウンター被弾",
     "ボール奪取",
     "被左侵入",
+    "被左",
     "被右侵入",
+    "被右",
+    "被背後",
+    "リトリート",
   ].includes(event.eventName),
   rule010: (event) => [
     "カウンター開始",
@@ -258,6 +363,10 @@ const phaseLabels = {
 };
 
 const observationCategories = window.MO_OBSERVATION_CATEGORIES || [];
+const attackObservationCategories = window.MO_OBSERVATION_CATEGORIES_ATTACK || [];
+const defenseObservationCategories = window.MO_OBSERVATION_CATEGORIES_DEFENSE || [];
+const bothObservationCategories = window.MO_OBSERVATION_CATEGORIES_BOTH || [];
+let analyzeMode = "both";
 const matchEvents = [
   { eventName: "Home イエロー", team: "Home", type: "yellow", icon: "■" },
   { eventName: "Away イエロー", team: "Away", type: "yellow", icon: "■" },
@@ -342,7 +451,41 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-function getObservationEventDisplay(eventName) {
+function resolveObserverEventDef(eventName, categoryKey = null) {
+  const normalizedCode = String(eventName || "");
+  if (categoryKey) {
+    const bothDef = window.MO_BOTH_OBSERVER?.getEventDef?.(normalizedCode, categoryKey);
+    if (bothDef) return bothDef;
+    const defenseDef = window.MO_DEFENSE_OBSERVER?.getEventDef?.(normalizedCode, categoryKey);
+    if (defenseDef) return defenseDef;
+    const attackDef = window.MO_ATTACK_OBSERVER?.getEventDef?.(normalizedCode);
+    if (attackDef?.categoryKey === categoryKey) return attackDef;
+    return null;
+  }
+
+  if (isBothAnalyzeMode()) {
+    return window.MO_BOTH_OBSERVER?.getEventDef?.(normalizedCode) || null;
+  }
+
+  const attackDef = window.MO_ATTACK_OBSERVER?.getEventDef?.(normalizedCode);
+  const defenseDef = window.MO_DEFENSE_OBSERVER?.getEventDef?.(normalizedCode);
+  if (attackDef && defenseDef) {
+    return isDefenseAnalyzeMode() ? defenseDef : attackDef;
+  }
+  return attackDef || defenseDef || null;
+}
+
+function getObservationEventDisplay(eventName, categoryKey = null) {
+  const catalogDef = resolveObserverEventDef(eventName, categoryKey);
+  if (catalogDef) {
+    return {
+      icon: catalogDef.iconHtml || catalogDef.icon || "•",
+      label: catalogDef.label,
+      tier: catalogDef.tier || "default",
+      iconHtml: Boolean(catalogDef.iconHtml),
+    };
+  }
+
   return (
     observationEventDisplay[eventName] || {
       icon: "•",
@@ -352,11 +495,89 @@ function getObservationEventDisplay(eventName) {
   );
 }
 
+function formatStoredEventName(eventName, event = null) {
+  const code = event?.observerEventCode || eventName;
+  const categoryKey = event?.eventCategory || null;
+  const catalogDef = resolveObserverEventDef(code, categoryKey);
+  if (catalogDef) return catalogDef.label;
+
+  return getObservationEventDisplay(eventName, categoryKey).label || eventName;
+}
+
 function renderObservationEventIcon(display) {
   if (display.iconHtml) {
     return `<span class="event-action-icon event-action-icon-svg">${display.icon}</span>`;
   }
   return `<span class="event-action-icon" aria-hidden="true">${escapeHtml(display.icon)}</span>`;
+}
+
+function appendReservedObservationSlots(grid, count) {
+  for (let index = 0; index < count; index += 1) {
+    const slot = document.createElement("div");
+    slot.className = "event-action-slot event-action-slot--reserved";
+    slot.setAttribute("aria-hidden", "true");
+    grid.appendChild(slot);
+  }
+}
+
+function createCatalogObservationEventButton(eventDef, categoryKey) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "event-action-button";
+  button.dataset.eventName = eventDef.code;
+  button.dataset.eventCode = eventDef.code;
+  button.dataset.eventCategory = categoryKey;
+  button.dataset.eventTier = eventDef.tier || "default";
+  button.setAttribute("aria-label", eventDef.label);
+
+  const iconMarkup = eventDef.iconHtml
+    ? `<span class="event-action-icon event-action-icon-svg">${eventDef.iconHtml}</span>`
+    : `<span class="event-action-icon" aria-hidden="true">${escapeHtml(eventDef.icon || "•")}</span>`;
+
+  button.innerHTML = `
+    ${iconMarkup}
+    <span class="event-action-label">${escapeHtml(eventDef.label)}</span>
+  `;
+  button.addEventListener("click", () => recordEvent(eventDef.code, button));
+  return button;
+}
+
+function renderObserverCatalogCategories(host, catalog) {
+  if (!catalog || !host) return;
+
+  catalog.getCategories().forEach((category) => {
+    const section = document.createElement("section");
+    section.className = "event-category event-category--attack-mode";
+    section.dataset.category = category.label;
+    section.dataset.categoryKey = category.key;
+
+    const title = document.createElement("h3");
+    title.textContent = category.label;
+
+    if (category.subtitle) {
+      const subtitle = document.createElement("p");
+      subtitle.className = "event-category-subtitle";
+      subtitle.textContent = category.subtitle;
+      section.append(title, subtitle);
+    } else {
+      section.append(title);
+    }
+
+    const grid = document.createElement("div");
+    const isPitchGrid = category.layout === "pitch";
+    grid.className = isPitchGrid
+      ? "event-grid event-grid-pitch event-grid-attack-pitch"
+      : "event-grid event-grid-attack-slots";
+    grid.style.setProperty("--event-grid-columns", String(category.gridColumns || 4));
+
+    category.eventDefs.forEach((eventDef) => {
+      grid.appendChild(createCatalogObservationEventButton(eventDef, category.key));
+    });
+    appendReservedObservationSlots(grid, category.reservedSlots || 0);
+
+    section.appendChild(grid);
+    host.appendChild(section);
+  });
 }
 
 function createObservationEventButton(eventName, onClick) {
@@ -402,6 +623,71 @@ function removeJson(key) {
   } catch (_) {
     // Ignore storage errors in the local prototype.
   }
+}
+
+function loadAnalyzeMode() {
+  const setup = loadJson(matchSetupStorageKey);
+  const plan = normalizePlanSnapshot(loadJson(planStorageKey))
+    || normalizePlanSnapshot(state.match?.currentPlan);
+  const mode = plan?.analyzeMode || setup?.analyzeMode;
+  analyzeMode = mode === "attack" || mode === "defense" || mode === "both" ? mode : "both";
+}
+
+function isAttackAnalyzeMode() {
+  return analyzeMode === "attack";
+}
+
+function isDefenseAnalyzeMode() {
+  return analyzeMode === "defense";
+}
+
+function isBothAnalyzeMode() {
+  return analyzeMode === "both";
+}
+
+function getActiveObservationCategories() {
+  if (isAttackAnalyzeMode()) return attackObservationCategories;
+  if (isDefenseAnalyzeMode()) return defenseObservationCategories;
+  if (isBothAnalyzeMode()) return bothObservationCategories;
+  return observationCategories;
+}
+
+function getActivePlanDisplayCategories() {
+  if (isAttackAnalyzeMode()) {
+    return [
+      { key: "attack", label: planCategoryLabels.attack },
+      { key: "buildUp", label: planCategoryLabels.buildUp },
+    ];
+  }
+  if (isDefenseAnalyzeMode()) {
+    return [
+      { key: "defense", label: planCategoryLabels.defense },
+      { key: "transition", label: planCategoryLabels.transition },
+    ];
+  }
+  return planDisplayCategories;
+}
+
+function getActiveLiveStateCategories() {
+  if (isAttackAnalyzeMode()) return attackLiveStateCategories;
+  if (isDefenseAnalyzeMode()) return defenseLiveStateCategories;
+  if (isBothAnalyzeMode()) return bothLiveStateCategories;
+  return liveStateCategories;
+}
+
+function applyAnalyzeModeUi() {
+  document.body.dataset.analyzeMode = analyzeMode;
+
+  const hiddenMiniReviewKeys = isAttackAnalyzeMode()
+    ? new Set(["defense", "transition", "setPiece"])
+    : isDefenseAnalyzeMode()
+      ? new Set(["attack", "buildUp", "setPiece"])
+      : new Set();
+
+  document.querySelectorAll("[data-mini-review-key]").forEach((row) => {
+    const key = row.dataset.miniReviewKey;
+    row.hidden = hiddenMiniReviewKeys.has(key);
+  });
 }
 
 function normalizePlanSnapshot(raw) {
@@ -682,7 +968,7 @@ function renderGamePlan() {
     return;
   }
 
-  const groups = planDisplayCategories.map(({ key, label }) => {
+  const groups = getActivePlanDisplayCategories().map(({ key, label }) => {
     const items = Array.isArray(plan.categories[key]) ? plan.categories[key] : [];
     const value = formatPlanSelections(items);
     return `
@@ -833,8 +1119,11 @@ function renderPostMatch() {
 
 function renderObservationLock() {
   const locked = !isObservationOpen();
-  document.querySelector(".event-panel").classList.toggle("is-locked", locked);
-  document.querySelectorAll("[data-event-name]").forEach((button) => {
+  document.querySelector(".dashboard-panel--manual-input.event-panel")?.classList.toggle("is-locked", locked);
+  document.querySelector(".dashboard-panel--set-piece.event-panel")?.classList.toggle("is-locked", locked);
+  document.querySelectorAll(
+    ".dashboard-panel--manual-input [data-event-name], .dashboard-panel--set-piece [data-event-name]",
+  ).forEach((button) => {
     button.disabled = locked;
   });
   const lock = $("observation-lock");
@@ -850,6 +1139,26 @@ function renderMatchEventsLock() {
   document.querySelectorAll("[data-match-event]").forEach((button) => {
     button.disabled = locked;
   });
+}
+
+const SET_PIECE_CATEGORY = {
+  label: "セットプレー",
+  layout: "team-split",
+  events: ["CK", "FK", "PK", "決定機"],
+};
+
+function getSetPieceCategory() {
+  const categories = isAttackAnalyzeMode() || isDefenseAnalyzeMode() || isBothAnalyzeMode()
+    ? observationCategories
+    : getActiveObservationCategories();
+  return categories.find((category) => category.layout === "team-split") || SET_PIECE_CATEGORY;
+}
+
+function renderSetPieceButtons() {
+  const host = $("set-piece-categories");
+  if (!host) return;
+  host.innerHTML = "";
+  host.appendChild(renderSetPieceCategory(getSetPieceCategory()));
 }
 
 function renderSetPieceCategory(category) {
@@ -900,9 +1209,24 @@ function renderSetPieceCategory(category) {
 function renderEventButtons() {
   const host = $("event-categories");
   host.innerHTML = "";
-  observationCategories.forEach((category) => {
+
+  if (isAttackAnalyzeMode() && window.MO_ATTACK_OBSERVER) {
+    renderObserverCatalogCategories(host, window.MO_ATTACK_OBSERVER);
+    return;
+  }
+
+  if (isDefenseAnalyzeMode() && window.MO_DEFENSE_OBSERVER) {
+    renderObserverCatalogCategories(host, window.MO_DEFENSE_OBSERVER);
+    return;
+  }
+
+  if (isBothAnalyzeMode() && window.MO_BOTH_OBSERVER) {
+    renderObserverCatalogCategories(host, window.MO_BOTH_OBSERVER);
+    return;
+  }
+
+  getActiveObservationCategories().forEach((category) => {
     if (category.layout === "team-split") {
-      host.appendChild(renderSetPieceCategory(category));
       return;
     }
 
@@ -912,7 +1236,10 @@ function renderEventButtons() {
     const title = document.createElement("h3");
     title.textContent = category.label;
     const grid = document.createElement("div");
-    const isPitchGrid = category.label === "攻撃" || category.label === "守備";
+    const isPitchGrid = category.label === "攻撃"
+      || category.label === "守備"
+      || category.label === "Attack"
+      || category.label === "Defense";
     grid.className = isPitchGrid ? "event-grid event-grid-pitch" : "event-grid";
     getCategoryDisplayEvents(category).forEach((eventName) => {
       const button = createObservationEventButton(eventName, () => recordEvent(eventName, button));
@@ -954,47 +1281,64 @@ function renderMatchEventButtons() {
 
 function renderTimeline() {
   const timeline = $("timeline");
+  const emptyState = $("event-log-empty");
   if (!timeline) return;
+
+  const events = state.events;
+
+  if (events.length === 0) {
+    timeline.innerHTML = "";
+    timeline.hidden = true;
+    if (emptyState) emptyState.hidden = false;
+    return;
+  }
+
+  timeline.hidden = false;
+  if (emptyState) emptyState.hidden = true;
+
   timeline.innerHTML = "";
-  state.events.forEach((event) => {
+  events.forEach((event) => {
     const li = document.createElement("li");
+    li.className = "timeline-live-row";
     li.innerHTML = `
-      <span class="time">${escapeHtml(event.time)}</span>
-      <span class="phase">${escapeHtml(event.phase)}</span>
-      <span class="team">${escapeHtml(teamLabel(event.team))}</span>
-      <span class="event-name">${escapeHtml(event.eventName)}</span>
+      <span class="timeline-live-time">${escapeHtml(event.time)}</span>
+      <span class="timeline-live-label">${escapeHtml(formatStoredEventName(event.eventName, event))}</span>
     `;
     timeline.appendChild(li);
   });
+
+  const logBody = timeline.closest(".event-log-body");
+  if (logBody) {
+    logBody.scrollTop = logBody.scrollHeight;
+  }
 }
 
 function renderSavedStatus() {
-  const status = $("saved-status");
-  if (!status) return;
-  status.textContent = state.events.length > 0
-    ? `記録 ${state.events.length} 件`
-    : "未入力";
+  const countEl = $("event-log-count");
+  if (!countEl) return;
+  countEl.textContent = `${state.events.length}件`;
 }
 
 function resolveLiveStateCategoryKey(category, planCategoryKey) {
-  if (planCategoryKey && liveStateCategories.some((item) => item.key === planCategoryKey)) {
+  const categories = getActiveLiveStateCategories();
+  if (planCategoryKey && categories.some((item) => item.key === planCategoryKey)) {
     return planCategoryKey;
   }
 
   const normalized = String(category || "").trim();
   if (!normalized) return null;
 
-  const matched = liveStateCategories.find((item) => item.aliases.includes(normalized));
+  const matched = categories.find((item) => item.aliases.includes(normalized));
   if (matched) return matched.key;
 
   const lower = normalized.toLowerCase();
   if (lower === "build up" || lower === "buildup") return "buildUp";
 
-  return liveStateCategories.find((item) => item.key.toLowerCase() === lower)?.key || null;
+  return categories.find((item) => item.key.toLowerCase() === lower)?.key || null;
 }
 
 function groupLiveStatesByCategory(liveStates) {
-  const grouped = new Map(liveStateCategories.map((category) => [category.key, []]));
+  const grouped = new Map(getActiveLiveStateCategories().map((category) => [category.key, []]));
   liveStates.forEach((item) => {
     const key = resolveLiveStateCategoryKey(item.category, item.planCategoryKey);
     if (!key || !grouped.has(key)) return;
@@ -1047,10 +1391,11 @@ function updateConfirmedLiveStatesFromRuleResults(ruleResults) {
 }
 
 function buildLiveStateDisplayByCategory(plan) {
-  const grouped = new Map(liveStateCategories.map((category) => [category.key, []]));
+  const categories = getActiveLiveStateCategories();
+  const grouped = new Map(categories.map((category) => [category.key, []]));
   if (!plan) return grouped;
 
-  liveStateCategories.forEach(({ key: categoryKey }) => {
+  categories.forEach(({ key: categoryKey }) => {
     readPlanCategoryOptions(plan, categoryKey).forEach((planOption) => {
       const ruleId = resolveRuleIdForPlanOption(categoryKey, planOption);
       if (!ruleId) return;
@@ -1065,7 +1410,7 @@ function buildLiveStateDisplayByCategory(plan) {
 }
 
 function flattenGroupedLiveStates(groupedStates) {
-  return liveStateCategories.flatMap(({ key }) => groupedStates.get(key) || []);
+  return getActiveLiveStateCategories().flatMap(({ key }) => groupedStates.get(key) || []);
 }
 
 function renderLiveStateValue(items) {
@@ -1269,7 +1614,7 @@ function renderLiveState() {
     ),
   });
 
-  host.innerHTML = liveStateCategories.map((category) => {
+  host.innerHTML = getActiveLiveStateCategories().map((category) => {
     const items = groupedStates.get(category.key) || [];
     const explainLine = renderLiveStateExplain(items, {
       events,
@@ -1541,8 +1886,15 @@ function flashEventButton(button) {
 
 function recordEvent(eventName, button, teamOverride) {
   if (!isObservationOpen()) return;
+
+  const categoryKey = button?.dataset?.eventCategory || null;
+  const eventDef = resolveObserverEventDef(eventName, categoryKey);
+  const storedEventName = eventDef?.code || eventName;
+
   state.events.push({
-    eventName,
+    eventName: storedEventName,
+    observerEventCode: eventDef?.code || null,
+    eventCategory: categoryKey || eventDef?.categoryKey || null,
     time: formatTime(state.elapsed),
     team: teamOverride ?? state.selectedTeam,
     inputOrder: state.events.length + 1,
@@ -1607,34 +1959,17 @@ function openReview() {
   window.location.assign(reviewPath);
 }
 
-function bindMatchEventsCollapse() {
-  const toggle = $("match-events-toggle");
-  const body = $("match-events-body");
-  const panel = document.querySelector(".match-events-panel");
-  const icon = toggle?.querySelector(".match-events-toggle-icon");
-  if (!toggle || !body || !panel) return;
-
-  const setExpanded = (expanded) => {
-    body.hidden = !expanded;
-    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
-    panel.classList.toggle("is-collapsed", !expanded);
-    panel.classList.toggle("is-expanded", expanded);
-    if (icon) icon.textContent = expanded ? "▲" : "▼";
-  };
-
-  toggle.addEventListener("click", () => {
-    setExpanded(body.hidden);
-  });
-
-  setExpanded(false);
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   loadMatch();
   loadEvents();
+  loadAnalyzeMode();
   restoreElapsedFromEventsIfNeeded();
   ensureFirstHalfMiniReviewForRestoredMatch();
   resumeClockIfNeeded();
+  applyAnalyzeModeUi();
+  const manualInputPanel = document.querySelector(".dashboard-panel--manual-input");
+  if (manualInputPanel) manualInputPanel.open = false;
+  renderSetPieceButtons();
   renderEventButtons();
   renderMatchEventButtons();
 
@@ -1670,7 +2005,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   bindCurrentPlanPopover();
-  bindMatchEventsCollapse();
-
   renderAll();
 });

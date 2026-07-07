@@ -1,0 +1,3 @@
+window.MO_OBSERVATION_CATEGORIES_DEFENSE = window.MO_DEFENSE_OBSERVER
+  ? window.MO_DEFENSE_OBSERVER.getCategories()
+  : [];

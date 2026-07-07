@@ -1,18 +1,24 @@
 (function () {
-  const RULE_ID = "rule002";
-  const PLAN_CATEGORY_KEY = "defense";
-  const PLAN_OPTION = "ハイプレス";
-  const STATE_CATEGORY = "Defense";
+  const RULE_ID = "rule018";
+  const PLAN_CATEGORY_KEY = "attack";
+  const PLAN_OPTION = "背後攻略";
+  const STATE_CATEGORY = "Attack";
   const WINDOW_MINUTES = 5;
 
-  const EVENT_FRONT_LINE = "前線奪取";
-  const EVENT_CENTRAL_PENETRATION = "被中央侵入";
-  const EVENT_SHOT = "被シュート";
+  const EVENT_BEHIND = "behind";
+  const EVENT_SHOT = "shot";
+  const EVENT_CHANCE = "bigChance";
+  const EVENT_LEFT = "left";
+  const EVENT_CENTRAL = "center";
+  const EVENT_RIGHT = "right";
 
   const RELEVANT_EVENTS = [
-    EVENT_FRONT_LINE,
-    EVENT_CENTRAL_PENETRATION,
+    EVENT_BEHIND,
     EVENT_SHOT,
+    EVENT_CHANCE,
+    EVENT_LEFT,
+    EVENT_CENTRAL,
+    EVENT_RIGHT,
   ];
 
   function parseEventTime(timeValue) {
@@ -30,35 +36,40 @@
   }
 
   function countEvents(events, eventName) {
-    const counter = window.MO_DEFENSE_PLAN?.countMatchingEvents;
+    const counter = window.MO_ATTACK_OBSERVER?.countMatchingEvents
+      || window.MO_ATTACK_PLAN?.countMatchingEvents;
     if (typeof counter === "function") return counter(events, eventName);
     return events.filter((event) => event.eventName === eventName).length;
   }
 
   function buildReasonEventCounts(events) {
     return {
-      [EVENT_FRONT_LINE]: countEvents(events, EVENT_FRONT_LINE),
-      [EVENT_CENTRAL_PENETRATION]: countEvents(events, EVENT_CENTRAL_PENETRATION),
+      [EVENT_BEHIND]: countEvents(events, EVENT_BEHIND),
       [EVENT_SHOT]: countEvents(events, EVENT_SHOT),
+      [EVENT_CHANCE]: countEvents(events, EVENT_CHANCE),
+      [EVENT_LEFT]: countEvents(events, EVENT_LEFT),
+      [EVENT_CENTRAL]: countEvents(events, EVENT_CENTRAL),
+      [EVENT_RIGHT]: countEvents(events, EVENT_RIGHT),
     };
   }
 
   function resolveState(counts) {
-    const frontLine = counts[EVENT_FRONT_LINE];
-    const centralPenetration = counts[EVENT_CENTRAL_PENETRATION];
+    const behind = counts[EVENT_BEHIND];
     const shot = counts[EVENT_SHOT];
+    const chance = counts[EVENT_CHANCE];
+    const finish = shot + chance;
 
-    if (shot >= 2 || centralPenetration >= 5) {
-      return { label: "🔴 ハイプレス崩壊", status: "red" };
+    if (behind >= 2 && finish >= 1) {
+      return { label: "🟢 背後攻略維持", status: "green" };
     }
-    if (centralPenetration >= 3 || shot >= 1) {
-      return { label: "🟠 ハイプレス不安定", status: "orange" };
+    if (behind >= 1 && finish === 0) {
+      return { label: "🟡 背後攻略停滞", status: "yellow" };
     }
-    if (frontLine === 1 || centralPenetration === 2) {
-      return { label: "🟡 ハイプレス停滞", status: "yellow" };
+    if (behind === 0 && finish >= 1) {
+      return { label: "🟠 背後攻略不安定", status: "orange" };
     }
-    if (frontLine >= 2 && centralPenetration <= 1 && shot === 0) {
-      return { label: "🟢 ハイプレス維持", status: "green" };
+    if (behind === 0) {
+      return { label: "🔴 背後攻略崩壊", status: "red" };
     }
     return null;
   }
@@ -69,20 +80,22 @@
     planOption: PLAN_OPTION,
 
     isEnabled(plan) {
-      const defensePlan = plan?.categories?.[PLAN_CATEGORY_KEY];
-      return Array.isArray(defensePlan) && defensePlan.includes(PLAN_OPTION);
+      const attackPlan = plan?.categories?.[PLAN_CATEGORY_KEY];
+      return Array.isArray(attackPlan) && attackPlan.includes(PLAN_OPTION);
     },
 
     evaluate(events, context = {}) {
       const elapsedSeconds = Math.max(0, Number(context.elapsed) || 0);
       const relevantEvents = eventsInWindow(events, elapsedSeconds)
         .filter((event) => {
-          const matcher = window.MO_DEFENSE_PLAN?.matchesEventName;
+          const matcher = window.MO_ATTACK_OBSERVER?.matchesEventName
+            || window.MO_ATTACK_PLAN?.matchesEventName;
           if (typeof matcher === "function") {
             return RELEVANT_EVENTS.some((name) => matcher(event.eventName, name));
           }
           return RELEVANT_EVENTS.includes(event.eventName);
         });
+      if (relevantEvents.length === 0) return null;
       const reasonEventCounts = buildReasonEventCounts(relevantEvents);
       const resolved = resolveState(reasonEventCounts);
       if (!resolved) return null;
