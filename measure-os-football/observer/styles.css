@@ -2937,6 +2937,53 @@ details[open] summary::before {
   grid-row: auto;
 }
 
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-categories {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Attack"] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Defense"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Build Up"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Transition"] {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"],
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"] {
+  grid-column: 1 / -1;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"] {
+  grid-row: 3;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"] {
+  grid-row: 4;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"] .event-grid,
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"] .event-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"] .event-action-slot--reserved,
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"] .event-action-slot--reserved {
+  display: none;
+}
+
 .dashboard-panel--manual-input.event-panel {
   min-height: 0;
 }
@@ -3057,6 +3104,16 @@ details[open] summary::before {
   .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"],
   .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"],
   .dashboard-panel--manual-input .event-category[data-category="Transition"] {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Attack"],
+  body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Defense"],
+  body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Build Up"],
+  body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Transition"],
+  body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"],
+  body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"] {
     grid-column: 1;
     grid-row: auto;
   }
