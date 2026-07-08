@@ -10,8 +10,17 @@ window.ControllerInput = (() => {
     k: "bigChance",
   };
 
+  let initialized = false;
+
   function isAttackAnalyzeMode() {
-    return document.body.dataset.analyzeMode === "attack";
+    const mode = document.body.dataset.analyzeMode
+      || document.body.getAttribute("data-analyze-mode");
+    return mode === "attack";
+  }
+
+  function isManualInputLocked() {
+    const panel = document.querySelector(".dashboard-panel--manual-input");
+    return !panel || panel.classList.contains("is-locked");
   }
 
   function shouldIgnoreTarget(target) {
@@ -22,29 +31,50 @@ window.ControllerInput = (() => {
   }
 
   function findAttackEventButton(eventCode) {
-    return document.querySelector(
-      `.dashboard-panel--manual-input [data-event-code="${eventCode}"]`,
-    );
+    const selectors = [
+      `#event-categories button[data-event-code="${eventCode}"]`,
+      `#event-categories button[data-event-name="${eventCode}"]`,
+      `.dashboard-panel--manual-input button[data-event-code="${eventCode}"]`,
+      `.dashboard-panel--manual-input button[data-event-name="${eventCode}"]`,
+    ];
+
+    for (const selector of selectors) {
+      const button = document.querySelector(selector);
+      if (button) return button;
+    }
+
+    return null;
+  }
+
+  function clickEventButton(button) {
+    const wasDisabled = button.disabled;
+    if (wasDisabled) button.disabled = false;
+    button.click();
+    if (wasDisabled) button.disabled = true;
   }
 
   function handleKeyDown(event) {
     if (!isAttackAnalyzeMode()) return;
+    if (isManualInputLocked()) return;
     if (shouldIgnoreTarget(event.target)) return;
     if (event.ctrlKey || event.altKey || event.metaKey) return;
     if (event.repeat) return;
+    if (event.isComposing) return;
 
     const eventCode = KEY_TO_EVENT_CODE[event.key?.toLowerCase()];
     if (!eventCode) return;
 
     const button = findAttackEventButton(eventCode);
-    if (!button || button.disabled) return;
+    if (!button) return;
 
     event.preventDefault();
-    button.click();
+    clickEventButton(button);
   }
 
   function init() {
-    document.addEventListener("keydown", handleKeyDown);
+    if (initialized) return;
+    initialized = true;
+    document.addEventListener("keydown", handleKeyDown, true);
   }
 
   return { init };

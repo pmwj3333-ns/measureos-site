@@ -855,9 +855,30 @@ function getPlanEvaluationBoundaryIndex() {
   return Number(last.eventBoundaryIndex) || 0;
 }
 
+function normalizeEventNameForEngineEvaluation(eventName) {
+  const vocab = window.MO_REASON_EVENT_VOCABULARY;
+  if (!vocab?.toCode || !vocab?.toLabel) return eventName;
+
+  const code = vocab.toCode(eventName);
+  if (!code) return eventName;
+
+  return vocab.toLabel(code);
+}
+
+function normalizeEventsForEngineEvaluation(events) {
+  return (Array.isArray(events) ? events : []).map((event) => {
+    if (!event?.eventName) return event;
+
+    const eventName = normalizeEventNameForEngineEvaluation(event.eventName);
+    if (eventName === event.eventName) return event;
+
+    return { ...event, eventName };
+  });
+}
+
 function getEventsForStateEvaluation() {
   const boundaryIndex = getPlanEvaluationBoundaryIndex();
-  return state.events.slice(boundaryIndex);
+  return normalizeEventsForEngineEvaluation(state.events.slice(boundaryIndex));
 }
 
 function saveMatch() {
@@ -1454,50 +1475,135 @@ function buildReasonResults(ruleResults, plan, context) {
   return explainLiveState({ plan, stateResults: ruleResults, context });
 }
 
+function resolvePlanOptionForRuleId(ruleId) {
+  const rule = window.MO_REASON_ENGINE?.findReasonRule?.(ruleId);
+  if (rule?.planOption) return rule.planOption;
+
+  for (const options of Object.values(PLAN_OPTION_RULE_IDS)) {
+    for (const [option, mappedRuleId] of Object.entries(options)) {
+      if (mappedRuleId === ruleId) return option;
+    }
+  }
+
+  return ruleId;
+}
+
+function mapReasonSeverityLabel(status) {
+  switch (status) {
+    case "red":
+    case "orange":
+      return "High";
+    case "yellow":
+      return "Medium";
+    case "green":
+    default:
+      return "Low";
+  }
+}
+
+function formatReasonFactLine(fact) {
+  if (!fact?.label) return null;
+
+  const label = fact.label;
+  const value = Number(fact.value);
+  const hasNumericValue = Number.isFinite(value);
+  const threshold = Number(fact.threshold);
+  const hasThreshold = Number.isFinite(threshold);
+  const comparator = fact.comparator;
+
+  if (comparator && hasThreshold && hasNumericValue) {
+    if (comparator === ">=") {
+      return `${label}：${value}回以上（基準 ${threshold}回）`;
+    }
+    if (comparator === ">") {
+      return `${label}：${value}回（${threshold}回より多い）`;
+    }
+    if (comparator === "=") {
+      return `${label}：${value}回（基準 ${threshold}回と同等）`;
+    }
+    if (comparator === "<=") {
+      return `${label}：${value}回以下（基準 ${threshold}回）`;
+    }
+  }
+
+  if (hasNumericValue) {
+    if (value <= 0) return `${label}：記録なし`;
+    return `${label}：${value}回`;
+  }
+
+  if (fact.value != null && fact.value !== "") {
+    return `${label}：${fact.value}`;
+  }
+
+  return label;
+}
+
+function sortReasonResultsBySeverity(reasonResults) {
+  const rank = window.MO_COMPOSITE_REASON_HELPERS?.statusRank
+    || ((status) => ({ green: 0, yellow: 1, orange: 2, red: 3 }[status] ?? 0));
+
+  return [...reasonResults].sort((left, right) => rank(right?.status) - rank(left?.status));
+}
+
 function renderReasonPanel(ruleResults, plan, context) {
   const host = document.querySelector('[data-reason-slot="primary"]');
   if (!host) return [];
 
   const reasonResults = buildReasonResults(ruleResults, plan, context);
-  const summariesByCategory = new Map();
+  const stripWindowPrefix = window.MO_COMPOSITE_REASON_HELPERS?.stripWindowPrefix
+    || ((text) => String(text || ""));
 
-  reasonResults.forEach((reason) => {
-    if (!reason?.summary || !reason.ruleId) return;
+  const visibleReasons = sortReasonResultsBySeverity(
+    reasonResults.filter((reason) => {
+      if (!reason?.ruleId) return false;
+      return Boolean(reason.summary) || (Array.isArray(reason.facts) && reason.facts.length > 0);
+    }),
+  );
 
-    const state = ruleResults.find((item) => item.ruleId === reason.ruleId);
-    if (!state) return;
-
-    const categoryKey = state.planCategoryKey || resolveCategoryKeyForRuleId(reason.ruleId);
-    if (!categoryKey) return;
-
-    if (!summariesByCategory.has(categoryKey)) {
-      summariesByCategory.set(categoryKey, []);
-    }
-    summariesByCategory.get(categoryKey).push(reason);
-  });
-
-  const sections = getActiveLiveStateCategories()
-    .filter(({ key }) => (summariesByCategory.get(key) || []).length > 0)
-    .map(({ key }) => {
-      const label = planCategoryLabels[key] || key;
-      const summaries = summariesByCategory.get(key)
-        .map((reason) => `<p class="reason-panel-summary">${escapeHtml(reason.summary)}</p>`)
-        .join("");
-
-      return `
-        <article class="reason-panel-row" data-category="${escapeHtml(key)}">
-          <p class="reason-panel-row-label">${escapeHtml(label)}</p>
-          ${summaries}
-        </article>
-      `;
-    });
-
-  if (sections.length === 0) {
-    host.innerHTML = '<p class="dashboard-placeholder dashboard-placeholder-reason">State の理由がここに表示されます</p>';
+  if (visibleReasons.length === 0) {
+    host.innerHTML = '<p class="dashboard-placeholder dashboard-placeholder-reason">Reasonなし</p>';
     return reasonResults;
   }
 
-  host.innerHTML = sections.join("");
+  host.innerHTML = visibleReasons.map((reason) => {
+    const title = escapeHtml(resolvePlanOptionForRuleId(reason.ruleId));
+    const severity = escapeHtml(mapReasonSeverityLabel(reason.status));
+    const summary = escapeHtml(stripWindowPrefix(reason.summary || ""));
+    const factItems = (reason.facts || [])
+      .map(formatReasonFactLine)
+      .filter(Boolean)
+      .map((line) => `<li>${escapeHtml(line)}</li>`)
+      .join("");
+
+    const summaryBlock = summary
+      ? `<p class="reason-card-summary">${summary}</p>`
+      : "";
+
+    const factsBlock = factItems
+      ? `
+        <div class="reason-card-facts">
+          <p class="reason-card-facts-label">理由</p>
+          <ul class="reason-card-facts-list">${factItems}</ul>
+        </div>
+      `
+      : "";
+
+    return `
+      <article
+        class="reason-card"
+        data-rule-id="${escapeHtml(reason.ruleId)}"
+        data-status="${escapeHtml(reason.status || "green")}"
+      >
+        <h3 class="reason-card-title">${title}</h3>
+        <p class="reason-card-severity">
+          重要度：<span class="reason-card-severity-value reason-severity-${severity.toLowerCase()}">${severity}</span>
+        </p>
+        ${summaryBlock}
+        ${factsBlock}
+      </article>
+    `;
+  }).join("");
+
   return reasonResults;
 }
 
@@ -1822,6 +1928,41 @@ function renderMiniReview() {
   });
 }
 
+function renderRecentPanel() {
+  const host = $("recent-panel-content");
+  if (!host) return;
+
+  if (isDefenseAnalyzeMode()) {
+    host.hidden = true;
+    return;
+  }
+
+  host.hidden = false;
+  const stats = window.MO_RECENT_STATS_ATTACK?.aggregate?.(state.events, state.elapsed);
+  if (!stats) return;
+
+  host.querySelectorAll("[data-recent-group='attack'], [data-recent-group='buildUp']").forEach((row) => {
+    const group = row.dataset.recentGroup;
+    const code = row.dataset.recentCode;
+    const items = group === "attack" ? stats.attack : stats.buildUp;
+    const item = items.find((entry) => entry.code === code);
+    const valueEl = row.querySelector(".recent-stat-value");
+    const fillEl = row.querySelector(".recent-stat-bar-fill");
+    const percent = item?.percent ?? 0;
+
+    if (valueEl) valueEl.textContent = `${percent}%`;
+    if (fillEl) fillEl.style.width = `${percent}%`;
+  });
+
+  host.querySelectorAll("[data-recent-group='chance']").forEach((row) => {
+    const code = row.dataset.recentCode;
+    const item = stats.chance.find((entry) => entry.code === code);
+    const valueEl = row.querySelector(".recent-stat-value");
+    if (!valueEl || !item) return;
+    valueEl.textContent = `${item.count}${item.unit}`;
+  });
+}
+
 function renderAll() {
   renderClock();
   renderTeamButtons();
@@ -1835,6 +1976,7 @@ function renderAll() {
   renderTimeline();
   renderSavedStatus();
   renderLiveState();
+  renderRecentPanel();
   renderMiniReview();
 }
 
@@ -1850,6 +1992,7 @@ function startClock(reset = false) {
     syncMatchElapsed();
     renderClock();
     renderLiveState();
+    renderRecentPanel();
   }, 1000);
   renderClock();
 }
@@ -2065,6 +2208,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (manualInputPanel) manualInputPanel.open = false;
   renderSetPieceButtons();
   renderEventButtons();
+  ControllerInput.init();
   renderMatchEventButtons();
 
   document.querySelectorAll("[data-team]").forEach((button) => {
@@ -2099,6 +2243,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   bindCurrentPlanPopover();
-  ControllerInput.init();
   renderAll();
 });

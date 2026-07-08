@@ -132,9 +132,7 @@
           <h2 id="dashboard-reason-title" class="review-section-title">Reason</h2>
           <div class="dashboard-panel-body dashboard-panel-body--reason dashboard-panel-slot dashboard-zone-body dashboard-zone-body-reason">
             <div class="reason-panel-content">
-              <div class="reason-panel-slot reason-panel-slot--primary" data-reason-slot="primary">
-                <p class="dashboard-placeholder dashboard-placeholder-reason">State の理由がここに表示されます</p>
-              </div>
+              <div class="reason-panel-slot reason-panel-slot--primary" data-reason-slot="primary"></div>
             </div>
           </div>
         </section>
@@ -147,8 +145,64 @@
           >
             <h2 id="dashboard-recent-title" class="review-section-title">直近5分</h2>
             <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
-              <div class="recent-panel-content">
-                <p class="dashboard-placeholder">割合・グラフ・傾向など（予定）</p>
+              <div class="recent-panel-content" id="recent-panel-content">
+                <div class="recent-stats">
+                  <section class="recent-stats-section" data-recent-section="attack" aria-label="Attack">
+                    <h3 class="recent-stats-title">Attack</h3>
+                    <div class="recent-stats-list">
+                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="left">
+                        <span class="recent-stat-label">左</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="center">
+                        <span class="recent-stat-label">中央</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="right">
+                        <span class="recent-stat-label">右</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="behind">
+                        <span class="recent-stat-label">背後</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="recent-stats-section" data-recent-section="buildUp" aria-label="Build Up">
+                    <h3 class="recent-stats-title">Build Up</h3>
+                    <div class="recent-stats-list">
+                      <div class="recent-stat-row" data-recent-group="buildUp" data-recent-code="possession">
+                        <span class="recent-stat-label">保持前進</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                      <div class="recent-stat-row" data-recent-group="buildUp" data-recent-code="long">
+                        <span class="recent-stat-label">ロング前進</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="recent-stats-section" data-recent-section="chance" aria-label="Chance">
+                    <h3 class="recent-stats-title">Chance</h3>
+                    <div class="recent-stats-list recent-stats-list--counts">
+                      <div class="recent-stat-row recent-stat-row--count" data-recent-group="chance" data-recent-code="shot">
+                        <span class="recent-stat-label">シュート</span>
+                        <span class="recent-stat-value">0本</span>
+                      </div>
+                      <div class="recent-stat-row recent-stat-row--count" data-recent-group="chance" data-recent-code="bigChance">
+                        <span class="recent-stat-label">決定機</span>
+                        <span class="recent-stat-value">0回</span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
               </div>
             </div>
           </section>
@@ -295,6 +349,7 @@
   <script src="../shared/auth-guard.js"></script>
   <script src="../shared/attack-plan.js"></script>
   <script src="../shared/attack-observer.js"></script>
+  <script src="../shared/recent-stats-attack.js"></script>
   <script src="../shared/defense-plan.js"></script>
   <script src="../shared/defense-observer.js"></script>
   <script src="../shared/both-observer.js"></script>
