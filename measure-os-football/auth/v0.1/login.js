@@ -8,19 +8,56 @@ const submitButton = document.getElementById("auth-submit");
 const modeLoginButton = document.getElementById("mode-login");
 const modeRegisterButton = document.getElementById("mode-register");
 
-const homePath = "../../home/v0.1/index.html";
 let authMode = "login";
 
+function resolveFootballRoot() {
+  if (window.MO_APP_FOOTBALL_ROOT) {
+    return window.MO_APP_FOOTBALL_ROOT;
+  }
+  const match = window.location.pathname.match(/^(.*\/measure-os-football)/);
+  return match ? match[1] : "/measure-os-football";
+}
+
+function resolveHomePath() {
+  if (window.MO_APP_HOME_PATH && window.MO_APP_HOME_PATH.startsWith("/")) {
+    return window.MO_APP_HOME_PATH;
+  }
+  return `${resolveFootballRoot()}/home/v0.1/index.html`;
+}
+
+function isSafeReturnTo(url) {
+  if (!url || url.origin !== window.location.origin) return false;
+
+  const footballRoot = resolveFootballRoot();
+  if (!url.pathname.startsWith(`${footballRoot}/`)) return false;
+
+  const loginPrefix = `${footballRoot}/auth/`;
+  if (url.pathname.startsWith(loginPrefix)) return false;
+
+  if (url.pathname.endsWith("/h") || url.pathname === `${footballRoot}/h`) {
+    return false;
+  }
+
+  return true;
+}
+
 function resolveReturnTo() {
+  const homePath = resolveHomePath();
   const params = new URLSearchParams(window.location.search);
   const returnTo = params.get("returnTo");
   if (!returnTo) return homePath;
+
   try {
     const url = new URL(returnTo, window.location.href);
-    return url.href;
+    if (!isSafeReturnTo(url)) return homePath;
+    return `${url.pathname}${url.search}${url.hash}`;
   } catch (_) {
     return homePath;
   }
+}
+
+function navigateAfterAuth() {
+  window.location.assign(resolveReturnTo());
 }
 
 function showError(message) {
@@ -71,7 +108,7 @@ async function handleSubmit(event) {
     return;
   }
 
-  window.location.assign(resolveReturnTo());
+  navigateAfterAuth();
 }
 
 if (window.MO_AUTHENTICATION?.isAuthenticated?.()) {

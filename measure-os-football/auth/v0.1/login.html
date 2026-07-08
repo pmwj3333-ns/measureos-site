@@ -47,6 +47,14 @@
     </section>
   </main>
 
+  <script>
+    (function initAppPaths() {
+      const match = window.location.pathname.match(/^(.*\/measure-os-football)/);
+      const root = match ? match[1] : "/measure-os-football";
+      window.MO_APP_FOOTBALL_ROOT = root;
+      window.MO_APP_HOME_PATH = `${root}/home/v0.1/index.html`;
+    })();
+  </script>
   <script src="../../shared/storage-keys.js"></script>
   <script src="../../shared/authentication.js"></script>
   <script src="../../shared/team-context.js"></script>
