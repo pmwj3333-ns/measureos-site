@@ -226,15 +226,12 @@ const liveStateReasonEventFilters = {
     "behind",
     "shot",
     "bigChance",
-    "left",
-    "center",
-    "right",
+    "counter",
     "背後",
     "シュート",
     "決定機",
-    "左",
-    "中央",
-    "右",
+    "被カウンター",
+    "カウンター被弾",
   ].includes(event.eventName),
   rule002: (event) => [
     "前線奪取",
@@ -1413,6 +1410,76 @@ function flattenGroupedLiveStates(groupedStates) {
   return getActiveLiveStateCategories().flatMap(({ key }) => groupedStates.get(key) || []);
 }
 
+function resolveCategoryKeyForRuleId(ruleId) {
+  for (const [categoryKey, options] of Object.entries(PLAN_OPTION_RULE_IDS)) {
+    for (const optionRuleId of Object.values(options)) {
+      if (optionRuleId === ruleId) return categoryKey;
+    }
+  }
+  return null;
+}
+
+function buildCompositeReason(reasonResults, plan) {
+  const composeOverallReason = window.MO_COMPOSITE_REASON_ENGINE?.composeOverallReason;
+  if (typeof composeOverallReason !== "function" || !Array.isArray(reasonResults)) return null;
+
+  const mode = plan?.analyzeMode || analyzeMode;
+  return composeOverallReason({ analyzeMode: mode, reasonResults });
+}
+
+function buildReasonResults(ruleResults, plan, context) {
+  const explainLiveState = window.MO_REASON_ENGINE?.explainLiveState;
+  if (typeof explainLiveState !== "function" || !Array.isArray(ruleResults)) return [];
+  return explainLiveState({ plan, stateResults: ruleResults, context });
+}
+
+function renderReasonPanel(ruleResults, plan, context) {
+  const host = document.querySelector('[data-reason-slot="primary"]');
+  if (!host) return [];
+
+  const reasonResults = buildReasonResults(ruleResults, plan, context);
+  const summariesByCategory = new Map();
+
+  reasonResults.forEach((reason) => {
+    if (!reason?.summary || !reason.ruleId) return;
+
+    const state = ruleResults.find((item) => item.ruleId === reason.ruleId);
+    if (!state) return;
+
+    const categoryKey = state.planCategoryKey || resolveCategoryKeyForRuleId(reason.ruleId);
+    if (!categoryKey) return;
+
+    if (!summariesByCategory.has(categoryKey)) {
+      summariesByCategory.set(categoryKey, []);
+    }
+    summariesByCategory.get(categoryKey).push(reason);
+  });
+
+  const sections = getActiveLiveStateCategories()
+    .filter(({ key }) => (summariesByCategory.get(key) || []).length > 0)
+    .map(({ key }) => {
+      const label = planCategoryLabels[key] || key;
+      const summaries = summariesByCategory.get(key)
+        .map((reason) => `<p class="reason-panel-summary">${escapeHtml(reason.summary)}</p>`)
+        .join("");
+
+      return `
+        <article class="reason-panel-row" data-category="${escapeHtml(key)}">
+          <p class="reason-panel-row-label">${escapeHtml(label)}</p>
+          ${summaries}
+        </article>
+      `;
+    });
+
+  if (sections.length === 0) {
+    host.innerHTML = '<p class="dashboard-placeholder dashboard-placeholder-reason">State の理由がここに表示されます</p>';
+    return reasonResults;
+  }
+
+  host.innerHTML = sections.join("");
+  return reasonResults;
+}
+
 function renderLiveStateValue(items) {
   if (!items.length) {
     return `<span class="live-state-empty-value">--</span>`;
@@ -1576,12 +1643,17 @@ function renderLiveState() {
 
   const groupedStates = buildLiveStateDisplayByCategory(plan);
   const displayStates = flattenGroupedLiveStates(groupedStates);
+  const reasonResults = renderReasonPanel(ruleResults, plan, { elapsed: evaluationElapsed });
+  const compositeReason = buildCompositeReason(reasonResults, plan);
 
   liveStateSnapshot = {
     evaluatedAt: nowIso(),
     plan,
     events,
     elapsed: evaluationElapsed,
+    ruleResults,
+    reasons: reasonResults,
+    compositeReason,
     states: displayStates,
   };
 
@@ -1616,15 +1688,10 @@ function renderLiveState() {
 
   host.innerHTML = getActiveLiveStateCategories().map((category) => {
     const items = groupedStates.get(category.key) || [];
-    const explainLine = renderLiveStateExplain(items, {
-      events,
-      elapsed: evaluationElapsed,
-    }, plan);
     return `
       <article class="live-state-row" data-category="${escapeHtml(category.key)}">
         <span class="live-state-row-label">${escapeHtml(category.label)}</span>
         <div class="live-state-row-value">${renderLiveStateValue(items)}</div>
-        <p class="live-state-explain">${escapeHtml(explainLine)}</p>
       </article>
     `;
   }).join("");

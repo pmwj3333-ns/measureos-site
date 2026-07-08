@@ -1,4 +1,11 @@
 (function () {
+  // 戦略定義:
+  // 「背後攻略」という戦略が、
+  // 背後ルートを主な攻撃手段として活用し、
+  // 背後からフィニッシュまで到達できているかを評価する。
+  //
+  // Attack Rule = どの攻撃ルートを主な勝ち筋として機能させられているか（How は評価しない）
+  // Rule012（左優位）= 左サイド主軸 / Rule013（右優位）= 右サイド主軸 / Rule014（中央攻略）= 中央主軸 / Rule018（背後攻略）= 背後主軸
   const RULE_ID = "rule018";
   const PLAN_CATEGORY_KEY = "attack";
   const PLAN_OPTION = "背後攻略";
@@ -8,18 +15,19 @@
   const EVENT_BEHIND = "behind";
   const EVENT_SHOT = "shot";
   const EVENT_CHANCE = "bigChance";
-  const EVENT_LEFT = "left";
-  const EVENT_CENTRAL = "center";
-  const EVENT_RIGHT = "right";
+  const EVENT_COUNTER = "counter";
 
-  const RELEVANT_EVENTS = [
+  const RELEVANT_EVENT_CODES = [
     EVENT_BEHIND,
     EVENT_SHOT,
     EVENT_CHANCE,
-    EVENT_LEFT,
-    EVENT_CENTRAL,
-    EVENT_RIGHT,
+    EVENT_COUNTER,
   ];
+
+  const REASON_LABEL_BEHIND = "背後";
+  const REASON_LABEL_SHOT = "シュート";
+  const REASON_LABEL_CHANCE = "決定機";
+  const REASON_LABEL_COUNTER = "被カウンター";
 
   function parseEventTime(timeValue) {
     const [minutes, seconds] = String(timeValue || "").split(":").map(Number);
@@ -35,41 +43,66 @@
     });
   }
 
-  function countEvents(events, eventName) {
+  function matchesEventName(actual, expected) {
+    const matcher = window.MO_ATTACK_OBSERVER?.matchesEventName
+      || window.MO_ATTACK_PLAN?.matchesEventName;
+    if (typeof matcher === "function") {
+      return matcher(actual, expected);
+    }
+    return String(actual || "") === String(expected || "");
+  }
+
+  function countEvents(events, eventCode) {
     const counter = window.MO_ATTACK_OBSERVER?.countMatchingEvents
       || window.MO_ATTACK_PLAN?.countMatchingEvents;
-    if (typeof counter === "function") return counter(events, eventName);
-    return events.filter((event) => event.eventName === eventName).length;
+    if (typeof counter === "function") return counter(events, eventCode);
+    return events.filter((event) => matchesEventName(event.eventName, eventCode)).length;
+  }
+
+  function isRelevantEvent(event) {
+    return RELEVANT_EVENT_CODES.some((code) => matchesEventName(event?.eventName, code));
   }
 
   function buildReasonEventCounts(events) {
     return {
-      [EVENT_BEHIND]: countEvents(events, EVENT_BEHIND),
-      [EVENT_SHOT]: countEvents(events, EVENT_SHOT),
-      [EVENT_CHANCE]: countEvents(events, EVENT_CHANCE),
-      [EVENT_LEFT]: countEvents(events, EVENT_LEFT),
-      [EVENT_CENTRAL]: countEvents(events, EVENT_CENTRAL),
-      [EVENT_RIGHT]: countEvents(events, EVENT_RIGHT),
+      [REASON_LABEL_BEHIND]: countEvents(events, EVENT_BEHIND),
+      [REASON_LABEL_SHOT]: countEvents(events, EVENT_SHOT),
+      [REASON_LABEL_CHANCE]: countEvents(events, EVENT_CHANCE),
+      [REASON_LABEL_COUNTER]: countEvents(events, EVENT_COUNTER),
     };
   }
 
   function resolveState(counts) {
-    const behind = counts[EVENT_BEHIND];
-    const shot = counts[EVENT_SHOT];
-    const chance = counts[EVENT_CHANCE];
+    const behind = counts[REASON_LABEL_BEHIND];
+    const shot = counts[REASON_LABEL_SHOT];
+    const chance = counts[REASON_LABEL_CHANCE];
+    const counter = counts[REASON_LABEL_COUNTER];
     const finish = shot + chance;
 
-    if (behind >= 2 && finish >= 1) {
-      return { label: "🟢 背後攻略維持", status: "green" };
+    if (
+      counter >= 2
+      || (behind === 0 && shot === 0 && chance === 0 && counter >= 1)
+    ) {
+      return { label: "🔴 背後攻略崩壊", status: "red" };
     }
-    if (behind >= 1 && finish === 0) {
-      return { label: "🟡 背後攻略停滞", status: "yellow" };
-    }
-    if (behind === 0 && finish >= 1) {
+    if (
+      (behind === 0 && shot >= 1)
+      || counter === 1
+    ) {
       return { label: "🟠 背後攻略不安定", status: "orange" };
     }
-    if (behind === 0) {
-      return { label: "🔴 背後攻略崩壊", status: "red" };
+    if (
+      behind >= 2
+      && finish >= 1
+      && counter <= 1
+    ) {
+      return { label: "🟢 背後攻略維持", status: "green" };
+    }
+    if (
+      (behind >= 1 && shot === 0 && chance === 0)
+      || (behind === 0 && shot === 0 && chance === 0 && counter === 0)
+    ) {
+      return { label: "🟡 背後攻略停滞", status: "yellow" };
     }
     return null;
   }
@@ -87,14 +120,7 @@
     evaluate(events, context = {}) {
       const elapsedSeconds = Math.max(0, Number(context.elapsed) || 0);
       const relevantEvents = eventsInWindow(events, elapsedSeconds)
-        .filter((event) => {
-          const matcher = window.MO_ATTACK_OBSERVER?.matchesEventName
-            || window.MO_ATTACK_PLAN?.matchesEventName;
-          if (typeof matcher === "function") {
-            return RELEVANT_EVENTS.some((name) => matcher(event.eventName, name));
-          }
-          return RELEVANT_EVENTS.includes(event.eventName);
-        });
+        .filter(isRelevantEvent);
       if (relevantEvents.length === 0) return null;
       const reasonEventCounts = buildReasonEventCounts(relevantEvents);
       const resolved = resolveState(reasonEventCounts);

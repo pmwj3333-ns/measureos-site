@@ -9,6 +9,7 @@ load(`${base}/state-engine/v0.1/engine.js`);
   "rule013-attack-right-dominance.js",
   "rule014-attack-central-attack.js",
   "rule015-attack-cross-strategy.js",
+  "rule018-attack-behind-strategy.js",
   "rule002-defense-high-press.js",
   "rule003-defense-low-block.js",
   "rule016-defense-middle-block.js",
