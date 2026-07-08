@@ -364,6 +364,151 @@ function renderPlanTab(record) {
     .join("");
 }
 
+const attackLiveStateCategories = [
+  { key: "attack", label: planCategoryLabels.attack },
+  { key: "buildUp", label: planCategoryLabels.buildUp },
+];
+
+const defenseLiveStateCategories = [
+  { key: "defense", label: planCategoryLabels.defense },
+  { key: "transition", label: planCategoryLabels.transition },
+];
+
+const bothLiveStateCategories = planDisplayCategories;
+
+function getReviewLiveStateCategories(plan) {
+  const mode = plan?.analyzeMode || "both";
+  if (mode === "attack") return attackLiveStateCategories;
+  if (mode === "defense") return defenseLiveStateCategories;
+  return bothLiveStateCategories;
+}
+
+function resolveCategoryKeyForRuleId(ruleId) {
+  return window.MO_COMPOSITE_ANALYZE_MODES?.resolveCategoryKeyForRuleId(ruleId) || null;
+}
+
+function buildReasonResults(ruleResults, plan, context) {
+  const explainLiveState = window.MO_REASON_ENGINE?.explainLiveState;
+  if (typeof explainLiveState !== "function" || !Array.isArray(ruleResults)) return [];
+  return explainLiveState({ plan, stateResults: ruleResults, context });
+}
+
+function buildCompositeReason(reasonResults, plan) {
+  const composeOverallReason = window.MO_COMPOSITE_REASON_ENGINE?.composeOverallReason;
+  if (typeof composeOverallReason !== "function" || !Array.isArray(reasonResults)) return null;
+  return composeOverallReason({
+    analyzeMode: plan?.analyzeMode || "both",
+    reasonResults,
+  });
+}
+
+function renderStateLayer(segment) {
+  const categories = getReviewLiveStateCategories(segment.plan).map(({ key, label }) => {
+    const items = segment.states
+      .filter((state) => resolveStateCategoryKey(state.category) === key)
+      .map((state) => `
+        <li class="review-state-point">
+          <time>${escapeHtml(segment.endTime)}</time>
+          <p class="review-status-${escapeHtml(state.status || "green")}">${escapeHtml(state.label)}</p>
+        </li>
+      `)
+      .join("");
+
+    return `
+      <div class="review-state-category">
+        <h4>${escapeHtml(label)}</h4>
+        ${items
+          ? `<ol class="review-state-timeline">${items}</ol>`
+          : `<p class="review-empty">Stateなし</p>`}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <section class="review-layer-block" data-layer="state">
+      <h3 class="review-layer-title">State</h3>
+      ${categories || `<p class="review-empty">Stateなし</p>`}
+    </section>
+  `;
+}
+
+function renderReasonLayer(segment) {
+  const reasonResults = segment.reasonResults || [];
+  if (reasonResults.length === 0) {
+    return `
+      <section class="review-layer-block" data-layer="reason">
+        <h3 class="review-layer-title">Reason</h3>
+        <p class="review-empty">Reasonなし</p>
+      </section>
+    `;
+  }
+
+  const summariesByCategory = new Map();
+  reasonResults.forEach((reason) => {
+    if (!reason?.summary || !reason.ruleId) return;
+    const state = segment.states.find((item) => item.ruleId === reason.ruleId);
+    const categoryKey = state?.planCategoryKey || resolveCategoryKeyForRuleId(reason.ruleId);
+    if (!categoryKey) return;
+    if (!summariesByCategory.has(categoryKey)) {
+      summariesByCategory.set(categoryKey, []);
+    }
+    summariesByCategory.get(categoryKey).push(reason);
+  });
+
+  const categories = getReviewLiveStateCategories(segment.plan)
+    .filter(({ key }) => (summariesByCategory.get(key) || []).length > 0)
+    .map(({ key, label }) => {
+      const summaries = summariesByCategory.get(key)
+        .map((reason) => `
+          <li class="review-reason-point">
+            <time>${escapeHtml(segment.endTime)}</time>
+            <p class="review-reason-summary">${escapeHtml(reason.summary)}</p>
+          </li>
+        `)
+        .join("");
+
+      return `
+        <div class="review-reason-category">
+          <h4>${escapeHtml(label)}</h4>
+          <ol class="review-reason-timeline">${summaries}</ol>
+        </div>
+      `;
+    })
+    .join("");
+
+  return `
+    <section class="review-layer-block" data-layer="reason">
+      <h3 class="review-layer-title">Reason</h3>
+      ${categories || `<p class="review-empty">Reasonなし</p>`}
+    </section>
+  `;
+}
+
+function renderCompositeReasonLayer(segment) {
+  const composite = segment.compositeReason;
+  if (!composite?.summary) {
+    return `
+      <section class="review-layer-block" data-layer="composite">
+        <h3 class="review-layer-title">Composite Reason</h3>
+        <p class="review-empty">Composite Reasonなし</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="review-layer-block" data-layer="composite">
+      <h3 class="review-layer-title">Composite Reason</h3>
+      <article class="review-composite-point">
+        <time>${escapeHtml(segment.endTime)}</time>
+        <div class="review-composite-body">
+          <p class="review-composite-short review-status-${escapeHtml(composite.severity || "green")}">${escapeHtml(composite.shortSummary || "-")}</p>
+          <p class="review-composite-summary">${escapeHtml(composite.summary)}</p>
+        </div>
+      </article>
+    </section>
+  `;
+}
+
 function resolveStateCategoryKey(category) {
   return stateCategoryMap[category] || null;
 }
@@ -386,6 +531,8 @@ function buildPlanSegments(record) {
       const states = typeof evaluate === "function"
         ? evaluate({ plan, events: segmentEvents, elapsed })
         : [];
+      const reasonResults = buildReasonResults(states, plan, { elapsed });
+      const compositeReason = buildCompositeReason(reasonResults, plan);
 
       const nextEntry = history[index + 1];
       const endTime = nextEntry?.matchTime || (lastEvent?.time ?? entry.matchTime);
@@ -394,7 +541,11 @@ function buildPlanSegments(record) {
         planNumber: index + 1,
         startTime: entry.matchTime || "00:00",
         endTime,
+        elapsed,
+        plan,
         states,
+        reasonResults,
+        compositeReason,
       };
     })
     .filter(Boolean);
@@ -407,35 +558,14 @@ function renderStateTab(record) {
     return;
   }
 
-  $("review-tab-state").innerHTML = segments.map((segment) => {
-    const categories = planDisplayCategories.map(({ key, label }) => {
-      const items = segment.states
-        .filter((state) => resolveStateCategoryKey(state.category) === key)
-        .map((state) => `
-          <li class="review-state-point">
-            <time>${escapeHtml(segment.endTime)}</time>
-            <p class="review-status-${escapeHtml(state.status || "green")}">${escapeHtml(state.label)}</p>
-          </li>
-        `)
-        .join("");
-
-      return `
-        <div class="review-state-category">
-          <h4>${escapeHtml(label)}</h4>
-          ${items
-            ? `<ol class="review-state-timeline">${items}</ol>`
-            : `<p class="review-empty">Stateなし</p>`}
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <section class="review-segment-block">
-        <p class="review-segment-head">Plan #${segment.planNumber}（${escapeHtml(segment.startTime)} 〜 ${escapeHtml(segment.endTime)}）</p>
-        ${categories}
-      </section>
-    `;
-  }).join("");
+  $("review-tab-state").innerHTML = segments.map((segment) => `
+    <section class="review-segment-block">
+      <p class="review-segment-head">Plan #${segment.planNumber}（${escapeHtml(segment.startTime)} 〜 ${escapeHtml(segment.endTime)}）</p>
+      ${renderStateLayer(segment)}
+      ${renderReasonLayer(segment)}
+      ${renderCompositeReasonLayer(segment)}
+    </section>
+  `).join("");
 }
 
 function buildEventsTimeline(record) {

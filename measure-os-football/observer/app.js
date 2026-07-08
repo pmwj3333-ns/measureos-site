@@ -1419,6 +1419,27 @@ function resolveCategoryKeyForRuleId(ruleId) {
   return null;
 }
 
+function buildPlanMatch(compositeReason, plan) {
+  const matchPlan = window.MO_PLAN_MATCH_ENGINE?.matchPlan;
+  if (typeof matchPlan !== "function" || !compositeReason) return null;
+
+  const result = matchPlan(compositeReason);
+  if (!result || !plan?.categories) return result;
+
+  const catalog = window.MO_PLAN_MATCH_CATALOG;
+  const analyzeMode = plan.analyzeMode || result.analyzeMode;
+  const categoryKeys = catalog?.getCategoryKeysForMode(analyzeMode) || [];
+
+  return {
+    ...result,
+    currentPlan: {
+      analyzeMode,
+      categories: plan.categories,
+      label: catalog?.formatPlanLabel(plan.categories, categoryKeys) || result.currentPlan?.label || "-",
+    },
+  };
+}
+
 function buildCompositeReason(reasonResults, plan) {
   const composeOverallReason = window.MO_COMPOSITE_REASON_ENGINE?.composeOverallReason;
   if (typeof composeOverallReason !== "function" || !Array.isArray(reasonResults)) return null;
@@ -1645,6 +1666,7 @@ function renderLiveState() {
   const displayStates = flattenGroupedLiveStates(groupedStates);
   const reasonResults = renderReasonPanel(ruleResults, plan, { elapsed: evaluationElapsed });
   const compositeReason = buildCompositeReason(reasonResults, plan);
+  const planMatch = buildPlanMatch(compositeReason, plan);
 
   liveStateSnapshot = {
     evaluatedAt: nowIso(),
@@ -1654,6 +1676,7 @@ function renderLiveState() {
     ruleResults,
     reasons: reasonResults,
     compositeReason,
+    planMatch,
     states: displayStates,
   };
 

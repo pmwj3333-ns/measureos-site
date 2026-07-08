@@ -3,10 +3,11 @@
   //
   // Composite Reason Engine の中心データは Composite Fact です。
   //
-  // summary は Composite Fact を UI 向けに自然言語化した表示形式の一つであり、
-  // compositeReasonKey から生成する派生データです。
+  // shortSummary は compositeReasonKey から生成する派生データです。
+  // summary は shortSummary と compositeReasonKey から生成する派生データです。
+  // severity は Composite Facts（Rule Reason status）から算出する総合状態です。
   //
-  // 処理順: buildCompositeFacts() → resolveCompositeReasonKey() → buildCompositeSummary()
+  // 処理順: buildCompositeFacts() → resolveCompositeSeverity() → resolveCompositeReasonKey() → buildCompositeShortSummary() → buildCompositeSummary()
   //
   // Rule Reason（summary / reasonKey / status / facts）を入力とし、
   // Analyze Mode 単位の Overall Reason を生成します。
@@ -15,6 +16,7 @@
   // Rule の再評価・Reason の再生成も禁止です。
   const modes = () => window.MO_COMPOSITE_ANALYZE_MODES;
   const compositeFacts = () => window.MO_COMPOSITE_FACT_BUILDER;
+  const severityResolver = () => window.MO_COMPOSITE_SEVERITY_RESOLVER;
   const reasonKeyResolver = () => window.MO_COMPOSITE_REASON_KEY_RESOLVER;
   const summaryBuilder = () => window.MO_COMPOSITE_SUMMARY_BUILDER;
 
@@ -75,20 +77,39 @@
       groupedReasons,
     }) || [];
 
+    const severity = severityResolver()?.resolveCompositeSeverity(facts) || "green";
+
     const compositeReasonKey = reasonKeyResolver()?.resolveCompositeReasonKey({
       analyzeMode: normalizedMode,
       facts,
     }) || "composite.unknown.aggregated_rule_summaries";
 
-    const summary = summaryBuilder()?.buildCompositeSummary(
+    const summaryContext = {
+      analyzeMode: normalizedMode,
+      severity,
+      groupedReasons,
+      includedReasons,
+    };
+
+    const shortSummary = summaryBuilder()?.buildCompositeShortSummary(
       compositeReasonKey,
       facts,
-      { analyzeMode: normalizedMode, groupedReasons, includedReasons },
+      summaryContext,
+    ) || "";
+
+    const summary = summaryBuilder()?.buildCompositeSummary(
+      compositeReasonKey,
+      shortSummary,
+      facts,
+      summaryContext,
     ) || "";
 
     return {
       analyzeMode: normalizedMode,
+      category: normalizedMode,
+      severity,
       compositeReasonKey,
+      shortSummary,
       summary,
       reasonKeys: includedReasons.map((reason) => reason.reasonKey),
       categories: buildCategoryEntries(groupedReasons),

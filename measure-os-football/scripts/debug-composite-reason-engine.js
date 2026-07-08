@@ -13,6 +13,7 @@ load(`${base}/reason-engine/v0.1/engine.js`);
 load(`${base}/composite-reason-engine/v0.1/analyze-modes.js`);
 load(`${base}/composite-reason-engine/v0.1/shared/helpers.js`);
 load(`${base}/composite-reason-engine/v0.1/shared/fact-builder.js`);
+load(`${base}/composite-reason-engine/v0.1/severity-resolver.js`);
 load(`${base}/composite-reason-engine/v0.1/reason-key-resolver.js`);
 load(`${base}/composite-reason-engine/v0.1/summary-builder.js`);
 load(`${base}/composite-reason-engine/v0.1/engine.js`);
@@ -101,6 +102,9 @@ const scenarios = [
     expectAnalyzeMode: "attack",
     expectCategoryKeys: ["attack", "buildUp"],
     expectCompositeReasonKey: "composite.attack.green.attack_flow_working",
+    expectCategory: "attack",
+    expectShortSummary: "攻撃優勢",
+    expectSeverity: "green",
   },
   {
     name: "defense mode overall",
@@ -109,6 +113,9 @@ const scenarios = [
     expectAnalyzeMode: "defense",
     expectCategoryKeys: ["defense", "transition"],
     expectCompositeReasonKey: "composite.defense.yellow.central_penetration_allowed",
+    expectCategory: "defense",
+    expectShortSummary: "守備警戒",
+    expectSeverity: "yellow",
   },
   {
     name: "both mode overall",
@@ -117,6 +124,9 @@ const scenarios = [
     expectAnalyzeMode: "both",
     expectCategoryKeys: ["attack", "buildUp", "defense", "transition"],
     expectCompositeReasonKey: "composite.both.mixed.attack_working_defense_central_pressure",
+    expectCategory: "both",
+    expectShortSummary: "攻守拮抗",
+    expectSeverity: "yellow",
   },
 ];
 
@@ -139,7 +149,16 @@ scenarios.forEach((scenario) => {
     reasonResults,
   });
 
-  if (!composite?.compositeReasonKey || !composite?.summary || !Array.isArray(composite.reasonKeys) || !Array.isArray(composite.categories) || !Array.isArray(composite.facts)) {
+  if (
+    !composite?.compositeReasonKey
+    || !composite?.shortSummary
+    || !composite?.summary
+    || !composite?.category
+    || !composite?.severity
+    || !Array.isArray(composite.reasonKeys)
+    || !Array.isArray(composite.categories)
+    || !Array.isArray(composite.facts)
+  ) {
     failed += 1;
     print(`FAIL ${scenario.name}: invalid composite result`);
     return;
@@ -154,6 +173,37 @@ scenarios.forEach((scenario) => {
   if (composite.analyzeMode !== scenario.expectAnalyzeMode) {
     failed += 1;
     print(`FAIL ${scenario.name}: analyzeMode=${composite.analyzeMode}`);
+    return;
+  }
+
+  if (scenario.expectCategory && composite.category !== scenario.expectCategory) {
+    failed += 1;
+    print(`FAIL ${scenario.name}: category=${composite.category}`);
+    return;
+  }
+
+  if (composite.category !== composite.analyzeMode) {
+    failed += 1;
+    print(`FAIL ${scenario.name}: category/analyzeMode mismatch`);
+    return;
+  }
+
+  if (scenario.expectShortSummary && composite.shortSummary !== scenario.expectShortSummary) {
+    failed += 1;
+    print(`FAIL ${scenario.name}: shortSummary=${composite.shortSummary}`);
+    return;
+  }
+
+  if (scenario.expectSeverity && composite.severity !== scenario.expectSeverity) {
+    failed += 1;
+    print(`FAIL ${scenario.name}: severity=${composite.severity}`);
+    return;
+  }
+
+  const overallWorstStatus = composite.facts.find((fact) => fact.code === "overall_worst_status")?.value;
+  if (composite.severity !== overallWorstStatus) {
+    failed += 1;
+    print(`FAIL ${scenario.name}: severity mismatch with overall_worst_status`);
     return;
   }
 

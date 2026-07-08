@@ -28,6 +28,11 @@
         label: reason.ruleId,
         value: reason.reasonKey,
       }));
+      built.push(createFact({
+        code: "included_rule_status",
+        label: reason.ruleId,
+        value: reason.status,
+      }));
       if (reason.summary) {
         built.push(createFact({
           code: "rule_summary_body",

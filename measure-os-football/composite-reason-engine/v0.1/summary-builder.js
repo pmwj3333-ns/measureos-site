@@ -1,5 +1,6 @@
 (function () {
-  // summary は compositeReasonKey から生成する派生データ（UI 表示用）
+  // shortSummary は compositeReasonKey から生成する派生データです。
+  // summary は shortSummary と compositeReasonKey から生成する派生データ（UI 表示用）です。
   const factBuilder = () => window.MO_COMPOSITE_FACT_BUILDER;
 
   function describeAttackOrigin(facts) {
@@ -39,7 +40,74 @@
     return bodies || "観測事実を整理しています。";
   }
 
-  function buildCompositeSummary(compositeReasonKey, facts = [], context = {}) {
+  function buildCompositeShortSummary(compositeReasonKey, facts = [], context = {}) {
+    switch (compositeReasonKey) {
+      case "composite.attack.green.attack_flow_working":
+        return "攻撃優勢";
+
+      case "composite.attack.yellow.attack_stalled_build_up_working":
+      case "composite.attack.yellow.attack_working_build_up_stalled":
+        return "攻撃停滞";
+
+      case "composite.attack.yellow.mixed_pressure":
+        return "攻撃停滞";
+
+      case "composite.attack.orange.pressure":
+        return "攻撃不安";
+
+      case "composite.attack.red.breakdown":
+        return "攻撃崩壊";
+
+      case "composite.attack.unknown.aggregated_rule_summaries":
+        return "攻撃要約";
+
+      case "composite.defense.green.defense_switch_working":
+        return "守備安定";
+
+      case "composite.defense.yellow.central_penetration_allowed":
+        return "守備警戒";
+
+      case "composite.defense.yellow.mixed_pressure":
+        return "守備停滞";
+
+      case "composite.defense.orange.counter_or_shot_pressure":
+      case "composite.defense.orange.mixed_pressure":
+        return "守備不安";
+
+      case "composite.defense.red.breakdown":
+        return "守備崩壊";
+
+      case "composite.defense.unknown.aggregated_rule_summaries":
+        return "守備要約";
+
+      case "composite.both.green.balanced":
+        return "攻守安定";
+
+      case "composite.both.mixed.attack_working_defense_central_pressure":
+      case "composite.both.mixed.attack_working_defense_counter_pressure":
+      case "composite.both.mixed.attack_working_defense_pressure":
+      case "composite.both.mixed.attack_without_finish_defense_working":
+      case "composite.both.mixed.attack_pressure_defense_working":
+      case "composite.both.yellow.mixed_pressure":
+        return "攻守拮抗";
+
+      case "composite.both.orange.pressure":
+        return "攻守不安";
+
+      case "composite.both.red.breakdown":
+        return "攻守崩壊";
+
+      case "composite.unknown.aggregated_rule_summaries":
+        return "攻守要約";
+
+      default:
+        if (context.analyzeMode === "attack") return "攻撃要約";
+        if (context.analyzeMode === "defense") return "守備要約";
+        return "攻守要約";
+    }
+  }
+
+  function buildCompositeSummary(compositeReasonKey, shortSummary = "", facts = [], context = {}) {
     const origin = describeAttackOrigin(facts);
     const progression = describeBuildUpProgress(facts);
     const block = describeDefenseBlock(facts);
@@ -59,7 +127,7 @@
       case "composite.attack.orange.pressure":
       case "composite.attack.red.breakdown":
       case "composite.attack.unknown.aggregated_rule_summaries":
-        return fallbackSummary(facts);
+        return fallbackSummary(facts) || `${shortSummary}の場面が見られます。`;
 
       case "composite.defense.green.defense_switch_working":
         return `${block}と${transition}により、相手の継続した攻撃を抑えています。`;
@@ -72,7 +140,7 @@
       case "composite.defense.orange.mixed_pressure":
       case "composite.defense.red.breakdown":
       case "composite.defense.unknown.aggregated_rule_summaries":
-        return fallbackSummary(facts);
+        return fallbackSummary(facts) || `${shortSummary}の場面が見られます。`;
 
       case "composite.both.green.balanced":
         return "攻撃と守備の切り替えが機能し、相手の前進を抑えています。";
@@ -96,14 +164,15 @@
       case "composite.both.orange.pressure":
       case "composite.both.red.breakdown":
       case "composite.unknown.aggregated_rule_summaries":
-        return fallbackSummary(facts);
+        return fallbackSummary(facts) || `${shortSummary}の場面が見られます。`;
 
       default:
-        return fallbackSummary(facts);
+        return fallbackSummary(facts) || `${shortSummary}の場面が見られます。`;
     }
   }
 
   window.MO_COMPOSITE_SUMMARY_BUILDER = {
+    buildCompositeShortSummary,
     buildCompositeSummary,
   };
 })();
