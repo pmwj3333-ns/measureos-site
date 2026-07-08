@@ -538,6 +538,10 @@ function confirmPlan() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.MO_AUTH_GUARD && !window.MO_AUTH_GUARD.requireAuth()) {
+    return;
+  }
+
   loadAnalyzeMode();
   renderCategories();
   applyAnalyzeModeLayout();

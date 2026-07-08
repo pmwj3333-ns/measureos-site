@@ -1,0 +1,78 @@
+.home-shell {
+  max-width: 760px;
+}
+
+.home-section-title {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  color: var(--accent-2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-team {
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+
+.home-team-name {
+  margin: 0;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+.home-user-email {
+  margin: 8px 0 0;
+}
+
+.home-team-id {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+}
+
+.home-user-role {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: var(--accent-2);
+}
+
+.home-access-denied {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(252, 165, 165, 0.35);
+  border-radius: 12px;
+  background: rgba(252, 165, 165, 0.08);
+  color: #fecaca;
+}
+
+.home-nav {
+  display: grid;
+  gap: 14px;
+}
+
+.home-card {
+  display: block;
+  padding: 20px 22px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.home-card:hover {
+  border-color: rgba(139, 233, 214, 0.45);
+  transform: translateY(-1px);
+}
+
+.home-card h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+
+.home-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.muted {
+  color: var(--muted);
+}

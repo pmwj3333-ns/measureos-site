@@ -145,6 +145,15 @@ function generateMatchId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+function getActiveTeamId() {
+  return window.MO_TEAM_CONTEXT?.getActiveTeamId?.() || null;
+}
+
+function assertRecordTeamAccess(record) {
+  if (!record) return false;
+  return window.MO_TEAM_CONTEXT?.canAccessTeamResource?.(record) ?? false;
+}
+
 function archiveCurrentMatchIfNeeded() {
   getArchiveApi()?.upsertFromLiveStorage?.();
 }
@@ -168,7 +177,9 @@ function resolveCompetitionSource() {
     return String(liveSetup.competition).trim();
   }
 
-  const latest = sortRecordsNewestFirst(getArchiveApi()?.loadArchive?.() || [])[0];
+  const latest = sortRecordsNewestFirst(
+    getArchiveApi()?.search?.({ teamId: getActiveTeamId() }) || [],
+  )[0];
   if (latest?.setup?.competition) {
     return String(latest.setup.competition).trim();
   }
@@ -212,8 +223,16 @@ function startSameCompetitionNext() {
   showNextMatchError("");
   archiveCurrentMatchIfNeeded();
 
+  const teamId = getActiveTeamId();
+  if (!teamId) return;
+
   const previousSetup = readStorage(setupStorageKey) || {};
-  const nextSetup = {
+  if (previousSetup.teamId && !window.MO_TEAM_CONTEXT?.canAccessTeamResource?.(previousSetup)) {
+    window.MO_TEAM_CONTEXT?.denyAccess?.();
+    return;
+  }
+
+  const nextSetup = window.MO_MATCH_CONTEXT?.attachTeamId?.({
     match_id: generateMatchId(),
     competition,
     opponent,
@@ -221,6 +240,18 @@ function startSameCompetitionNext() {
     kickoff_time: kickoffTime,
     home_away: previousSetup.home_away || "",
     formation: previousSetup.formation || "",
+    analyzeMode: previousSetup.analyzeMode || "both",
+    match_created_at: new Date().toISOString(),
+  }, teamId) || {
+    match_id: generateMatchId(),
+    teamId,
+    competition,
+    opponent,
+    match_date: matchDate,
+    kickoff_time: kickoffTime,
+    home_away: previousSetup.home_away || "",
+    formation: previousSetup.formation || "",
+    analyzeMode: previousSetup.analyzeMode || "both",
     match_created_at: new Date().toISOString(),
   };
 
@@ -248,13 +279,18 @@ function refreshRecords() {
     return;
   }
   api.upsertFromLiveStorage();
-  reviewState.records = sortRecordsNewestFirst(api.search(reviewState.filters));
+  reviewState.records = sortRecordsNewestFirst(
+    api.search({
+      ...reviewState.filters,
+      teamId: getActiveTeamId(),
+    }),
+  ).filter((record) => assertRecordTeamAccess(record));
 }
 
 function getSelectedRecord() {
   const api = getArchiveApi();
   if (!reviewState.selectedId || !api) return null;
-  return api.getById(reviewState.selectedId);
+  return api.getById(reviewState.selectedId, getActiveTeamId());
 }
 
 function renderMatchList() {
@@ -697,9 +733,20 @@ function showSearchView() {
 
 function showDetailView(recordId) {
   reviewState.selectedId = recordId;
+  const api = getArchiveApi();
   const record = getSelectedRecord();
+
   if (!record) {
+    if (api?.existsForAnyTeam?.(recordId)) {
+      window.MO_TEAM_CONTEXT?.denyAccess?.();
+      return;
+    }
     showSearchView();
+    return;
+  }
+
+  if (!assertRecordTeamAccess(record)) {
+    window.MO_TEAM_CONTEXT?.denyAccess?.();
     return;
   }
 
@@ -755,6 +802,10 @@ function bootFromHash() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.MO_AUTH_GUARD && !window.MO_AUTH_GUARD.requireAuth()) {
+    return;
+  }
+
   refreshRecords();
   renderMatchList();
   hydrateNextMatchSection();

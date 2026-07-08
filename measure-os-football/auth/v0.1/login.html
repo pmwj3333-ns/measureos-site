@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Login</title>
+  <link rel="stylesheet" href="../../shared/page-shell.css" />
+  <link rel="stylesheet" href="../../shared/ui-system.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="auth-app">
+  <main class="page-container page-shell auth-shell">
+    <header class="page-hero" aria-labelledby="page-title">
+      <p class="page-eyebrow">MEASURE OS Football</p>
+      <h1 id="page-title" class="page-title">Login</h1>
+      <p class="page-description">Team を識別して、試合データをチーム単位で管理します。</p>
+    </header>
+
+    <section class="auth-panel panel" aria-labelledby="auth-form-title">
+      <div class="auth-mode-toggle" role="tablist" aria-label="認証モード">
+        <button id="mode-login" type="button" class="auth-mode-button is-active" role="tab" aria-selected="true">ログイン</button>
+        <button id="mode-register" type="button" class="auth-mode-button" role="tab" aria-selected="false">アカウント作成</button>
+      </div>
+
+      <h2 id="auth-form-title" class="sr-only">認証フォーム</h2>
+
+      <form id="auth-form" class="auth-form" novalidate>
+        <div class="field">
+          <label for="email">メールアドレス</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+        </div>
+
+        <div class="field">
+          <label for="password">パスワード</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" minlength="8" required />
+        </div>
+
+        <div id="team-name-field" class="field" hidden>
+          <label for="team-name">チーム名</label>
+          <input id="team-name" name="team_name" type="text" maxlength="80" autocomplete="organization" />
+          <p class="field-hint">1ユーザー = 1チームとして登録されます。</p>
+        </div>
+
+        <p id="auth-error" class="field-error" hidden></p>
+        <button id="auth-submit" type="submit" class="primary auth-submit">ログイン</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="../../shared/storage-keys.js"></script>
+  <script src="../../shared/authentication.js"></script>
+  <script src="../../shared/team-context.js"></script>
+  <script src="./login.js"></script>
+</body>
+</html>

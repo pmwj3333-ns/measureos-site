@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Match History</title>
+  <link rel="stylesheet" href="../../shared/page-shell.css" />
+  <link rel="stylesheet" href="../../shared/ui-system.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="match-history-app">
+  <main class="page-container page-shell history-shell">
+    <header class="page-hero" aria-labelledby="page-title">
+      <p class="page-eyebrow">MEASURE OS Football</p>
+      <h1 id="page-title" class="page-title">Match History</h1>
+      <p class="page-description">ログイン中チームの試合のみ表示します。</p>
+    </header>
+
+    <section class="history-panel panel" aria-labelledby="history-list-title">
+      <div class="history-head">
+        <h2 id="history-list-title" class="history-section-title">試合一覧</h2>
+        <p id="history-team-label" class="muted"></p>
+      </div>
+      <p id="history-empty" class="history-empty" hidden>試合履歴がありません。</p>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+
+    <p class="history-back">
+      <a href="../../home/v0.1/index.html">Home に戻る</a>
+    </p>
+  </main>
+
+  <script>
+    window.MO_AUTH_LOGIN_PATH = "../../auth/v0.1/login.html";
+    window.MO_APP_HOME_PATH = "../../home/v0.1/index.html";
+  </script>
+  <script src="../../shared/storage-keys.js"></script>
+  <script src="../../shared/authentication.js"></script>
+  <script src="../../shared/team-context.js"></script>
+  <script src="../../shared/match-context.js"></script>
+  <script src="../../shared/review-archive.js"></script>
+  <script src="../../shared/auth-guard.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

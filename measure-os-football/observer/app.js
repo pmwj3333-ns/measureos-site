@@ -2050,6 +2050,10 @@ function openReview() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.MO_AUTH_GUARD && !window.MO_AUTH_GUARD.requireAuth()) {
+    return;
+  }
+
   loadMatch();
   loadEvents();
   loadAnalyzeMode();
@@ -2095,5 +2099,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   bindCurrentPlanPopover();
+  ControllerInput.init();
   renderAll();
 });

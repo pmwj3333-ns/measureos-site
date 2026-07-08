@@ -106,6 +106,11 @@ function restoreDraft() {
   const saved = readStorage(storageKey);
   if (!saved) return;
 
+  if (saved.teamId && !window.MO_TEAM_CONTEXT?.canAccessTeamResource?.(saved)) {
+    window.MO_TEAM_CONTEXT?.denyAccess?.();
+    return;
+  }
+
   competitionInput.value = saved.competition || "";
   opponentInput.value = saved.opponent || "";
   matchDateInput.value = saved.match_date || "";
@@ -152,8 +157,24 @@ function validateForm() {
 }
 
 function buildMatchSetupSnapshot() {
-  return {
+  const teamId = window.MO_TEAM_CONTEXT?.getActiveTeamId?.() || null;
+  if (!teamId) {
+    return null;
+  }
+
+  return window.MO_MATCH_CONTEXT?.attachTeamId?.({
     match_id: generateMatchId(),
+    competition: competitionInput.value.trim(),
+    opponent: opponentInput.value.trim(),
+    match_date: matchDateInput.value,
+    kickoff_time: kickoffTimeInput.value,
+    home_away: selectedHomeAway,
+    formation: resolveFormationValue(),
+    analyzeMode: selectedAnalyzeMode,
+    match_created_at: new Date().toISOString(),
+  }, teamId) || {
+    match_id: generateMatchId(),
+    teamId,
     competition: competitionInput.value.trim(),
     opponent: opponentInput.value.trim(),
     match_date: matchDateInput.value,
@@ -181,7 +202,20 @@ function handleSubmit(event) {
     return;
   }
 
+  const teamId = window.MO_TEAM_CONTEXT?.requireTeamContext?.();
+  if (!teamId) return;
+
   const snapshot = buildMatchSetupSnapshot();
+  if (!snapshot) {
+    setupStatus.textContent = "チーム情報を確認できません。再ログインしてください。";
+    return;
+  }
+
+  if (!window.MO_TEAM_CONTEXT?.canAccessTeamResource?.(snapshot)) {
+    window.MO_TEAM_CONTEXT?.denyAccess?.();
+    return;
+  }
+
   if (!writeStorage(storageKey, snapshot)) {
     setupStatus.textContent = "保存に失敗しました。入力内容を確認してください。";
     return;
@@ -208,6 +242,10 @@ form.addEventListener("submit", handleSubmit);
   element.addEventListener("input", updateStatus);
 });
 
-restoreDraft();
-setAnalyzeMode(selectedAnalyzeMode);
-updateStatus();
+if (window.MO_AUTH_GUARD && !window.MO_AUTH_GUARD.requireAuth()) {
+  // Redirect handled by auth guard.
+} else {
+  restoreDraft();
+  setAnalyzeMode(selectedAnalyzeMode);
+  updateStatus();
+}

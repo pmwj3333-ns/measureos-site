@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football - Home</title>
+  <link rel="stylesheet" href="../../shared/page-shell.css" />
+  <link rel="stylesheet" href="../../shared/ui-system.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="home-app">
+  <main class="page-container page-shell home-shell">
+    <header class="page-hero" aria-labelledby="page-title">
+      <p class="page-eyebrow">MEASURE OS Football</p>
+      <h1 id="page-title" class="page-title">Home</h1>
+      <p class="page-description">チーム単位で試合を記録・振り返り・次の Game Plan へ進みます。</p>
+    </header>
+
+    <p id="access-denied-banner" class="home-access-denied" hidden>
+      他チームのデータにはアクセスできません。
+    </p>
+
+    <section class="home-team panel" aria-labelledby="home-team-title">
+      <h2 id="home-team-title" class="home-section-title">Team</h2>
+      <p class="home-team-name"><strong id="team-name-display">-</strong></p>
+      <p id="user-email-display" class="home-user-email"></p>
+      <p id="team-id-display" class="home-team-id muted"></p>
+      <p id="user-role-display" class="home-user-role"></p>
+    </section>
+
+    <nav class="home-nav" aria-label="Home navigation">
+      <a class="home-card panel" href="../../match-setup/v0.1/index.html">
+        <h2>Match Setup</h2>
+        <p>新しい試合の情報を入力して Game Plan へ進みます。</p>
+      </a>
+      <a class="home-card panel" href="../../match-history/v0.1/index.html">
+        <h2>Match History</h2>
+        <p>自チームの試合一覧を確認します。</p>
+      </a>
+      <a class="home-card panel" href="../../settings/v0.1/index.html">
+        <h2>Settings</h2>
+        <p>チーム名の変更、パスワード変更、ログアウト。</p>
+      </a>
+    </nav>
+  </main>
+
+  <script>
+    window.MO_AUTH_LOGIN_PATH = "../../auth/v0.1/login.html";
+    window.MO_APP_HOME_PATH = "../../home/v0.1/index.html";
+  </script>
+  <script src="../../shared/storage-keys.js"></script>
+  <script src="../../shared/authentication.js"></script>
+  <script src="../../shared/team-context.js"></script>
+  <script src="../../shared/auth-guard.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

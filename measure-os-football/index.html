@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEASURE OS Football</title>
+  <meta http-equiv="refresh" content="0; url=./home/v0.1/index.html" />
+  <script>
+    (function redirectToEntry() {
+      const homePath = "./home/v0.1/index.html";
+      const loginPath = "./auth/v0.1/login.html";
+      try {
+        const session = JSON.parse(window.localStorage.getItem("measure-os-football:auth-session:v1") || "null");
+        const hasSession = Boolean(session?.userId && session?.teamId);
+        window.location.replace(hasSession ? homePath : loginPath);
+      } catch (_) {
+        window.location.replace(loginPath);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <p><a href="./home/v0.1/index.html">MEASURE OS Football Home</a></p>
+</body>
+</html>
