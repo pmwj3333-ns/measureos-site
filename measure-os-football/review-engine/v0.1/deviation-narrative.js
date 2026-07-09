@@ -1,8 +1,14 @@
 window.MO_REVIEW_DEVIATION = (() => {
-  const { dominantMetricItem } = window.MO_REVIEW_HELPERS;
+  const { findMetricItem, dominantMetricItem } = window.MO_REVIEW_HELPERS;
 
   const ATTACK_METRIC_CODES = new Set(["left", "center", "right"]);
   const BUILD_UP_METRIC_CODES = new Set(["possession", "long"]);
+
+  const INTRUSION_LABELS = {
+    left: "左",
+    center: "中央",
+    right: "右",
+  };
 
   function getPlanLabel(plan, categoryKey) {
     const fromCategories = plan?.categories?.[categoryKey]?.[0];
@@ -34,6 +40,62 @@ window.MO_REVIEW_DEVIATION = (() => {
     return (Array.isArray(items) ? items : []).reduce((sum, item) => sum + (item.count || 0), 0);
   }
 
+  function aggregateSegmentMetrics(events) {
+    return window.MO_MATCH_METRICS?.aggregate?.(events) || {
+      attack: [],
+      buildUp: [],
+    };
+  }
+
+  function buildPlanSegments(record) {
+    const events = Array.isArray(record?.events) ? record.events : [];
+    const history = Array.isArray(record?.match?.planHistory) ? record.match.planHistory : [];
+    const normalizePlanSnapshot = window.MO_PLAN_SNAPSHOT?.normalizePlanSnapshot;
+
+    if (typeof normalizePlanSnapshot !== "function" || history.length === 0) {
+      return [];
+    }
+
+    return history
+      .map((entry, index) => {
+        const plan = normalizePlanSnapshot(entry?.plan);
+        if (!plan) return null;
+
+        const boundary = Number(entry.eventBoundaryIndex) || 0;
+        const sliceEnd = history[index + 1]?.eventBoundaryIndex ?? events.length;
+        const segmentEvents = events.slice(boundary, sliceEnd);
+        const matchMetrics = aggregateSegmentMetrics(segmentEvents);
+
+        return {
+          planNumber: index + 1,
+          startTime: entry.matchTime || "00:00",
+          plan,
+          segmentEvents,
+          matchMetrics,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function describeAttackDeviation(planCode, planLabel, attackMetrics) {
+    const dominant = dominantMetricItem(attackMetrics);
+    if (!dominant) return null;
+
+    if (dominant.code === planCode && dominant.percent >= 50) {
+      return { status: "ok", text: `${planLabel}は維持された` };
+    }
+
+    if (dominant.code === planCode && dominant.percent < 50) {
+      const intrusionLabel = INTRUSION_LABELS[planCode] || dominant.label;
+      return { status: "warn", text: `${intrusionLabel}侵入は増えたが最も多くはならなかった` };
+    }
+
+    return {
+      status: "warn",
+      text: `${dominant.label}侵入が最も多く、Planとは異なる傾向になった`,
+    };
+  }
+
   function compareAttack(plan, attackMetrics) {
     const planLabel = getPlanLabel(plan, "attack");
     const planCode = getPlanCode(plan, "attack");
@@ -51,27 +113,12 @@ window.MO_REVIEW_DEVIATION = (() => {
       };
     }
 
-    const dominant = dominantMetricItem(attackMetrics);
-    if (!dominant) {
-      return {
-        key: "attack",
-        title: "Attack",
-        planLabel,
-        rows,
-        deviation: null,
-      };
-    }
-
-    const deviation = dominant.code === planCode
-      ? { status: "ok", text: `${planLabel}は維持された` }
-      : { status: "warn", text: `${dominant.label}侵入が最も多く、Planとは異なる傾向になった` };
-
     return {
       key: "attack",
       title: "Attack",
       planLabel,
       rows,
-      deviation,
+      deviation: describeAttackDeviation(planCode, planLabel, attackMetrics),
     };
   }
 
@@ -104,7 +151,7 @@ window.MO_REVIEW_DEVIATION = (() => {
     }
 
     const deviation = dominant.code === planCode
-      ? { status: "ok", text: `${planLabel}主体で攻撃できた` }
+      ? { status: "ok", text: `${planLabel}主体だった` }
       : { status: "warn", text: `${dominant.label}が主体となった` };
 
     return {
@@ -133,8 +180,20 @@ window.MO_REVIEW_DEVIATION = (() => {
     return { categories, deviations };
   }
 
+  function buildDeviationsFromRecord(record) {
+    return buildPlanSegments(record).map((segment) => ({
+      ...segment,
+      ...buildDeviation({
+        plan: segment.plan,
+        matchMetrics: segment.matchMetrics,
+      }),
+    }));
+  }
+
   return {
+    buildPlanSegments,
     buildDeviation,
+    buildDeviationsFromRecord,
     compareAttack,
     compareBuildUp,
   };

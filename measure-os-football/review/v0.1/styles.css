@@ -385,7 +385,14 @@
   font-weight: 900;
 }
 
-.review-events-list,
+.review-events-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .review-event-row {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -411,6 +418,34 @@
 .review-deviation-v2 {
   display: grid;
   gap: 18px;
+}
+
+.review-deviation-plan-card {
+  display: grid;
+  gap: 14px;
+}
+
+.review-deviation-plan-card-head {
+  display: grid;
+  gap: 4px;
+}
+
+.review-deviation-plan-card-title {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.review-deviation-plan-card-time {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.review-deviation-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .review-deviation-section {

@@ -543,44 +543,6 @@ function resolveStateCategoryKey(category) {
   return stateCategoryMap[category] || null;
 }
 
-function buildPlanSegments(record) {
-  const events = Array.isArray(record.events) ? record.events : [];
-  const history = Array.isArray(record.match?.planHistory) ? record.match.planHistory : [];
-  const evaluate = window.MO_STATE_ENGINE?.evaluateLiveState;
-
-  return history
-    .map((entry, index) => {
-      const plan = normalizePlanSnapshot(entry.plan);
-      if (!plan) return null;
-
-      const boundary = Number(entry.eventBoundaryIndex) || 0;
-      const sliceEnd = history[index + 1]?.eventBoundaryIndex ?? events.length;
-      const segmentEvents = events.slice(boundary, sliceEnd);
-      const lastEvent = segmentEvents[segmentEvents.length - 1];
-      const elapsed = lastEvent ? parseMatchTime(lastEvent.time) : parseMatchTime(entry.matchTime);
-      const states = typeof evaluate === "function"
-        ? evaluate({ plan, events: segmentEvents, elapsed })
-        : [];
-      const reasonResults = buildReasonResults(states, plan, { elapsed });
-      const compositeReason = buildCompositeReason(reasonResults, plan);
-
-      const nextEntry = history[index + 1];
-      const endTime = nextEntry?.matchTime || (lastEvent?.time ?? entry.matchTime);
-
-      return {
-        planNumber: index + 1,
-        startTime: entry.matchTime || "00:00",
-        endTime,
-        elapsed,
-        plan,
-        states,
-        reasonResults,
-        compositeReason,
-      };
-    })
-    .filter(Boolean);
-}
-
 function buildEventsTimeline(record) {
   const events = Array.isArray(record.events) ? record.events : [];
   const history = Array.isArray(record.match?.planHistory) ? record.match.planHistory : [];
@@ -643,18 +605,7 @@ function renderEventsTab(record) {
 }
 
 function buildMatchDeviationContext(record) {
-  const events = Array.isArray(record.events) ? record.events : [];
-  const history = Array.isArray(record.match?.planHistory) ? record.match.planHistory : [];
-  const lastEntry = history[history.length - 1];
-  const plan = normalizePlanSnapshot(lastEntry?.plan);
-  if (!plan) return null;
-
-  const matchMetrics = window.MO_MATCH_METRICS?.aggregate?.(events) || {
-    attack: [],
-    buildUp: [],
-  };
-
-  return window.MO_REVIEW_DEVIATION?.buildDeviation?.({ plan, matchMetrics }) || null;
+  return window.MO_REVIEW_DEVIATION?.buildDeviationsFromRecord?.(record) || [];
 }
 
 function renderDeviationResultBlock(category) {
@@ -673,55 +624,75 @@ function renderDeviationResultBlock(category) {
   `;
 }
 
-function renderDeviationTab(record) {
-  const deviation = buildMatchDeviationContext(record);
-  if (!deviation) {
-    $("review-tab-deviation").innerHTML = `<p class="review-empty">Planがありません。</p>`;
-    return;
-  }
+function renderDeviationPlanCard(segment) {
+  const { categories = [], deviations = [], planNumber, startTime } = segment;
 
-  if (deviation.categories.length === 0) {
-    $("review-tab-deviation").innerHTML = `
-      <p class="review-empty">Attack / Build Up の Plan が設定されていないため、Deviation を表示できません。</p>
+  if (categories.length === 0) {
+    return `
+      <article class="review-deviation-plan-card">
+        <header class="review-deviation-plan-card-head">
+          <h3 class="review-deviation-plan-card-title">Plan #${planNumber}</h3>
+          <p class="review-deviation-plan-card-time">開始 ${escapeHtml(startTime)}</p>
+        </header>
+        <p class="review-empty">Attack / Build Up の Plan が設定されていないため、Deviation を表示できません。</p>
+      </article>
     `;
-    return;
   }
 
-  const planRows = deviation.categories.map((category) => `
+  const planRows = categories.map((category) => `
     <div class="review-deviation-plan-row">
       <span class="review-deviation-plan-label">${escapeHtml(category.title)}</span>
       <span class="review-deviation-plan-value">${escapeHtml(category.planLabel)}</span>
     </div>
   `).join("");
 
-  const resultHtml = deviation.categories.map(renderDeviationResultBlock).join("");
+  const resultHtml = categories.map(renderDeviationResultBlock).join("");
 
-  const deviationItems = deviation.deviations.map((item) => `
+  const deviationItems = deviations.map((item) => `
     <li class="review-deviation-item review-deviation-item-${escapeHtml(item.status)}">
       ${item.status === "ok" ? "✓" : "🟡"} ${escapeHtml(item.text)}
     </li>
   `).join("");
 
-  const deviationHtml = deviation.deviations.length > 0
+  const deviationHtml = deviations.length > 0
     ? `<ul class="review-deviation-items">${deviationItems}</ul>`
-    : `<p class="review-empty">試合データがないため、Deviation を判定できません。</p>`;
+    : `<p class="review-empty">この Plan 期間の試合データがないため、Deviation を判定できません。</p>`;
 
-  $("review-tab-deviation").innerHTML = `
-    <div class="review-deviation-v2">
+  return `
+    <article class="review-deviation-plan-card">
+      <header class="review-deviation-plan-card-head">
+        <h3 class="review-deviation-plan-card-title">Plan #${planNumber}</h3>
+        <p class="review-deviation-plan-card-time">開始 ${escapeHtml(startTime)}</p>
+      </header>
+
       <section class="review-deviation-section">
-        <h3 class="review-deviation-heading">Plan</h3>
+        <h4 class="review-deviation-heading">Plan</h4>
         <div class="review-deviation-plan">${planRows}</div>
       </section>
 
       <section class="review-deviation-section">
-        <h3 class="review-deviation-heading">Result</h3>
+        <h4 class="review-deviation-heading">Result</h4>
         <div class="review-deviation-results">${resultHtml}</div>
       </section>
 
       <section class="review-deviation-section">
-        <h3 class="review-deviation-heading">Deviation</h3>
+        <h4 class="review-deviation-heading">Deviation</h4>
         ${deviationHtml}
       </section>
+    </article>
+  `;
+}
+
+function renderDeviationTab(record) {
+  const segments = buildMatchDeviationContext(record);
+  if (segments.length === 0) {
+    $("review-tab-deviation").innerHTML = `<p class="review-empty">Planがありません。</p>`;
+    return;
+  }
+
+  $("review-tab-deviation").innerHTML = `
+    <div class="review-deviation-v2">
+      ${segments.map(renderDeviationPlanCard).join('<div class="review-deviation-divider" aria-hidden="true"></div>')}
     </div>
   `;
 }
