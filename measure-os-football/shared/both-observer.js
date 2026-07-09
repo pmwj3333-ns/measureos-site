@@ -13,6 +13,12 @@ window.MO_BOTH_OBSERVER = (() => {
         "ゴール期待値が十分に高いと判断できるチャンス。Review および State Engine 連携の基準イベント。",
       teamId: null,
     },
+    lost: {
+      code: "lost",
+      label: "ロスト",
+      description: "攻撃がボールロストで終了した事実。",
+      teamId: null,
+    },
   };
 
   const FINISH_DEFENSE_DEFINITIONS = {
@@ -39,13 +45,12 @@ window.MO_BOTH_OBSERVER = (() => {
       label: "Attack",
       subtitle: "どこを攻略したか",
       layout: "pitch",
-      gridColumns: 4,
+      gridColumns: 3,
       reservedSlots: 0,
       events: [
         { code: "left", label: "左", icon: "←", tier: "intrusion" },
-        { code: "right", label: "右", icon: "→", tier: "intrusion" },
         { code: "center", label: "中央", icon: "↑", tier: "intrusion" },
-        { code: "behind", label: "背後", icon: "↗", tier: "behind" },
+        { code: "right", label: "右", icon: "→", tier: "intrusion" },
       ],
     },
     {
@@ -88,8 +93,8 @@ window.MO_BOTH_OBSERVER = (() => {
       key: "finish",
       label: "Finish (Attack)",
       subtitle: "攻撃結果",
-      gridColumns: 4,
-      reservedSlots: 2,
+      gridColumns: 3,
+      reservedSlots: 0,
       events: [
         {
           code: "shot",
@@ -104,6 +109,13 @@ window.MO_BOTH_OBSERVER = (() => {
           icon: "★",
           tier: "finish",
           definitionKey: "bigChance",
+        },
+        {
+          code: "lost",
+          label: "ロスト",
+          icon: "×",
+          tier: "finish",
+          definitionKey: "lost",
         },
       ],
     },
@@ -143,6 +155,7 @@ window.MO_BOTH_OBSERVER = (() => {
     counterpress: ["counterpress", "即時奪回", "即時奪回成功"],
     shot: ["shot", "シュート", "被シュート"],
     bigChance: ["bigChance", "決定機", "被決定機"],
+    lost: ["lost", "ロスト", "ボールロスト"],
     左: ["left", "左", "左侵入"],
     右: ["right", "右", "右侵入"],
     中央: ["center", "中央", "中央侵入"],
@@ -157,6 +170,7 @@ window.MO_BOTH_OBSERVER = (() => {
     即時奪回: ["counterpress", "即時奪回", "即時奪回成功"],
     シュート: ["shot", "シュート"],
     決定機: ["bigChance", "決定機"],
+    ロスト: ["lost", "ロスト", "ボールロスト"],
     被シュート: ["shot", "被シュート"],
     被決定機: ["bigChance", "被決定機"],
   };

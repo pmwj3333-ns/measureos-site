@@ -83,7 +83,7 @@
     "即時奪回成功",
   ];
   const TRANSITION_EVENTS = ["即時奪回成功", "カウンター開始", "カウンター被弾"];
-  const SET_PIECE_EVENTS = ["CK", "FK", "PK", "決定機"];
+  const SET_PIECE_EVENTS = ["corner_kick", "free_kick", "penalty_kick", "CK", "FK", "PK"];
 
   const PLAN_OPTION_RULE_IDS = {
     attack: {

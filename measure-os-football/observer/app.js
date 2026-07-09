@@ -83,6 +83,8 @@ const observationEventDisplay = {
     iconHtml: true,
   },
   決定機: { icon: "★", label: "決定機", tier: "finish" },
+  ロスト: { icon: "×", label: "ロスト", tier: "finish" },
+  lost: { icon: "×", label: "ロスト", tier: "finish" },
   保持前進: { icon: "⟲", label: "保持前進", tier: "build-up" },
   ロング前進: { icon: "⇢", label: "ロング前進", tier: "build-up" },
   ボール奪取: {
@@ -450,6 +452,11 @@ function escapeHtml(value) {
 
 function resolveObserverEventDef(eventName, categoryKey = null) {
   const normalizedCode = String(eventName || "");
+  const setPieceDef = window.MO_SET_PIECE_OBSERVER?.getEventDef?.(normalizedCode);
+  if (setPieceDef) {
+    return { ...setPieceDef, categoryKey: "setPiece" };
+  }
+
   if (categoryKey) {
     const bothDef = window.MO_BOTH_OBSERVER?.getEventDef?.(normalizedCode, categoryKey);
     if (bothDef) return bothDef;
@@ -517,6 +524,13 @@ function appendReservedObservationSlots(grid, count) {
   }
 }
 
+function renderControllerHintMarkup(eventCode) {
+  if (!isAttackAnalyzeMode()) return "";
+  const hint = window.MO_ATTACK_CONTROLLER_BINDINGS?.getControlHintForEvent?.(eventCode);
+  if (!hint) return "";
+  return `<span class="event-controller-hint" aria-hidden="true">${escapeHtml(hint)}</span>`;
+}
+
 function createCatalogObservationEventButton(eventDef, categoryKey) {
   const button = document.createElement("button");
   button.type = "button";
@@ -534,6 +548,7 @@ function createCatalogObservationEventButton(eventDef, categoryKey) {
   button.innerHTML = `
     ${iconMarkup}
     <span class="event-action-label">${escapeHtml(eventDef.label)}</span>
+    ${renderControllerHintMarkup(eventDef.code)}
   `;
   button.addEventListener("click", () => recordEvent(eventDef.code, button));
   return button;
@@ -685,6 +700,11 @@ function applyAnalyzeModeUi() {
     const key = row.dataset.miniReviewKey;
     row.hidden = hiddenMiniReviewKeys.has(key);
   });
+
+  const controllerGuide = document.querySelector(".dashboard-panel--controller-guide");
+  if (controllerGuide) {
+    controllerGuide.hidden = !isAttackAnalyzeMode();
+  }
 }
 
 function normalizePlanSnapshot(raw) {
@@ -1160,9 +1180,13 @@ function renderMatchEventsLock() {
 }
 
 const SET_PIECE_CATEGORY = {
-  label: "セットプレー",
+  label: "Set Piece",
   layout: "team-split",
-  events: ["CK", "FK", "PK", "決定機"],
+  events: window.MO_SET_PIECE_OBSERVER?.getEvents?.().map((event) => event.code) || [
+    "corner_kick",
+    "free_kick",
+    "penalty_kick",
+  ],
 };
 
 function getSetPieceCategory() {
@@ -1205,14 +1229,20 @@ function renderSetPieceCategory(category) {
     grid.className = "set-piece-grid";
     grid.dataset.eventCount = String(category.events.length);
 
-    category.events.forEach((eventName) => {
+    category.events.forEach((eventCode) => {
+      const eventDef = window.MO_SET_PIECE_OBSERVER?.getEventDef?.(eventCode);
+      const label = eventDef?.label || eventCode;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "set-piece-button";
-      button.dataset.eventName = eventName;
+      button.dataset.eventName = eventDef?.code || eventCode;
+      button.dataset.eventCode = eventDef?.code || eventCode;
       button.dataset.eventTeam = team;
-      button.textContent = eventName;
-      button.addEventListener("click", () => recordEvent(eventName, button, team));
+      button.innerHTML = `
+        <span class="set-piece-button-label">${escapeHtml(label)}</span>
+        ${renderControllerHintMarkup(eventDef?.code || eventCode)}
+      `;
+      button.addEventListener("click", () => recordEvent(eventDef?.code || eventCode, button, team));
       grid.appendChild(button);
     });
 
@@ -1972,6 +2002,7 @@ function renderAll() {
   renderLiveState();
   renderMatchMetricsPanel();
   renderMiniReview();
+  window.ControllerInput?.renderGuide?.(document.getElementById("controller-guide-content"));
 }
 
 function startClock(reset = false) {

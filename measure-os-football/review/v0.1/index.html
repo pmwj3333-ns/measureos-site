@@ -67,7 +67,7 @@
       <div class="review-tabs-bar" role="tablist" aria-label="Review tabs">
         <button type="button" class="review-tab is-active" data-tab="match" role="tab" aria-selected="true">Match</button>
         <button type="button" class="review-tab" data-tab="plan" role="tab" aria-selected="false">Plan</button>
-        <button type="button" class="review-tab" data-tab="state" role="tab" aria-selected="false">State</button>
+        <button type="button" class="review-tab" data-tab="review" role="tab" aria-selected="false">Review</button>
         <button type="button" class="review-tab" data-tab="events" role="tab" aria-selected="false">Events</button>
         <button type="button" class="review-tab" data-tab="deviation" role="tab" aria-selected="false">Deviation</button>
       </div>
@@ -75,7 +75,7 @@
       <div class="review-tab-panels">
         <div id="review-tab-match" class="review-tab-panel" role="tabpanel"></div>
         <div id="review-tab-plan" class="review-tab-panel" role="tabpanel" hidden></div>
-        <div id="review-tab-state" class="review-tab-panel" role="tabpanel" hidden></div>
+        <div id="review-tab-review" class="review-tab-panel" role="tabpanel" hidden></div>
         <div id="review-tab-events" class="review-tab-panel" role="tabpanel" hidden></div>
         <div id="review-tab-deviation" class="review-tab-panel" role="tabpanel" hidden></div>
       </div>
@@ -139,6 +139,12 @@
   <script src="../../shared/attack-plan.js"></script>
   <script src="../../shared/defense-plan.js"></script>
   <script src="../../shared/review-archive.js"></script>
+  <script src="../../shared/attack-observer.js"></script>
+  <script src="../../shared/match-metrics.js"></script>
+  <script src="../../review-engine/v0.1/helpers.js"></script>
+  <script src="../../review-engine/v0.1/attack-narrative.js"></script>
+  <script src="../../review-engine/v0.1/defense-narrative.js"></script>
+  <script src="../../review-engine/v0.1/engine.js"></script>
   <script src="../../state-engine/v0.1/engine.js"></script>
   <script src="../../state-engine/v0.1/shared/attack-finish-rate.js"></script>
   <script src="../../state-engine/v0.1/rules/rule012-attack-left-dominance.js"></script>

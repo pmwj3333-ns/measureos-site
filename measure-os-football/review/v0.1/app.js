@@ -438,110 +438,117 @@ function buildCompositeReason(reasonResults, plan) {
   });
 }
 
-function renderStateLayer(segment) {
-  const categories = getReviewLiveStateCategories(segment.plan).map(({ key, label }) => {
-    const items = segment.states
-      .filter((state) => resolveStateCategoryKey(state.category) === key)
-      .map((state) => `
-        <li class="review-state-point">
-          <time>${escapeHtml(segment.endTime)}</time>
-          <p class="review-status-${escapeHtml(state.status || "green")}">${escapeHtml(state.label)}</p>
-        </li>
-      `)
-      .join("");
+function buildMatchReviewContext(record) {
+  const events = Array.isArray(record.events) ? record.events : [];
+  const history = Array.isArray(record.match?.planHistory) ? record.match.planHistory : [];
+  const lastEntry = history[history.length - 1];
+  const plan = normalizePlanSnapshot(lastEntry?.plan);
+  if (!plan) return null;
 
-    return `
-      <div class="review-state-category">
-        <h4>${escapeHtml(label)}</h4>
-        ${items
-          ? `<ol class="review-state-timeline">${items}</ol>`
-          : `<p class="review-empty">Stateなし</p>`}
-      </div>
-    `;
-  }).join("");
+  const lastEvent = events[events.length - 1];
+  const elapsed = lastEvent ? parseMatchTime(lastEvent.time) : parseMatchTime(lastEntry?.matchTime);
+  const evaluate = window.MO_STATE_ENGINE?.evaluateLiveState;
+  const stateResults = typeof evaluate === "function"
+    ? evaluate({ plan, events, elapsed })
+    : [];
+  const reasonResults = buildReasonResults(stateResults, plan, { elapsed });
+  const compositeReason = buildCompositeReason(reasonResults, plan);
+
+  return window.MO_REVIEW_ENGINE?.buildReviewInput?.({
+    plan,
+    events,
+    elapsed,
+    stateResults,
+    reasonResults,
+    compositeReason,
+  }) || null;
+}
+
+function renderReviewMetricsBlock(metricsBlock) {
+  if (!metricsBlock?.rows?.length) return "";
+
+  const rows = metricsBlock.rows.map((row) => `
+    <div class="review-metrics-row">
+      <span class="review-metrics-label">${escapeHtml(row.label)}</span>
+      <span class="review-metrics-value">${escapeHtml(String(row.percent))}%</span>
+    </div>
+  `).join("");
 
   return `
-    <section class="review-layer-block" data-layer="state">
-      <h3 class="review-layer-title">State</h3>
-      ${categories || `<p class="review-empty">Stateなし</p>`}
+    <section class="review-metrics-block">
+      <h4 class="review-metrics-title">${escapeHtml(metricsBlock.title)}</h4>
+      <div class="review-metrics-rows">${rows}</div>
     </section>
   `;
 }
 
-function renderReasonLayer(segment) {
-  const reasonResults = segment.reasonResults || [];
-  if (reasonResults.length === 0) {
-    return `
-      <section class="review-layer-block" data-layer="reason">
-        <h3 class="review-layer-title">Reason</h3>
-        <p class="review-empty">Reasonなし</p>
-      </section>
-    `;
-  }
-
-  const summariesByCategory = new Map();
-  reasonResults.forEach((reason) => {
-    if (!reason?.summary || !reason.ruleId) return;
-    const state = segment.states.find((item) => item.ruleId === reason.ruleId);
-    const categoryKey = state?.planCategoryKey || resolveCategoryKeyForRuleId(reason.ruleId);
-    if (!categoryKey) return;
-    if (!summariesByCategory.has(categoryKey)) {
-      summariesByCategory.set(categoryKey, []);
-    }
-    summariesByCategory.get(categoryKey).push(reason);
-  });
-
-  const categories = getReviewLiveStateCategories(segment.plan)
-    .filter(({ key }) => (summariesByCategory.get(key) || []).length > 0)
-    .map(({ key, label }) => {
-      const summaries = summariesByCategory.get(key)
-        .map((reason) => `
-          <li class="review-reason-point">
-            <time>${escapeHtml(segment.endTime)}</time>
-            <p class="review-reason-summary">${escapeHtml(reason.summary)}</p>
-          </li>
-        `)
-        .join("");
-
-      return `
-        <div class="review-reason-category">
-          <h4>${escapeHtml(label)}</h4>
-          <ol class="review-reason-timeline">${summaries}</ol>
-        </div>
-      `;
-    })
-    .join("");
+function renderAttackReviewSection(section) {
+  const metricsHtml = (section.metrics || []).map(renderReviewMetricsBlock).join("");
+  const narrativeHtml = section.narrative
+    ? `<blockquote class="review-narrative">${escapeHtml(section.narrative)}</blockquote>`
+    : `<p class="review-empty">Reviewを生成するデータがありません。</p>`;
+  const summaryHtml = section.summary && section.summary !== section.narrative
+    ? `<p class="review-summary">${escapeHtml(section.summary)}</p>`
+    : "";
 
   return `
-    <section class="review-layer-block" data-layer="reason">
-      <h3 class="review-layer-title">Reason</h3>
-      ${categories || `<p class="review-empty">Reasonなし</p>`}
+    <section class="review-mode-block" data-review-mode="attack">
+      <h3 class="review-mode-title">${escapeHtml(section.title)}</h3>
+      <div class="review-metrics-grid">${metricsHtml}</div>
+      ${narrativeHtml}
+      ${summaryHtml}
     </section>
   `;
 }
 
-function renderCompositeReasonLayer(segment) {
-  const composite = segment.compositeReason;
-  if (!composite?.summary) {
-    return `
-      <section class="review-layer-block" data-layer="composite">
-        <h3 class="review-layer-title">Composite Reason</h3>
-        <p class="review-empty">Composite Reasonなし</p>
-      </section>
-    `;
-  }
+function renderDefenseReviewSection(section) {
+  const categoryBlocks = (section.sections || []).map((entry) => `
+    <section class="review-defense-category">
+      <h4 class="review-defense-category-title">${escapeHtml(entry.title)}</h4>
+      <p class="review-defense-category-body">${escapeHtml(entry.narrative || "")}</p>
+    </section>
+  `).join("");
+
+  const narrativeHtml = section.narrative
+    ? `<blockquote class="review-narrative">${escapeHtml(section.narrative)}</blockquote>`
+    : "";
+  const summaryHtml = section.summary && section.summary !== section.narrative
+    ? `<p class="review-summary">${escapeHtml(section.summary)}</p>`
+    : "";
 
   return `
-    <section class="review-layer-block" data-layer="composite">
-      <h3 class="review-layer-title">Composite Reason</h3>
-      <article class="review-composite-point">
-        <time>${escapeHtml(segment.endTime)}</time>
-        <div class="review-composite-body">
-          <p class="review-composite-short review-status-${escapeHtml(composite.severity || "green")}">${escapeHtml(composite.shortSummary || "-")}</p>
-          <p class="review-composite-summary">${escapeHtml(composite.summary)}</p>
-        </div>
-      </article>
+    <section class="review-mode-block" data-review-mode="defense">
+      <h3 class="review-mode-title">${escapeHtml(section.title)}</h3>
+      ${categoryBlocks || `<p class="review-empty">Reviewを生成するデータがありません。</p>`}
+      ${narrativeHtml}
+      ${summaryHtml}
     </section>
+  `;
+}
+
+function renderReviewSection(section) {
+  if (section.key === "attack") return renderAttackReviewSection(section);
+  if (section.key === "defense") return renderDefenseReviewSection(section);
+  return "";
+}
+
+function renderReviewTab(record) {
+  const context = buildMatchReviewContext(record);
+  if (!context) {
+    $("review-tab-review").innerHTML = `<p class="review-empty">Reviewを表示するデータがありません。</p>`;
+    return;
+  }
+
+  const review = window.MO_REVIEW_ENGINE?.generateReview?.(context);
+  if (!review?.sections?.length) {
+    $("review-tab-review").innerHTML = `<p class="review-empty">Reviewを生成できませんでした。</p>`;
+    return;
+  }
+
+  $("review-tab-review").innerHTML = `
+    <div class="review-v2">
+      ${review.sections.map(renderReviewSection).join("")}
+    </div>
   `;
 }
 
@@ -585,23 +592,6 @@ function buildPlanSegments(record) {
       };
     })
     .filter(Boolean);
-}
-
-function renderStateTab(record) {
-  const segments = buildPlanSegments(record);
-  if (segments.length === 0) {
-    $("review-tab-state").innerHTML = `<p class="review-empty">State推移を表示するデータがありません。</p>`;
-    return;
-  }
-
-  $("review-tab-state").innerHTML = segments.map((segment) => `
-    <section class="review-segment-block">
-      <p class="review-segment-head">Plan #${segment.planNumber}（${escapeHtml(segment.startTime)} 〜 ${escapeHtml(segment.endTime)}）</p>
-      ${renderStateLayer(segment)}
-      ${renderReasonLayer(segment)}
-      ${renderCompositeReasonLayer(segment)}
-    </section>
-  `).join("");
 }
 
 function buildEventsTimeline(record) {
@@ -716,7 +706,7 @@ function renderDeviationTab(record) {
 function renderDetailTabs(record) {
   renderMatchTab(record);
   renderPlanTab(record);
-  renderStateTab(record);
+  renderReviewTab(record);
   renderEventsTab(record);
   renderDeviationTab(record);
 }
@@ -770,7 +760,7 @@ function setActiveTab(tabName) {
     button.setAttribute("aria-selected", active ? "true" : "false");
   });
 
-  ["match", "plan", "state", "events", "deviation"].forEach((name) => {
+  ["match", "plan", "review", "events", "deviation"].forEach((name) => {
     const panel = $(`review-tab-${name}`);
     if (panel) panel.hidden = name !== tabName;
   });

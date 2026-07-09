@@ -542,6 +542,115 @@
 .review-status-yellow { color: #f0d56d; }
 .review-status-green { color: #8fe8b4; }
 
+.review-v2 {
+  display: grid;
+  gap: 16px;
+}
+
+.review-mode-block {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.review-mode-title {
+  margin: 0;
+  color: var(--accent-2);
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.review-metrics-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.review-metrics-block {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.review-metrics-title {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.review-metrics-rows {
+  display: grid;
+  gap: 4px;
+}
+
+.review-metrics-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.84rem;
+}
+
+.review-metrics-label {
+  color: var(--muted);
+}
+
+.review-metrics-value {
+  color: var(--text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-narrative {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid rgba(139, 233, 214, 0.72);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.65;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 0 10px 10px 0;
+}
+
+.review-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.review-defense-category {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.review-defense-category-title {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.review-defense-category-body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 @media (max-width: 760px) {
   .review-search-form,
   .review-grid {
@@ -549,6 +658,10 @@
   }
 
   .review-match-list {
+    grid-template-columns: 1fr;
+  }
+
+  .review-metrics-grid {
     grid-template-columns: 1fr;
   }
 

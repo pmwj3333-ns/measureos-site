@@ -13,6 +13,12 @@ window.MO_ATTACK_OBSERVER = (() => {
         "ゴール期待値が十分に高いと判断できるチャンス。Review および State Engine 連携の基準イベント。",
       teamId: null,
     },
+    lost: {
+      code: "lost",
+      label: "ロスト",
+      description: "攻撃がボールロストで終了した事実。",
+      teamId: null,
+    },
   };
 
   const CATEGORIES = [
@@ -21,13 +27,12 @@ window.MO_ATTACK_OBSERVER = (() => {
       label: "Attack",
       subtitle: "どこを攻略したか",
       layout: "pitch",
-      gridColumns: 4,
+      gridColumns: 3,
       reservedSlots: 0,
       events: [
         { code: "left", label: "左", icon: "←", tier: "intrusion", planLabel: "左優位" },
-        { code: "right", label: "右", icon: "→", tier: "intrusion", planLabel: "右優位" },
         { code: "center", label: "中央", icon: "↑", tier: "intrusion", planLabel: "中央攻略" },
-        { code: "behind", label: "背後", icon: "↗", tier: "behind", planLabel: "背後攻略" },
+        { code: "right", label: "右", icon: "→", tier: "intrusion", planLabel: "右優位" },
       ],
     },
     {
@@ -45,8 +50,8 @@ window.MO_ATTACK_OBSERVER = (() => {
       key: "finish",
       label: "Finish",
       subtitle: "攻撃結果",
-      gridColumns: 4,
-      reservedSlots: 2,
+      gridColumns: 3,
+      reservedSlots: 0,
       events: [
         {
           code: "shot",
@@ -62,6 +67,13 @@ window.MO_ATTACK_OBSERVER = (() => {
           tier: "finish",
           definitionKey: "bigChance",
         },
+        {
+          code: "lost",
+          label: "ロスト",
+          icon: "×",
+          tier: "finish",
+          definitionKey: "lost",
+        },
       ],
     },
   ];
@@ -70,19 +82,19 @@ window.MO_ATTACK_OBSERVER = (() => {
     left: ["left", "左", "左侵入"],
     right: ["right", "右", "右侵入"],
     center: ["center", "中央", "中央侵入"],
-    behind: ["behind", "背後"],
     possession: ["possession", "保持前進"],
     long: ["long", "ロング前進"],
     shot: ["shot", "シュート"],
     bigChance: ["bigChance", "決定機"],
+    lost: ["lost", "ロスト", "ボールロスト"],
     "左侵入": ["left", "左", "左侵入"],
     "右侵入": ["right", "右", "右侵入"],
     "中央侵入": ["center", "中央", "中央侵入"],
-    背後: ["behind", "背後"],
     保持前進: ["possession", "保持前進"],
     ロング前進: ["long", "ロング前進"],
     シュート: ["shot", "シュート"],
     決定機: ["bigChance", "決定機"],
+    ロスト: ["lost", "ロスト", "ボールロスト"],
   };
 
   const ALL_EVENTS = CATEGORIES.flatMap((category) =>

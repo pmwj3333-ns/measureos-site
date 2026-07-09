@@ -279,6 +279,17 @@
         </section>
 
         <section
+          class="dashboard-panel dashboard-panel--controller-guide dashboard-zone panel"
+          data-dashboard-panel="controller-guide"
+          aria-labelledby="dashboard-controller-guide-title"
+        >
+          <h2 id="dashboard-controller-guide-title" class="review-section-title">Controller Guide</h2>
+          <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
+            <div id="controller-guide-content" class="controller-guide-content" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section
           class="dashboard-panel dashboard-panel--set-piece dashboard-zone panel event-panel"
           data-dashboard-panel="set-piece"
           aria-labelledby="dashboard-set-piece-title"
@@ -350,6 +361,7 @@
   <script src="../shared/match-context.js"></script>
   <script src="../shared/auth-guard.js"></script>
   <script src="../shared/attack-plan.js"></script>
+  <script src="../shared/set-piece-observer.js"></script>
   <script src="../shared/attack-observer.js"></script>
   <script src="../shared/match-metrics.js"></script>
   <script src="../shared/defense-plan.js"></script>
@@ -409,6 +421,7 @@
   <script src="./events-defense.js"></script>
   <script src="./events-both.js"></script>
   <script src="./events.js"></script>
+  <script src="./controller-bindings.js"></script>
   <script src="./controller-input.js"></script>
   <script src="./app.js"></script>
 </body>
