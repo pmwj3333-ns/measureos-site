@@ -642,52 +642,88 @@ function renderEventsTab(record) {
   `;
 }
 
-function computeDeviationsBySegment(record) {
-  const segments = buildPlanSegments(record);
-  const deviationStatuses = new Set(["yellow", "orange", "red"]);
+function buildMatchDeviationContext(record) {
+  const events = Array.isArray(record.events) ? record.events : [];
+  const history = Array.isArray(record.match?.planHistory) ? record.match.planHistory : [];
+  const lastEntry = history[history.length - 1];
+  const plan = normalizePlanSnapshot(lastEntry?.plan);
+  if (!plan) return null;
 
-  return segments.map((segment) => ({
-    planNumber: segment.planNumber,
-    startTime: segment.startTime,
-    endTime: segment.endTime,
-    items: segment.states
-      .filter((state) => deviationStatuses.has(state.status))
-      .map((state) => ({
-        category: state.category,
-        label: state.label,
-        status: state.status,
-        time: segment.endTime,
-      })),
-  }));
+  const matchMetrics = window.MO_MATCH_METRICS?.aggregate?.(events) || {
+    attack: [],
+    buildUp: [],
+  };
+
+  return window.MO_REVIEW_DEVIATION?.buildDeviation?.({ plan, matchMetrics }) || null;
+}
+
+function renderDeviationResultBlock(category) {
+  const rows = (category.rows || []).map((row) => `
+    <div class="review-deviation-result-row">
+      <span class="review-deviation-result-label">${escapeHtml(row.label)}</span>
+      <span class="review-deviation-result-value">${escapeHtml(String(row.percent))}%</span>
+    </div>
+  `).join("");
+
+  return `
+    <section class="review-deviation-result-group">
+      <h4 class="review-deviation-result-title">${escapeHtml(category.title)}</h4>
+      <div class="review-deviation-result-rows">${rows}</div>
+    </section>
+  `;
 }
 
 function renderDeviationTab(record) {
-  const segments = computeDeviationsBySegment(record);
-  const hasDeviations = segments.some((segment) => segment.items.length > 0);
+  const deviation = buildMatchDeviationContext(record);
+  if (!deviation) {
+    $("review-tab-deviation").innerHTML = `<p class="review-empty">Planがありません。</p>`;
+    return;
+  }
 
-  if (!hasDeviations) {
+  if (deviation.categories.length === 0) {
     $("review-tab-deviation").innerHTML = `
-      <p class="review-empty">Yellow / Orange / Red の Deviation は検出されませんでした。Plan 区間ごとのズレはここに表示されます。</p>
+      <p class="review-empty">Attack / Build Up の Plan が設定されていないため、Deviation を表示できません。</p>
     `;
     return;
   }
 
-  $("review-tab-deviation").innerHTML = segments
-    .filter((segment) => segment.items.length > 0)
-    .map((segment) => `
-      <section class="review-deviation-segment review-segment-block">
-        <h3>Plan #${segment.planNumber}（${escapeHtml(segment.startTime)} 〜 ${escapeHtml(segment.endTime)}）</h3>
-        <ol class="review-deviation-list">
-          ${segment.items.map((item) => `
-            <li class="review-deviation-row">
-              <time>${escapeHtml(item.time)}</time>
-              <span class="review-status-${escapeHtml(item.status)}">${escapeHtml(item.category)} — ${escapeHtml(item.label)}</span>
-            </li>
-          `).join("")}
-        </ol>
+  const planRows = deviation.categories.map((category) => `
+    <div class="review-deviation-plan-row">
+      <span class="review-deviation-plan-label">${escapeHtml(category.title)}</span>
+      <span class="review-deviation-plan-value">${escapeHtml(category.planLabel)}</span>
+    </div>
+  `).join("");
+
+  const resultHtml = deviation.categories.map(renderDeviationResultBlock).join("");
+
+  const deviationItems = deviation.deviations.map((item) => `
+    <li class="review-deviation-item review-deviation-item-${escapeHtml(item.status)}">
+      ${item.status === "ok" ? "✓" : "🟡"} ${escapeHtml(item.text)}
+    </li>
+  `).join("");
+
+  const deviationHtml = deviation.deviations.length > 0
+    ? `<ul class="review-deviation-items">${deviationItems}</ul>`
+    : `<p class="review-empty">試合データがないため、Deviation を判定できません。</p>`;
+
+  $("review-tab-deviation").innerHTML = `
+    <div class="review-deviation-v2">
+      <section class="review-deviation-section">
+        <h3 class="review-deviation-heading">Plan</h3>
+        <div class="review-deviation-plan">${planRows}</div>
       </section>
-    `)
-    .join("");
+
+      <section class="review-deviation-section">
+        <h3 class="review-deviation-heading">Result</h3>
+        <div class="review-deviation-results">${resultHtml}</div>
+      </section>
+
+      <section class="review-deviation-section">
+        <h3 class="review-deviation-heading">Deviation</h3>
+        ${deviationHtml}
+      </section>
+    </div>
+  `;
 }
 
 function renderDetailTabs(record) {
