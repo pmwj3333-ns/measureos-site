@@ -50,6 +50,13 @@ window.MO_REVIEW_DEVIATION = (() => {
     return label ? `${label}侵入` : "侵入";
   }
 
+  function isSecondHighest(items, code) {
+    const ranked = (Array.isArray(items) ? items : [])
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.percent - a.percent);
+    return ranked.length >= 2 && ranked[1].code === code;
+  }
+
   function resolveSegmentEndTime(history, index) {
     const nextEntry = history[index + 1];
     if (nextEntry?.matchTime) return nextEntry.matchTime;
@@ -108,27 +115,34 @@ window.MO_REVIEW_DEVIATION = (() => {
     if (dominant.code === planCode && dominant.percent >= 50) {
       return {
         status: "ok",
-        text: `${plannedPhrase}${dominant.percent}%が最多となり、Planどおり${planLabel}を実現できました。`,
+        text: `${plannedPhrase}が最も多く見られ、${planLabel}の傾向を維持できました。`,
       };
     }
 
     if (dominant.code === planCode && dominant.percent < 50) {
       return {
         status: "warn",
-        text: `${plannedPhrase}は${planned.percent}%まで増加しましたが、Planどおりの主体には至らず、Planは十分には実現できませんでした。`,
+        text: `${plannedPhrase}は増えましたが、主体には至りませんでした。`,
+      };
+    }
+
+    if (planned.percent > 0 && isSecondHighest(attackMetrics, planCode)) {
+      return {
+        status: "warn",
+        text: `${plannedPhrase}は増えましたが、主体には至りませんでした。`,
       };
     }
 
     if (planned.percent > 0) {
       return {
         status: "warn",
-        text: `${plannedPhrase}は${planned.percent}%まで増加しましたが、${dominantPhrase}(${dominant.percent}%)が最も多く、Planは十分には実現できませんでした。`,
+        text: `${dominantPhrase}が中心となり、Planとは異なる攻撃になりました。`,
       };
     }
 
     return {
       status: "warn",
-      text: `${dominantPhrase}(${dominant.percent}%)が最も多く、Planの${planLabel}は十分には実現できませんでした。`,
+      text: `${dominantPhrase}が中心となり、Planの${planLabel}から外れた攻撃になりました。`,
     };
   }
 
@@ -136,19 +150,18 @@ window.MO_REVIEW_DEVIATION = (() => {
     const dominant = dominantMetricItem(buildUpMetrics);
     if (!dominant) return null;
 
-    const planned = findMetricItem(buildUpMetrics, planCode);
     const shortLabel = BUILD_UP_SHORT_LABELS[planCode] || planLabel;
 
     if (dominant.code === planCode) {
       return {
         status: "ok",
-        text: `${planLabel}${planned.percent}%となり、Planどおり${shortLabel}主体で試合を進められました。`,
+        text: `${shortLabel}主体で試合を進められました。`,
       };
     }
 
     return {
       status: "warn",
-      text: `${dominant.label}${dominant.percent}%が主体となり、Planどおり${shortLabel}主体では進められず、Planは十分には実現できませんでした。`,
+      text: `${dominant.label}が主体となり、${shortLabel}主体のPlanから外れました。`,
     };
   }
 
