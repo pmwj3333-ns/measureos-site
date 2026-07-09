@@ -3360,13 +3360,38 @@ body[data-analyze-mode="attack"] .event-categories {
 }
 
 .event-category--attack-mode .event-action-button[data-event-code="center"] {
-  grid-column: 3;
+  grid-column: 1;
   grid-row: 2;
 }
 
 .event-category--attack-mode .event-action-button[data-event-code="left"] {
   grid-column: 2;
   grid-row: 3;
+}
+
+.event-category--attack-mode[data-category-key="finish"] .event-grid-attack-slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(52px, auto));
+  min-height: 168px;
+}
+
+.event-category--attack-mode[data-category-key="finish"] .event-action-button[data-event-code="shot"] {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.event-category--attack-mode[data-category-key="finish"] .event-action-button[data-event-code="lost"] {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.event-category--attack-mode[data-category-key="finish"] .event-action-button[data-event-code="bigChance"] {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.event-category--attack-mode[data-category-key="buildUp"] .event-grid-attack-slots {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .event-category--attack-mode .event-action-button[data-event-code="lost"] {
@@ -3406,7 +3431,102 @@ body[data-analyze-mode="attack"] .event-categories {
   gap: 12px;
 }
 
-.controller-guide-group {
+.controller-guide-layout {
+  display: grid;
+  gap: 14px;
+}
+
+.controller-guide-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 1.1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.controller-guide-shoulder {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+
+.controller-guide-shoulder-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.controller-guide-shoulder-list,
+.controller-guide-set-piece-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.controller-guide-shoulder-item,
+.controller-guide-set-piece-item {
+  display: grid;
+  grid-template-columns: minmax(36px, auto) 14px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.controller-guide-center {
+  display: flex;
+  justify-content: center;
+}
+
+.controller-guide-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.controller-guide-dpad-cell {
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+}
+
+.controller-guide-dpad-cell--up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.controller-guide-dpad-cell--left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.controller-guide-dpad-cell--right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.controller-guide-dpad-cell--down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.controller-guide-set-piece {
   display: grid;
   gap: 8px;
   padding: 10px 12px;
@@ -3423,20 +3543,8 @@ body[data-analyze-mode="attack"] .event-categories {
   letter-spacing: 0.1em;
 }
 
-.controller-guide-list {
-  display: grid;
-  gap: 6px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.controller-guide-item {
-  display: grid;
-  grid-template-columns: minmax(88px, 0.9fr) 16px minmax(0, 1fr);
-  gap: 8px;
-  align-items: center;
-  font-size: 0.84rem;
+.controller-guide-set-piece-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .controller-guide-control {
@@ -3452,6 +3560,7 @@ body[data-analyze-mode="attack"] .event-categories {
 .controller-guide-label {
   color: var(--text);
   font-weight: 700;
+  font-size: 0.78rem;
 }
 
 body[data-analyze-mode="defense"] .dashboard-panel--controller-guide,
@@ -3473,11 +3582,28 @@ body[data-analyze-mode="both"] .dashboard-panel--controller-guide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .controller-guide-body {
+    grid-template-columns: 1fr;
+  }
+
+  .controller-guide-set-piece-list {
+    grid-template-columns: 1fr;
+  }
+
   .event-category--attack-mode .event-action-button[data-event-code="center"],
   .event-category--attack-mode .event-action-button[data-event-code="left"],
   .event-category--attack-mode .event-action-button[data-event-code="right"] {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .event-category--attack-mode[data-category-key="finish"] .event-grid-attack-slots,
+  .event-category--attack-mode[data-category-key="finish"] .event-action-button[data-event-code="shot"],
+  .event-category--attack-mode[data-category-key="finish"] .event-action-button[data-event-code="lost"],
+  .event-category--attack-mode[data-category-key="finish"] .event-action-button[data-event-code="bigChance"] {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: auto;
   }
 
   .event-category--attack-mode .event-grid-attack-pitch {

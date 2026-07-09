@@ -134,22 +134,7 @@ window.ControllerInput = (() => {
 
   function renderGuide(host) {
     if (!host) return;
-
-    const rows = bindings()?.GUIDE_ROWS || [];
-    host.innerHTML = rows.map((group) => `
-      <section class="controller-guide-group">
-        <h3 class="controller-guide-group-title">${group.group}</h3>
-        <ul class="controller-guide-list">
-          ${group.items.map((item) => `
-            <li class="controller-guide-item">
-              <span class="controller-guide-control">${item.control}</span>
-              <span class="controller-guide-arrow" aria-hidden="true">→</span>
-              <span class="controller-guide-label">${item.label}</span>
-            </li>
-          `).join("")}
-        </ul>
-      </section>
-    `).join("");
+    host.innerHTML = bindings()?.renderGuideMarkup?.() || "";
   }
 
   function initGuide() {
