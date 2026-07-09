@@ -2369,8 +2369,6 @@ details[open] summary::before {
     auto
     auto
     auto
-    auto
-    auto
     auto;
   gap: 10px;
   min-height: 0;
@@ -3005,21 +3003,8 @@ details[open] summary::before {
   white-space: nowrap;
 }
 
-.dashboard-panel--set-piece .dashboard-panel-body,
 .dashboard-panel--match-events .dashboard-panel-body {
   padding-top: 0;
-}
-
-.dashboard-panel--set-piece .event-category-set-piece {
-  margin: 0;
-}
-
-.dashboard-panel--set-piece .event-category-set-piece h3 {
-  display: none;
-}
-
-.set-piece-categories {
-  width: 100%;
 }
 
 .dashboard-panel--match-events.match-events-panel {
@@ -3030,7 +3015,7 @@ details[open] summary::before {
   margin-top: 0;
 }
 
-.dashboard-panel--set-piece.is-locked .set-piece-button,
+.dashboard-panel--manual-input.is-locked .set-piece-button,
 .dashboard-panel--manual-input.is-locked .event-grid button,
 .dashboard-panel--manual-input.is-locked .event-action-button {
   opacity: 0.45;
@@ -3173,9 +3158,14 @@ details[open] summary::before {
 .dashboard-panel--manual-input .event-category[data-category="Finish"],
 .dashboard-panel--manual-input .event-category[data-category="Finish (Attack)"],
 .dashboard-panel--manual-input .event-category[data-category="Finish (Defense)"],
-.dashboard-panel--manual-input .event-category[data-category="Transition"] {
+.dashboard-panel--manual-input .event-category[data-category="Transition"],
+.dashboard-panel--manual-input .event-category-set-piece {
   grid-column: 1;
   grid-row: auto;
+}
+
+body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category-set-piece {
+  grid-column: 1 / -1;
 }
 
 body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-categories {
@@ -3305,7 +3295,7 @@ body[data-analyze-mode="both"] .dashboard-panel--manual-input .event-category[da
   }
 
   .observer-dashboard-grid {
-    grid-template-rows: repeat(8, auto);
+    grid-template-rows: repeat(6, auto);
   }
 
   .dashboard-panel--half-total .mini-review-body {
@@ -3468,146 +3458,8 @@ body[data-analyze-mode="attack"] .event-categories {
   margin-top: 2px;
 }
 
-.controller-guide-content {
-  display: grid;
-  gap: 12px;
-}
-
-.controller-guide-layout {
-  display: grid;
-  gap: 14px;
-}
-
-.controller-guide-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, 1.1fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 14px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.controller-guide-shoulder {
-  display: grid;
-  gap: 8px;
-  align-content: center;
-}
-
-.controller-guide-shoulder-title {
+.dashboard-panel--manual-input .event-category-set-piece {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.controller-guide-shoulder-list,
-.controller-guide-set-piece-list {
-  display: grid;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.controller-guide-shoulder-item,
-.controller-guide-set-piece-item {
-  display: grid;
-  grid-template-columns: minmax(36px, auto) 14px minmax(0, 1fr);
-  gap: 6px;
-  align-items: center;
-  font-size: 0.82rem;
-}
-
-.controller-guide-center {
-  display: flex;
-  justify-content: center;
-}
-
-.controller-guide-dpad {
-  display: grid;
-  grid-template-columns: repeat(3, 52px);
-  grid-template-rows: repeat(3, 52px);
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.14);
-}
-
-.controller-guide-dpad-cell {
-  display: grid;
-  place-content: center;
-  gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  text-align: center;
-}
-
-.controller-guide-dpad-cell--up {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.controller-guide-dpad-cell--left {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.controller-guide-dpad-cell--right {
-  grid-column: 3;
-  grid-row: 2;
-}
-
-.controller-guide-dpad-cell--down {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-.controller-guide-set-piece {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.controller-guide-group-title {
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.74rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-}
-
-.controller-guide-set-piece-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.controller-guide-control {
-  color: var(--accent-2);
-  font-weight: 800;
-}
-
-.controller-guide-arrow {
-  color: var(--muted);
-  text-align: center;
-}
-
-.controller-guide-label {
-  color: var(--text);
-  font-weight: 700;
-  font-size: 0.78rem;
-}
-
-body[data-analyze-mode="defense"] .dashboard-panel--controller-guide,
-body[data-analyze-mode="both"] .dashboard-panel--controller-guide {
-  display: none;
 }
 
 .event-action-slot--reserved {
@@ -3622,14 +3474,6 @@ body[data-analyze-mode="both"] .dashboard-panel--controller-guide {
   .event-grid-attack-slots,
   .event-grid-attack-pitch {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .controller-guide-body {
-    grid-template-columns: 1fr;
-  }
-
-  .controller-guide-set-piece-list {
-    grid-template-columns: 1fr;
   }
 
   .event-category--attack-mode .event-action-button[data-event-code="center"],

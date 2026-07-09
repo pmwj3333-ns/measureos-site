@@ -555,10 +555,18 @@ function createCatalogObservationEventButton(eventDef, categoryKey) {
   return button;
 }
 
-function renderObserverCatalogCategories(host, catalog) {
+function renderObserverCatalogCategories(host, catalog, categoryOrder = null) {
   if (!catalog || !host) return;
 
-  catalog.getCategories().forEach((category) => {
+  let categories = catalog.getCategories();
+  if (Array.isArray(categoryOrder) && categoryOrder.length > 0) {
+    const categoryMap = new Map(categories.map((category) => [category.key, category]));
+    categories = categoryOrder
+      .map((key) => categoryMap.get(key))
+      .filter(Boolean);
+  }
+
+  categories.forEach((category) => {
     const section = document.createElement("section");
     section.className = "event-category event-category--attack-mode";
     section.dataset.category = category.label;
@@ -707,11 +715,6 @@ function applyAnalyzeModeUi() {
     const key = row.dataset.miniReviewKey;
     row.hidden = hiddenMiniReviewKeys.has(key);
   });
-
-  const controllerGuide = document.querySelector(".dashboard-panel--controller-guide");
-  if (controllerGuide) {
-    controllerGuide.hidden = !isAttackAnalyzeMode();
-  }
 }
 
 function normalizePlanSnapshot(raw) {
@@ -1165,10 +1168,7 @@ function renderPostMatch() {
 function renderObservationLock() {
   const locked = !isObservationOpen();
   document.querySelector(".dashboard-panel--manual-input.event-panel")?.classList.toggle("is-locked", locked);
-  document.querySelector(".dashboard-panel--set-piece.event-panel")?.classList.toggle("is-locked", locked);
-  document.querySelectorAll(
-    ".dashboard-panel--manual-input [data-event-name], .dashboard-panel--set-piece [data-event-name]",
-  ).forEach((button) => {
+  document.querySelectorAll(".dashboard-panel--manual-input [data-event-name]").forEach((button) => {
     button.disabled = locked;
   });
   const lock = $("observation-lock");
@@ -1203,10 +1203,8 @@ function getSetPieceCategory() {
   return categories.find((category) => category.layout === "team-split") || SET_PIECE_CATEGORY;
 }
 
-function renderSetPieceButtons() {
-  const host = $("set-piece-categories");
+function appendManualInputSetPiece(host) {
   if (!host) return;
-  host.innerHTML = "";
   host.appendChild(renderSetPieceCategory(getSetPieceCategory()));
 }
 
@@ -1263,20 +1261,24 @@ function renderSetPieceCategory(category) {
 
 function renderEventButtons() {
   const host = $("event-categories");
+  if (!host) return;
   host.innerHTML = "";
 
   if (isAttackAnalyzeMode() && window.MO_ATTACK_OBSERVER) {
-    renderObserverCatalogCategories(host, window.MO_ATTACK_OBSERVER);
+    renderObserverCatalogCategories(host, window.MO_ATTACK_OBSERVER, ["buildUp", "attack", "finish"]);
+    appendManualInputSetPiece(host);
     return;
   }
 
   if (isDefenseAnalyzeMode() && window.MO_DEFENSE_OBSERVER) {
     renderObserverCatalogCategories(host, window.MO_DEFENSE_OBSERVER);
+    appendManualInputSetPiece(host);
     return;
   }
 
   if (isBothAnalyzeMode() && window.MO_BOTH_OBSERVER) {
     renderObserverCatalogCategories(host, window.MO_BOTH_OBSERVER);
+    appendManualInputSetPiece(host);
     return;
   }
 
@@ -1303,6 +1305,8 @@ function renderEventButtons() {
     section.append(title, grid);
     host.appendChild(section);
   });
+
+  appendManualInputSetPiece(host);
 }
 
 function renderMatchEventButtons() {
@@ -2076,7 +2080,6 @@ function renderAll() {
   renderLiveState();
   renderMatchMetricsPanel();
   renderMiniReview();
-  window.ControllerInput?.renderGuide?.(document.getElementById("controller-guide-content"));
 }
 
 function startClock(reset = false) {
@@ -2306,7 +2309,6 @@ document.addEventListener("DOMContentLoaded", () => {
   applyAnalyzeModeUi();
   const manualInputPanel = document.querySelector(".dashboard-panel--manual-input");
   if (manualInputPanel) manualInputPanel.open = false;
-  renderSetPieceButtons();
   renderEventButtons();
   ControllerInput.init();
   renderMatchEventButtons();

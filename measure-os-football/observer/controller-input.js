@@ -1,6 +1,5 @@
 window.ControllerInput = (() => {
   const bindings = () => window.MO_ATTACK_CONTROLLER_BINDINGS;
-  const SET_PIECE_SELECTOR = ".dashboard-panel--set-piece";
 
   let initialized = false;
   let rafId = null;
@@ -17,11 +16,6 @@ window.ControllerInput = (() => {
     return !panel || panel.classList.contains("is-locked");
   }
 
-  function isSetPieceLocked() {
-    const panel = document.querySelector(SET_PIECE_SELECTOR);
-    return !panel || panel.classList.contains("is-locked");
-  }
-
   function shouldIgnoreTarget(target) {
     if (!target) return false;
     const tag = target.tagName?.toLowerCase();
@@ -31,10 +25,10 @@ window.ControllerInput = (() => {
 
   function findManualInputButton(eventCode) {
     const selectors = [
-      `#event-categories button[data-event-code="${eventCode}"]`,
-      `#event-categories button[data-event-name="${eventCode}"]`,
-      `.dashboard-panel--manual-input button[data-event-code="${eventCode}"]`,
-      `.dashboard-panel--manual-input button[data-event-name="${eventCode}"]`,
+      `#event-categories button[data-event-code="${eventCode}"]:not([data-event-team])`,
+      `#event-categories button[data-event-name="${eventCode}"]:not([data-event-team])`,
+      `.dashboard-panel--manual-input button[data-event-code="${eventCode}"]:not([data-event-team])`,
+      `.dashboard-panel--manual-input button[data-event-name="${eventCode}"]:not([data-event-team])`,
     ];
 
     for (const selector of selectors) {
@@ -46,16 +40,18 @@ window.ControllerInput = (() => {
   }
 
   function findSetPieceButton(eventCode) {
+    const selectedTeam = document.querySelector(".team-toggle button.selected")?.dataset.team || "home";
     const selectors = [
-      `${SET_PIECE_SELECTOR} button[data-event-code="${eventCode}"]`,
-      `${SET_PIECE_SELECTOR} button[data-event-name="${eventCode}"]`,
+      `#event-categories button.set-piece-button[data-event-code="${eventCode}"]`,
+      `#event-categories button[data-event-code="${eventCode}"][data-event-team]`,
+      `.dashboard-panel--manual-input button.set-piece-button[data-event-code="${eventCode}"]`,
+      `.dashboard-panel--manual-input button[data-event-code="${eventCode}"][data-event-team]`,
     ];
 
     for (const selector of selectors) {
       const buttons = document.querySelectorAll(selector);
       if (buttons.length === 0) continue;
 
-      const selectedTeam = document.querySelector(".team-toggle button.selected")?.dataset.team || "home";
       const preferred = Array.from(buttons).find((button) => button.dataset.eventTeam === selectedTeam);
       return preferred || buttons[0];
     }
@@ -64,12 +60,12 @@ window.ControllerInput = (() => {
   }
 
   function findEventButton(eventCode) {
+    if (isManualInputLocked()) return null;
+
     if (bindings()?.isSetPieceEventCode?.(eventCode)) {
-      if (isSetPieceLocked()) return null;
       return findSetPieceButton(eventCode);
     }
 
-    if (isManualInputLocked()) return null;
     return findManualInputButton(eventCode);
   }
 
@@ -132,26 +128,15 @@ window.ControllerInput = (() => {
     rafId = window.requestAnimationFrame(pollGamepads);
   }
 
-  function renderGuide(host) {
-    if (!host) return;
-    host.innerHTML = bindings()?.renderGuideMarkup?.() || "";
-  }
-
-  function initGuide() {
-    renderGuide(document.getElementById("controller-guide-content"));
-  }
-
   function init() {
     if (initialized) return;
     initialized = true;
     document.addEventListener("keydown", handleKeyDown, true);
-    initGuide();
     rafId = window.requestAnimationFrame(pollGamepads);
   }
 
   return {
     init,
-    renderGuide,
     triggerEventCode,
   };
 })();
