@@ -1,5 +1,5 @@
 window.MO_REVIEW_MINI_ADAPTER = (() => {
-  const MINI_REVIEW_FORMAT_VERSION = 6;
+  const MINI_REVIEW_FORMAT_VERSION = 7;
   const MINI_REVIEW_PLACEHOLDER = "--";
 
   function parseMatchTime(timeValue) {
@@ -28,6 +28,65 @@ window.MO_REVIEW_MINI_ADAPTER = (() => {
     };
   }
 
+  function shortenFlowTextForCard(flowText, compositeReason) {
+    const key = compositeReason?.compositeReasonKey || "";
+    const short = String(compositeReason?.shortSummary || "").trim();
+    const text = String(flowText || "").trim();
+
+    const FLOW_BY_KEY = {
+      "composite.attack.green.attack_flow_working": "攻撃が継続しています。",
+      "composite.attack.yellow.attack_stalled_build_up_working": "攻撃が継続しています。",
+      "composite.attack.yellow.attack_working_build_up_stalled": "攻撃が継続しています。",
+      "composite.attack.yellow.mixed_pressure": short ? `${short}の流れです。` : "攻撃の流れです。",
+      "composite.attack.orange.pressure": short ? `${short}の流れです。` : "攻撃の流れです。",
+      "composite.attack.red.breakdown": short ? `${short}の流れです。` : "攻撃の流れです。",
+      "composite.attack.unknown.aggregated_rule_summaries": short ? `${short}の流れです。` : "攻撃の流れです。",
+      "composite.defense.green.defense_switch_working": "守備が機能しています。",
+      "composite.defense.yellow.central_penetration_allowed": "中央侵入を許しています。",
+      "composite.defense.yellow.mixed_pressure": short ? `${short}の流れです。` : "守備の流れです。",
+      "composite.defense.orange.counter_or_shot_pressure": short ? `${short}の流れです。` : "守備の流れです。",
+      "composite.defense.orange.mixed_pressure": short ? `${short}の流れです。` : "守備の流れです。",
+      "composite.defense.red.breakdown": short ? `${short}の流れです。` : "守備の流れです。",
+      "composite.defense.unknown.aggregated_rule_summaries": short ? `${short}の流れです。` : "守備の流れです。",
+      "composite.both.green.balanced": "攻守が機能しています。",
+      "composite.both.mixed.attack_working_defense_central_pressure": "攻守が拮抗しています。",
+      "composite.both.mixed.attack_working_defense_counter_pressure": "攻守が拮抗しています。",
+      "composite.both.mixed.attack_working_defense_pressure": "攻守が拮抗しています。",
+      "composite.both.mixed.attack_without_finish_defense_working": "攻守が拮抗しています。",
+      "composite.both.mixed.attack_pressure_defense_working": "攻守が拮抗しています。",
+      "composite.both.yellow.mixed_pressure": "攻守が拮抗しています。",
+      "composite.both.orange.pressure": short ? `${short}の流れです。` : "攻守の流れです。",
+      "composite.both.red.breakdown": short ? `${short}の流れです。` : "攻守の流れです。",
+      "composite.unknown.aggregated_rule_summaries": short ? `${short}の流れです。` : "攻守の流れです。",
+    };
+
+    if (FLOW_BY_KEY[key]) {
+      return FLOW_BY_KEY[key];
+    }
+
+    const patterns = [
+      [/が継続し、.+?(?:しています|到達しています)。/, "攻撃が継続しています。"],
+      [/が継続していますが、.+?(?:していません|届いていません)。/, "攻撃が継続しています。"],
+      [/は機能していますが、.+?(?:していません|届いていません)。/, "攻撃が継続しています。"],
+      [/と.+?により、相手の継続した攻撃を抑えています。/, "守備が機能しています。"],
+      [/攻撃と守備の切り替えが機能し、相手の前進を抑えています。/, "攻守が機能しています。"],
+      [/(.+?)の展開です。$/, "$1の流れです。"],
+      [/(.+?)の場面が見られます。$/, "$1の流れです。"],
+    ];
+
+    for (const [pattern, replacement] of patterns) {
+      if (pattern.test(text)) {
+        return text.replace(pattern, replacement);
+      }
+    }
+
+    if (text.length > 16 && short) {
+      return `${short}の流れです。`;
+    }
+
+    return text || (short ? `${short}の流れです。` : null);
+  }
+
   function buildSetPieceEntry(events) {
     const matchesEventName = window.MO_SET_PIECE_OBSERVER?.matchesEventName;
     const getEventLabel = window.MO_SET_PIECE_OBSERVER?.getEventLabel;
@@ -52,12 +111,16 @@ window.MO_REVIEW_MINI_ADAPTER = (() => {
 
   function mapReviewToMiniReviewCards(review, compositeReason, events) {
     const planText = window.MO_REVIEW_MINI_NARRATIVE?.planMiniNarrative?.(compositeReason);
-    const flowText = window.MO_REVIEW_MINI_NARRATIVE?.flowMiniNarrative?.(compositeReason);
+    const flowText = shortenFlowTextForCard(
+      window.MO_REVIEW_MINI_NARRATIVE?.flowMiniNarrative?.(compositeReason)
+        || compositeReason?.summary,
+      compositeReason,
+    );
     const combineAttackCardText = window.MO_REVIEW_MINI_NARRATIVE?.combineAttackCardText;
 
     const cards = {
       plan: createEntry(planText || compositeReason?.shortSummary),
-      flow: createEntry(flowText || compositeReason?.summary),
+      flow: createEntry(flowText),
       attack: createEntry(null),
       defense: createEntry(null),
       buildUp: createEntry(null),

@@ -1867,7 +1867,7 @@ function renderLiveState() {
 
 function createEmptyMiniReviewSnapshot(half = "first") {
   return {
-    formatVersion: 6,
+    formatVersion: 7,
     half: half === "second" ? "second" : "first",
     plan: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
     flow: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
@@ -1905,7 +1905,7 @@ function isLegacyMiniReviewSnapshot(snapshot) {
   }
 
   if (!snapshot || typeof snapshot !== "object") return true;
-  return Number(snapshot.formatVersion) !== 6;
+  return Number(snapshot.formatVersion) !== 7;
 }
 
 function refreshFirstHalfMiniReviewIfNeeded() {
