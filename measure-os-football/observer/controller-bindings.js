@@ -22,13 +22,17 @@ window.MO_ATTACK_CONTROLLER_BINDINGS = (() => {
   };
 
   const KEYBOARD_TO_EVENT = {
-    y: "long",
-    b: "possession",
-    l: "lost",
+    d: "right",
+    a: "left",
+    s: "center",
+    g: "shot",
+    j: "lost",
     k: "bigChance",
-    h: "corner_kick",
-    x: "free_kick",
-    p: "penalty_kick",
+    o: "long",
+    l: "possession",
+    m: "corner_kick",
+    y: "free_kick",
+    b: "penalty_kick",
   };
 
   const GAMEPAD_TO_EVENT = {
