@@ -2845,6 +2845,8 @@ details[open] summary::before {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
+  height: auto;
+  min-height: 0;
 }
 
 .dashboard-panel--half-total .mini-review-label {
@@ -2858,6 +2860,28 @@ details[open] summary::before {
   font-size: 0.92rem;
   font-weight: 800;
   line-height: 1.35;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+  height: auto;
+  text-align: left;
+}
+
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="attack"] .mini-review-row[data-mini-review-key="attack"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="attack"] .mini-review-row[data-mini-review-key="buildUp"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="attack"] .mini-review-row[data-mini-review-key="setPiece"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="defense"] .mini-review-row[data-mini-review-key="defense"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="defense"] .mini-review-row[data-mini-review-key="transition"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="defense"] .mini-review-row[data-mini-review-key="setPiece"] {
+  grid-column: 1 / -1;
+}
+
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="attack"] .mini-review-row[data-mini-review-key="defense"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="attack"] .mini-review-row[data-mini-review-key="transition"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="defense"] .mini-review-row[data-mini-review-key="attack"],
+.dashboard-panel--half-total .mini-review-body[data-review-analyze-mode="defense"] .mini-review-row[data-mini-review-key="buildUp"] {
+  display: none;
 }
 
 .dashboard-panel--event-log {

@@ -2001,6 +2001,11 @@ function renderMiniReview() {
   const titleEl = $("dashboard-half-total-title");
   const reviewAnalyzeMode = snapshot?.analyzeMode || analyzeMode;
   const hiddenMiniReviewKeys = getHiddenMiniReviewKeysForMode(reviewAnalyzeMode);
+  const miniReviewBody = document.querySelector(".dashboard-panel--half-total .mini-review-body");
+
+  if (miniReviewBody) {
+    miniReviewBody.dataset.reviewAnalyzeMode = reviewAnalyzeMode;
+  }
 
   if (titleEl) {
     if (half === "second") {
@@ -2018,6 +2023,7 @@ function renderMiniReview() {
     if (!key || !valueEl) return;
 
     row.hidden = hiddenMiniReviewKeys.has(key);
+    if (row.hidden) return;
 
     const entry = normalizeMiniReviewEntry(snapshot?.[key]);
     valueEl.textContent = entry.text;
