@@ -10,6 +10,11 @@ window.MO_REVIEW_DEVIATION = (() => {
     right: "右",
   };
 
+  const BUILD_UP_SHORT_LABELS = {
+    possession: "保持",
+    long: "ロング",
+  };
+
   function getPlanLabel(plan, categoryKey) {
     const fromCategories = plan?.categories?.[categoryKey]?.[0];
     if (typeof fromCategories === "string" && fromCategories) return fromCategories;
@@ -40,6 +45,17 @@ window.MO_REVIEW_DEVIATION = (() => {
     return (Array.isArray(items) ? items : []).reduce((sum, item) => sum + (item.count || 0), 0);
   }
 
+  function intrusionPhrase(code, fallbackLabel = "") {
+    const label = INTRUSION_LABELS[code] || fallbackLabel;
+    return label ? `${label}侵入` : "侵入";
+  }
+
+  function resolveSegmentEndTime(history, index) {
+    const nextEntry = history[index + 1];
+    if (nextEntry?.matchTime) return nextEntry.matchTime;
+    return "試合終了";
+  }
+
   function aggregateSegmentMetrics(events) {
     return window.MO_MATCH_METRICS?.aggregate?.(events) || {
       attack: [],
@@ -65,10 +81,14 @@ window.MO_REVIEW_DEVIATION = (() => {
         const sliceEnd = history[index + 1]?.eventBoundaryIndex ?? events.length;
         const segmentEvents = events.slice(boundary, sliceEnd);
         const matchMetrics = aggregateSegmentMetrics(segmentEvents);
+        const startTime = entry.matchTime || "00:00";
+        const endTime = resolveSegmentEndTime(history, index);
 
         return {
           planNumber: index + 1,
-          startTime: entry.matchTime || "00:00",
+          startTime,
+          endTime,
+          timeRangeLabel: `${startTime} ～ ${endTime}`,
           plan,
           segmentEvents,
           matchMetrics,
@@ -81,18 +101,54 @@ window.MO_REVIEW_DEVIATION = (() => {
     const dominant = dominantMetricItem(attackMetrics);
     if (!dominant) return null;
 
+    const planned = findMetricItem(attackMetrics, planCode);
+    const plannedPhrase = intrusionPhrase(planCode, planned.label);
+    const dominantPhrase = intrusionPhrase(dominant.code, dominant.label);
+
     if (dominant.code === planCode && dominant.percent >= 50) {
-      return { status: "ok", text: `${planLabel}は維持された` };
+      return {
+        status: "ok",
+        text: `${plannedPhrase}${dominant.percent}%が最多となり、Planどおり${planLabel}を実現できました。`,
+      };
     }
 
     if (dominant.code === planCode && dominant.percent < 50) {
-      const intrusionLabel = INTRUSION_LABELS[planCode] || dominant.label;
-      return { status: "warn", text: `${intrusionLabel}侵入は増えたが最も多くはならなかった` };
+      return {
+        status: "warn",
+        text: `${plannedPhrase}は${planned.percent}%まで増加しましたが、Planどおりの主体には至らず、Planは十分には実現できませんでした。`,
+      };
+    }
+
+    if (planned.percent > 0) {
+      return {
+        status: "warn",
+        text: `${plannedPhrase}は${planned.percent}%まで増加しましたが、${dominantPhrase}(${dominant.percent}%)が最も多く、Planは十分には実現できませんでした。`,
+      };
     }
 
     return {
       status: "warn",
-      text: `${dominant.label}侵入が最も多く、Planとは異なる傾向になった`,
+      text: `${dominantPhrase}(${dominant.percent}%)が最も多く、Planの${planLabel}は十分には実現できませんでした。`,
+    };
+  }
+
+  function describeBuildUpDeviation(planCode, planLabel, buildUpMetrics) {
+    const dominant = dominantMetricItem(buildUpMetrics);
+    if (!dominant) return null;
+
+    const planned = findMetricItem(buildUpMetrics, planCode);
+    const shortLabel = BUILD_UP_SHORT_LABELS[planCode] || planLabel;
+
+    if (dominant.code === planCode) {
+      return {
+        status: "ok",
+        text: `${planLabel}${planned.percent}%となり、Planどおり${shortLabel}主体で試合を進められました。`,
+      };
+    }
+
+    return {
+      status: "warn",
+      text: `${dominant.label}${dominant.percent}%が主体となり、Planどおり${shortLabel}主体では進められず、Planは十分には実現できませんでした。`,
     };
   }
 
@@ -150,16 +206,12 @@ window.MO_REVIEW_DEVIATION = (() => {
       };
     }
 
-    const deviation = dominant.code === planCode
-      ? { status: "ok", text: `${planLabel}主体だった` }
-      : { status: "warn", text: `${dominant.label}が主体となった` };
-
     return {
       key: "buildUp",
       title: "Build Up",
       planLabel,
       rows,
-      deviation,
+      deviation: describeBuildUpDeviation(planCode, planLabel, buildUpMetrics),
     };
   }
 

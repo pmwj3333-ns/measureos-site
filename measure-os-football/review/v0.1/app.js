@@ -625,14 +625,22 @@ function renderDeviationResultBlock(category) {
 }
 
 function renderDeviationPlanCard(segment) {
-  const { categories = [], deviations = [], planNumber, startTime } = segment;
+  const {
+    categories = [],
+    deviations = [],
+    planNumber,
+    timeRangeLabel,
+    startTime,
+    endTime,
+  } = segment;
+  const periodLabel = timeRangeLabel || `${startTime} ～ ${endTime}`;
 
   if (categories.length === 0) {
     return `
       <article class="review-deviation-plan-card">
         <header class="review-deviation-plan-card-head">
           <h3 class="review-deviation-plan-card-title">Plan #${planNumber}</h3>
-          <p class="review-deviation-plan-card-time">開始 ${escapeHtml(startTime)}</p>
+          <p class="review-deviation-plan-card-time">${escapeHtml(periodLabel)}</p>
         </header>
         <p class="review-empty">Attack / Build Up の Plan が設定されていないため、Deviation を表示できません。</p>
       </article>
@@ -662,7 +670,7 @@ function renderDeviationPlanCard(segment) {
     <article class="review-deviation-plan-card">
       <header class="review-deviation-plan-card-head">
         <h3 class="review-deviation-plan-card-title">Plan #${planNumber}</h3>
-        <p class="review-deviation-plan-card-time">開始 ${escapeHtml(startTime)}</p>
+        <p class="review-deviation-plan-card-time">${escapeHtml(periodLabel)}</p>
       </header>
 
       <section class="review-deviation-section">
