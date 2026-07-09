@@ -123,6 +123,13 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
     }
 
     const summary = buildStateSummary(stateResults, compositeReason);
+    const miniReview = window.MO_REVIEW_MINI_NARRATIVE?.buildAttackMiniNarrative?.({
+      matchMetrics: { buildUp, attack, finish },
+    }) || {
+      buildUp: null,
+      attack: null,
+      finish: null,
+    };
 
     return {
       key: "attack",
@@ -134,6 +141,7 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
       ],
       narrative,
       summary,
+      miniReview,
     };
   }
 

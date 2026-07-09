@@ -40,6 +40,13 @@ window.MO_REVIEW_DEFENSE_NARRATIVE = (() => {
 
     const narrative = sections.map((section) => section.narrative).join("") || null;
     const summary = compositeReason?.summary || null;
+    const miniReview = window.MO_REVIEW_MINI_NARRATIVE?.buildDefenseMiniNarrative?.({
+      stateResults,
+      reasonResults,
+    }) || {
+      defense: null,
+      transition: null,
+    };
 
     return {
       key: "defense",
@@ -47,6 +54,7 @@ window.MO_REVIEW_DEFENSE_NARRATIVE = (() => {
       sections,
       narrative,
       summary,
+      miniReview,
     };
   }
 

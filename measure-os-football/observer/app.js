@@ -393,6 +393,7 @@ function createInitialMatch() {
     away_score: 0,
     elapsedSeconds: 0,
     firstHalfMiniReview: null,
+    secondHalfMiniReview: null,
   };
 }
 
@@ -687,14 +688,20 @@ function getActiveLiveStateCategories() {
   return liveStateCategories;
 }
 
+function getHiddenMiniReviewKeysForMode(mode = analyzeMode) {
+  if (mode === "attack") {
+    return new Set(["defense", "transition"]);
+  }
+  if (mode === "defense") {
+    return new Set(["attack", "buildUp"]);
+  }
+  return new Set();
+}
+
 function applyAnalyzeModeUi() {
   document.body.dataset.analyzeMode = analyzeMode;
 
-  const hiddenMiniReviewKeys = isAttackAnalyzeMode()
-    ? new Set(["defense", "transition", "setPiece"])
-    : isDefenseAnalyzeMode()
-      ? new Set(["attack", "buildUp", "setPiece"])
-      : new Set();
+  const hiddenMiniReviewKeys = getHiddenMiniReviewKeysForMode();
 
   document.querySelectorAll("[data-mini-review-key]").forEach((row) => {
     const key = row.dataset.miniReviewKey;
@@ -1858,50 +1865,70 @@ function renderLiveState() {
   renderLiveStateDetail();
 }
 
-function calculateMiniReview() {
-  const plan = normalizePlanSnapshot(state.match?.first_half_plan)
-    || currentPlanForDisplay();
-  const calculator = window.MO_MINI_REVIEW?.calculateMiniReview;
+function createEmptyMiniReviewSnapshot(half = "first") {
+  return {
+    formatVersion: 6,
+    half: half === "second" ? "second" : "first",
+    plan: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    flow: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    attack: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    defense: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    buildUp: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    transition: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    setPiece: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
+    generatedAt: nowIso(),
+  };
+}
 
-  if (typeof calculator !== "function") {
-    return {
-      formatVersion: 3,
-      plan: { text: "プランおおむね維持", tone: "neutral" },
-      flow: { text: "拮抗した前半", tone: "neutral" },
-      attack: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
-      defense: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
-      buildUp: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
-      transition: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
-      setPiece: { text: MINI_REVIEW_PLACEHOLDER, tone: "neutral" },
-      generatedAt: nowIso(),
-    };
+function calculateHalfMiniReview(half = "first") {
+  const plan = half === "second"
+    ? (normalizePlanSnapshot(state.match?.second_half_plan) || currentPlanForDisplay())
+    : (normalizePlanSnapshot(state.match?.first_half_plan) || currentPlanForDisplay());
+  const generator = window.MO_REVIEW_ENGINE?.generateMiniReviewSnapshot;
+
+  if (typeof generator !== "function") {
+    return createEmptyMiniReviewSnapshot(half);
   }
 
-  return calculator({
+  return generator({
     plan,
     events: state.events,
-    liveStatesByRuleId: confirmedLiveStatesByRuleId,
+    half: half === "second" ? "second" : "first",
     generatedAt: nowIso(),
-  });
+  }) || createEmptyMiniReviewSnapshot(half);
 }
 
 function isLegacyMiniReviewSnapshot(snapshot) {
-  const check = window.MO_MINI_REVIEW?.isLegacyMiniReviewSnapshot;
+  const check = window.MO_REVIEW_MINI_ADAPTER?.isLegacyMiniReviewSnapshot;
   if (typeof check === "function") {
     return check(snapshot);
   }
 
-  if (!snapshot || typeof snapshot !== "object") return false;
-  return Number(snapshot.formatVersion) !== 3;
+  if (!snapshot || typeof snapshot !== "object") return true;
+  return Number(snapshot.formatVersion) !== 6;
 }
 
-function refreshMiniReviewSnapshotIfNeeded() {
+function refreshFirstHalfMiniReviewIfNeeded() {
   if (!state.match?.first_half_end_at) return;
 
   if (!state.match.firstHalfMiniReview || isLegacyMiniReviewSnapshot(state.match.firstHalfMiniReview)) {
-    state.match.firstHalfMiniReview = calculateMiniReview();
+    state.match.firstHalfMiniReview = calculateHalfMiniReview("first");
     saveMatch();
   }
+}
+
+function refreshSecondHalfMiniReviewIfNeeded() {
+  if (!state.match?.fulltime_at) return;
+
+  if (!state.match.secondHalfMiniReview || isLegacyMiniReviewSnapshot(state.match.secondHalfMiniReview)) {
+    state.match.secondHalfMiniReview = calculateHalfMiniReview("second");
+    saveMatch();
+  }
+}
+
+function refreshMiniReviewSnapshotIfNeeded() {
+  refreshFirstHalfMiniReviewIfNeeded();
+  refreshSecondHalfMiniReviewIfNeeded();
 }
 
 function resetFirstHalfMiniReview() {
@@ -1909,18 +1936,43 @@ function resetFirstHalfMiniReview() {
   state.match.firstHalfMiniReview = null;
 }
 
+function resetSecondHalfMiniReview() {
+  if (!state.match) return;
+  state.match.secondHalfMiniReview = null;
+}
+
 function generateFirstHalfMiniReview() {
   if (!state.match) return null;
-  refreshMiniReviewSnapshotIfNeeded();
+  state.match.firstHalfMiniReview = calculateHalfMiniReview("first");
+  saveMatch();
   return state.match.firstHalfMiniReview;
+}
+
+function generateSecondHalfMiniReview() {
+  if (!state.match) return null;
+  state.match.secondHalfMiniReview = calculateHalfMiniReview("second");
+  saveMatch();
+  return state.match.secondHalfMiniReview;
 }
 
 function ensureFirstHalfMiniReviewForRestoredMatch() {
   refreshMiniReviewSnapshotIfNeeded();
 }
 
+function getActiveMiniReviewSnapshot() {
+  if (state.match?.fulltime_at && state.match.secondHalfMiniReview) {
+    return { half: "second", snapshot: state.match.secondHalfMiniReview };
+  }
+
+  if (state.match?.first_half_end_at && state.match.firstHalfMiniReview) {
+    return { half: "first", snapshot: state.match.firstHalfMiniReview };
+  }
+
+  return { half: null, snapshot: null };
+}
+
 function normalizeMiniReviewEntry(value) {
-  const normalize = window.MO_MINI_REVIEW?.normalizeMiniReviewEntry;
+  const normalize = window.MO_REVIEW_MINI_ADAPTER?.normalizeMiniReviewEntry;
   if (typeof normalize === "function") {
     const entry = normalize(value);
     return {
@@ -1945,11 +1997,27 @@ function normalizeMiniReviewEntry(value) {
 
 function renderMiniReview() {
   refreshMiniReviewSnapshotIfNeeded();
-  const snapshot = state.match?.firstHalfMiniReview;
+  const { half, snapshot } = getActiveMiniReviewSnapshot();
+  const titleEl = $("dashboard-half-total-title");
+  const reviewAnalyzeMode = snapshot?.analyzeMode || analyzeMode;
+  const hiddenMiniReviewKeys = getHiddenMiniReviewKeysForMode(reviewAnalyzeMode);
+
+  if (titleEl) {
+    if (half === "second") {
+      titleEl.textContent = "後半トータル";
+    } else if (half === "first") {
+      titleEl.textContent = "前半トータル";
+    } else {
+      titleEl.textContent = "前半（後半）トータル";
+    }
+  }
+
   document.querySelectorAll("[data-mini-review-key]").forEach((row) => {
     const key = row.dataset.miniReviewKey;
     const valueEl = row.querySelector(".mini-review-value");
     if (!key || !valueEl) return;
+
+    row.hidden = hiddenMiniReviewKeys.has(key);
 
     const entry = normalizeMiniReviewEntry(snapshot?.[key]);
     valueEl.textContent = entry.text;
@@ -2047,6 +2115,7 @@ function handleMatchAction() {
     if (!kickoffPlan) return;
     resetConfirmedLiveStates();
     resetFirstHalfMiniReview();
+    resetSecondHalfMiniReview();
     state.match.kickoff_at = nowIso();
     state.match.match_phase = "first_half";
     state.match.first_half_plan = kickoffPlan;
@@ -2084,6 +2153,7 @@ function handleMatchAction() {
   } else if (phase === "second_half") {
     state.match.fulltime_at = nowIso();
     state.match.match_phase = "fulltime";
+    generateSecondHalfMiniReview();
     saveMatch();
     pauseClock();
     archiveMatchForReviewIfNeeded();

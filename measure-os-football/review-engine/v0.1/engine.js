@@ -65,10 +65,15 @@ window.MO_REVIEW_ENGINE = (() => {
     };
   }
 
+  function generateMiniReviewSnapshot(options) {
+    return window.MO_REVIEW_MINI_ADAPTER?.generateMiniReviewSnapshot?.(options) || null;
+  }
+
   return {
     aggregateMatchMetrics,
     buildReviewInput,
     buildCompositeForAnalyzeMode,
     generateReview,
+    generateMiniReviewSnapshot,
   };
 })();
