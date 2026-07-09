@@ -445,22 +445,9 @@ function buildMatchReviewContext(record) {
   const plan = normalizePlanSnapshot(lastEntry?.plan);
   if (!plan) return null;
 
-  const lastEvent = events[events.length - 1];
-  const elapsed = lastEvent ? parseMatchTime(lastEvent.time) : parseMatchTime(lastEntry?.matchTime);
-  const evaluate = window.MO_STATE_ENGINE?.evaluateLiveState;
-  const stateResults = typeof evaluate === "function"
-    ? evaluate({ plan, events, elapsed })
-    : [];
-  const reasonResults = buildReasonResults(stateResults, plan, { elapsed });
-  const compositeReason = buildCompositeReason(reasonResults, plan);
-
   return window.MO_REVIEW_ENGINE?.buildReviewInput?.({
     plan,
     events,
-    elapsed,
-    stateResults,
-    reasonResults,
-    compositeReason,
   }) || null;
 }
 

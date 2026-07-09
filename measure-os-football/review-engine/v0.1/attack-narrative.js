@@ -3,8 +3,6 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
     findMetricItem,
     dominantMetricItem,
     joinSentences,
-    filterReasonResultsByCategories,
-    filterStatesByCategories,
     formatMetricsBlock,
   } = window.MO_REVIEW_HELPERS;
 
@@ -21,18 +19,18 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
     if (total === 0) return null;
 
     if (possession.percent >= 65) {
-      return "保持による前進を中心に攻撃を組み立て";
+      return "保持前進を中心に攻撃を組み立てました";
     }
     if (long.percent >= 65) {
-      return "ロング前進を中心に攻撃を組み立て";
+      return "ロング前進を中心に攻撃を組み立てました";
     }
     if (Math.abs(possession.percent - long.percent) <= 20) {
-      return "保持前進とロング前進をバランス良く使いながら";
+      return "保持前進とロング前進をバランス良く使いながら攻撃を組み立てました";
     }
     if (possession.percent > long.percent) {
-      return "保持前進を多く用いながら";
+      return "保持前進を多く用いながら攻撃を組み立てました";
     }
-    return "ロング前進を多く用いながら";
+    return "ロング前進を多く用いながら攻撃を組み立てました";
   }
 
   function describeAttackSentence(attackItems) {
@@ -46,72 +44,40 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
     return `${label}からの侵入が多く見られました`;
   }
 
-  function describeFinishSentence(finishItems, reasonResults, stateResults) {
+  function describeFinishSentence(finishItems) {
     const lost = findMetricItem(finishItems, "lost");
     const shot = findMetricItem(finishItems, "shot");
     const bigChance = findMetricItem(finishItems, "bigChance");
     const finishTotal = lost.count + shot.count + bigChance.count;
 
-    const attackReasons = filterReasonResultsByCategories(reasonResults, stateResults, ["attack"]);
-    const finishReasonSummary = attackReasons.find((reason) => /ロスト/.test(reason.summary))?.summary;
-
-    if (finishTotal === 0 && !finishReasonSummary) {
-      return null;
-    }
-
-    if (finishReasonSummary) {
-      if (lost.percent >= 55) {
-        return `一方で、${finishReasonSummary.replace(/。$/, "")}、フィニッシュまで到達する割合は高くありませんでした。`;
-      }
-      if (lost.percent < 55 && shot.percent + bigChance.percent >= 40) {
-        return `${finishReasonSummary.replace(/。$/, "")}、多くの攻撃がシュート・決定機まで到達しました。`;
-      }
-      return finishReasonSummary.endsWith("。") ? finishReasonSummary : `${finishReasonSummary}。`;
-    }
+    if (finishTotal === 0) return null;
 
     if (lost.percent >= 55) {
-      return `一方で、攻撃の${lost.percent}%がロストで終了しており、フィニッシュまで到達する割合は高くありませんでした。`;
+      return "ロストが多く、フィニッシュまで至らない場面が目立ちました";
     }
     if (shot.percent + bigChance.percent >= 40) {
-      return `ロスト率は${lost.percent}%に抑えられ、多くの攻撃がシュート・決定機まで到達しました。`;
+      return "シュート・決定機まで到達する場面が多く見られました";
     }
-    return `ロスト率は${lost.percent}%、シュート率は${shot.percent}%、決定機率は${bigChance.percent}%でした。`;
+    return `ロスト率は${lost.percent}%、シュート率は${shot.percent}%、決定機率は${bigChance.percent}%でした`;
   }
 
-  function buildStateSummary(stateResults, compositeReason) {
-    if (compositeReason?.summary) {
-      return compositeReason.summary;
-    }
-
-    const labels = filterStatesByCategories(stateResults, ["buildUp", "attack"])
-      .map((state) => state.label)
-      .filter(Boolean);
-
-    if (labels.length === 0) return null;
-    return labels.join("。") + (labels.length > 0 ? "。" : "");
-  }
-
-  function buildAttackReview({ matchMetrics, stateResults, reasonResults, compositeReason }) {
+  function buildAttackReview({ matchMetrics }) {
     const buildUp = matchMetrics?.buildUp || [];
     const attack = matchMetrics?.attack || [];
     const finish = matchMetrics?.finish || [];
 
     const buildUpSentence = describeBuildUpSentence(buildUp);
     const attackSentence = describeAttackSentence(attack);
-    const finishSentence = describeFinishSentence(finish, reasonResults, stateResults);
+    const finishSentence = describeFinishSentence(finish);
 
     const narrativeParts = [];
-    if (buildUpSentence && attackSentence) {
-      narrativeParts.push(`${buildUpSentence}、${attackSentence.replace(/。$/, "")}`);
-    } else if (buildUpSentence) {
-      narrativeParts.push(buildUpSentence);
-    } else if (attackSentence) {
-      narrativeParts.push(attackSentence.replace(/。$/, ""));
-    }
-
+    if (buildUpSentence) narrativeParts.push(buildUpSentence);
+    if (attackSentence) narrativeParts.push(attackSentence);
     if (finishSentence) {
       if (narrativeParts.length > 0) {
-        narrativeParts.push(finishSentence.startsWith("一方") ? finishSentence : `。${finishSentence}`);
+        const lost = findMetricItem(finish, "lost");
+        const prefix = lost.percent >= 55 ? "一方で、" : "";
+        narrativeParts.push(`${prefix}${finishSentence}`);
       } else {
         narrativeParts.push(finishSentence);
       }
@@ -122,7 +88,6 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
       narrative += "。";
     }
 
-    const summary = buildStateSummary(stateResults, compositeReason);
     const miniReview = window.MO_REVIEW_MINI_NARRATIVE?.buildAttackMiniNarrative?.({
       matchMetrics: { buildUp, attack, finish },
     }) || {
@@ -140,7 +105,7 @@ window.MO_REVIEW_ATTACK_NARRATIVE = (() => {
         formatMetricsBlock("Finish", finish),
       ],
       narrative,
-      summary,
+      summary: null,
       miniReview,
     };
   }
