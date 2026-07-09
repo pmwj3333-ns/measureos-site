@@ -139,34 +139,29 @@
 
         <div class="dashboard-panel-group dashboard-panel-group--stats" data-dashboard-group="stats">
           <section
-            class="dashboard-panel dashboard-panel--recent dashboard-zone dashboard-zone-recent panel"
-            data-dashboard-panel="recent"
-            aria-labelledby="dashboard-recent-title"
+            class="dashboard-panel dashboard-panel--match-metrics dashboard-zone dashboard-zone-match-metrics panel"
+            data-dashboard-panel="match-metrics"
+            aria-labelledby="dashboard-match-metrics-title"
           >
-            <h2 id="dashboard-recent-title" class="review-section-title">直近5分</h2>
+            <h2 id="dashboard-match-metrics-title" class="review-section-title">試合メトリクス</h2>
             <div class="dashboard-panel-body dashboard-panel-slot dashboard-zone-body">
-              <div class="recent-panel-content" id="recent-panel-content">
+              <div class="recent-panel-content" id="match-metrics-content">
                 <div class="recent-stats">
                   <section class="recent-stats-section" data-recent-section="attack" aria-label="Attack">
                     <h3 class="recent-stats-title">Attack</h3>
                     <div class="recent-stats-list">
-                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="left">
+                      <div class="recent-stat-row" data-metrics-group="attack" data-metrics-code="left">
                         <span class="recent-stat-label">左</span>
                         <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
                         <span class="recent-stat-value">0%</span>
                       </div>
-                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="center">
+                      <div class="recent-stat-row" data-metrics-group="attack" data-metrics-code="center">
                         <span class="recent-stat-label">中央</span>
                         <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
                         <span class="recent-stat-value">0%</span>
                       </div>
-                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="right">
+                      <div class="recent-stat-row" data-metrics-group="attack" data-metrics-code="right">
                         <span class="recent-stat-label">右</span>
-                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
-                        <span class="recent-stat-value">0%</span>
-                      </div>
-                      <div class="recent-stat-row" data-recent-group="attack" data-recent-code="behind">
-                        <span class="recent-stat-label">背後</span>
                         <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
                         <span class="recent-stat-value">0%</span>
                       </div>
@@ -176,12 +171,12 @@
                   <section class="recent-stats-section" data-recent-section="buildUp" aria-label="Build Up">
                     <h3 class="recent-stats-title">Build Up</h3>
                     <div class="recent-stats-list">
-                      <div class="recent-stat-row" data-recent-group="buildUp" data-recent-code="possession">
+                      <div class="recent-stat-row" data-metrics-group="buildUp" data-metrics-code="possession">
                         <span class="recent-stat-label">保持前進</span>
                         <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
                         <span class="recent-stat-value">0%</span>
                       </div>
-                      <div class="recent-stat-row" data-recent-group="buildUp" data-recent-code="long">
+                      <div class="recent-stat-row" data-metrics-group="buildUp" data-metrics-code="long">
                         <span class="recent-stat-label">ロング前進</span>
                         <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
                         <span class="recent-stat-value">0%</span>
@@ -189,16 +184,23 @@
                     </div>
                   </section>
 
-                  <section class="recent-stats-section" data-recent-section="chance" aria-label="Chance">
-                    <h3 class="recent-stats-title">Chance</h3>
-                    <div class="recent-stats-list recent-stats-list--counts">
-                      <div class="recent-stat-row recent-stat-row--count" data-recent-group="chance" data-recent-code="shot">
-                        <span class="recent-stat-label">シュート</span>
-                        <span class="recent-stat-value">0本</span>
+                  <section class="recent-stats-section" data-recent-section="finish" aria-label="Finish">
+                    <h3 class="recent-stats-title">Finish</h3>
+                    <div class="recent-stats-list">
+                      <div class="recent-stat-row" data-metrics-group="finish" data-metrics-code="lost">
+                        <span class="recent-stat-label">ロスト</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
                       </div>
-                      <div class="recent-stat-row recent-stat-row--count" data-recent-group="chance" data-recent-code="bigChance">
+                      <div class="recent-stat-row" data-metrics-group="finish" data-metrics-code="shot">
+                        <span class="recent-stat-label">シュート</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
+                      </div>
+                      <div class="recent-stat-row" data-metrics-group="finish" data-metrics-code="bigChance">
                         <span class="recent-stat-label">決定機</span>
-                        <span class="recent-stat-value">0回</span>
+                        <div class="recent-stat-bar" aria-hidden="true"><span class="recent-stat-bar-fill"></span></div>
+                        <span class="recent-stat-value">0%</span>
                       </div>
                     </div>
                   </section>
@@ -349,13 +351,14 @@
   <script src="../shared/auth-guard.js"></script>
   <script src="../shared/attack-plan.js"></script>
   <script src="../shared/attack-observer.js"></script>
-  <script src="../shared/recent-stats-attack.js"></script>
+  <script src="../shared/match-metrics.js"></script>
   <script src="../shared/defense-plan.js"></script>
   <script src="../shared/defense-observer.js"></script>
   <script src="../shared/both-observer.js"></script>
   <script src="../shared/plan-snapshot.js"></script>
   <script src="../shared/review-archive.js"></script>
   <script src="../state-engine/v0.1/engine.js"></script>
+  <script src="../state-engine/v0.1/shared/attack-finish-rate.js"></script>
   <script src="../state-engine/v0.1/rules/rule012-attack-left-dominance.js"></script>
   <script src="../state-engine/v0.1/rules/rule013-attack-right-dominance.js"></script>
   <script src="../state-engine/v0.1/rules/rule014-attack-central-attack.js"></script>
@@ -375,11 +378,13 @@
   <script src="../state-engine/v0.1/rules/rule011-transition-ball-retention.js"></script>
   <script src="../reason-engine/v0.1/shared/event-vocabulary.js"></script>
   <script src="../reason-engine/v0.1/shared/fact-builder.js"></script>
+  <script src="../reason-engine/v0.1/shared/attack-finish-rate-reason.js"></script>
   <script src="../reason-engine/v0.1/engine.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason018-attack-behind-strategy.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason012-attack-left-dominance.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason013-attack-right-dominance.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason014-attack-central-attack.js"></script>
+  <script src="../reason-engine/v0.1/reasons/reason015-attack-cross-strategy.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason004-build-up-hold-and-advance.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason005-build-up-long-advance.js"></script>
   <script src="../reason-engine/v0.1/reasons/reason002-defense-high-press.js"></script>

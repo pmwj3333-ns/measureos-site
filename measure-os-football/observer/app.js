@@ -1928,8 +1928,8 @@ function renderMiniReview() {
   });
 }
 
-function renderRecentPanel() {
-  const host = $("recent-panel-content");
+function renderMatchMetricsPanel() {
+  const host = $("match-metrics-content");
   if (!host) return;
 
   if (isDefenseAnalyzeMode()) {
@@ -1938,13 +1938,15 @@ function renderRecentPanel() {
   }
 
   host.hidden = false;
-  const stats = window.MO_RECENT_STATS_ATTACK?.aggregate?.(state.events, state.elapsed);
+  const stats = window.MO_MATCH_METRICS?.aggregate?.(state.events);
   if (!stats) return;
 
-  host.querySelectorAll("[data-recent-group='attack'], [data-recent-group='buildUp']").forEach((row) => {
-    const group = row.dataset.recentGroup;
-    const code = row.dataset.recentCode;
-    const items = group === "attack" ? stats.attack : stats.buildUp;
+  host.querySelectorAll("[data-metrics-group]").forEach((row) => {
+    const group = row.dataset.metricsGroup;
+    const code = row.dataset.metricsCode;
+    const items = stats[group];
+    if (!Array.isArray(items)) return;
+
     const item = items.find((entry) => entry.code === code);
     const valueEl = row.querySelector(".recent-stat-value");
     const fillEl = row.querySelector(".recent-stat-bar-fill");
@@ -1952,14 +1954,6 @@ function renderRecentPanel() {
 
     if (valueEl) valueEl.textContent = `${percent}%`;
     if (fillEl) fillEl.style.width = `${percent}%`;
-  });
-
-  host.querySelectorAll("[data-recent-group='chance']").forEach((row) => {
-    const code = row.dataset.recentCode;
-    const item = stats.chance.find((entry) => entry.code === code);
-    const valueEl = row.querySelector(".recent-stat-value");
-    if (!valueEl || !item) return;
-    valueEl.textContent = `${item.count}${item.unit}`;
   });
 }
 
@@ -1976,7 +1970,7 @@ function renderAll() {
   renderTimeline();
   renderSavedStatus();
   renderLiveState();
-  renderRecentPanel();
+  renderMatchMetricsPanel();
   renderMiniReview();
 }
 
@@ -1992,7 +1986,6 @@ function startClock(reset = false) {
     syncMatchElapsed();
     renderClock();
     renderLiveState();
-    renderRecentPanel();
   }, 1000);
   renderClock();
 }

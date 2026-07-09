@@ -3,7 +3,10 @@
 const base = "/Users/niiyasyogo/Desktop/measureos-site/measure-os-football";
 
 load(`${base}/shared/plan-snapshot.js`);
+load(`${base}/shared/attack-plan.js`);
+load(`${base}/shared/attack-observer.js`);
 load(`${base}/state-engine/v0.1/engine.js`);
+load(`${base}/state-engine/v0.1/shared/attack-finish-rate.js`);
 [
   "rule012-attack-left-dominance.js",
   "rule013-attack-right-dominance.js",

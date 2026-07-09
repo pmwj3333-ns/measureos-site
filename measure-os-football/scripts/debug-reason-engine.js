@@ -7,8 +7,10 @@ load(`${base}/shared/attack-plan.js`);
 load(`${base}/shared/attack-observer.js`);
 load(`${base}/shared/defense-plan.js`);
 load(`${base}/state-engine/v0.1/engine.js`);
+load(`${base}/state-engine/v0.1/shared/attack-finish-rate.js`);
 load(`${base}/reason-engine/v0.1/shared/event-vocabulary.js`);
 load(`${base}/reason-engine/v0.1/shared/fact-builder.js`);
+load(`${base}/reason-engine/v0.1/shared/attack-finish-rate-reason.js`);
 load(`${base}/reason-engine/v0.1/engine.js`);
 
 [
@@ -32,6 +34,7 @@ load(`${base}/reason-engine/v0.1/engine.js`);
   "reason012-attack-left-dominance.js",
   "reason013-attack-right-dominance.js",
   "reason014-attack-central-attack.js",
+  "reason015-attack-cross-strategy.js",
   "reason004-build-up-hold-and-advance.js",
   "reason005-build-up-long-advance.js",
   "reason002-defense-high-press.js",
@@ -74,36 +77,58 @@ const scenarios = [
     expectReasonKey: "rule018.yellow.no_finish_yet",
   },
   {
-    name: "rule012 green",
+    name: "rule012 green finish rate",
     events: [
-      { eventName: "左侵入", time: "04:00" },
-      { eventName: "左侵入", time: "04:10" },
-      { eventName: "シュート", time: "04:20" },
+      { eventName: "左侵入", time: "04:00", inputOrder: 1 },
+      { eventName: "シュート", time: "04:01", inputOrder: 2 },
+      { eventName: "左侵入", time: "04:02", inputOrder: 3 },
+      { eventName: "シュート", time: "04:03", inputOrder: 4 },
+      { eventName: "左侵入", time: "04:04", inputOrder: 5 },
+      { eventName: "シュート", time: "04:05", inputOrder: 6 },
+      { eventName: "左侵入", time: "04:06", inputOrder: 7 },
+      { eventName: "シュート", time: "04:07", inputOrder: 8 },
+      { eventName: "左侵入", time: "04:08", inputOrder: 9 },
+      { eventName: "シュート", time: "04:09", inputOrder: 10 },
     ],
     expectRuleId: "rule012",
     expectStatus: "green",
+    expectReasonKey: "rule012.green.finish_rate_fact",
   },
   {
-    name: "rule013 green",
+    name: "rule013 green finish rate",
     events: [
-      { eventName: "右侵入", time: "04:00" },
-      { eventName: "右侵入", time: "04:10" },
-      { eventName: "シュート", time: "04:20" },
+      { eventName: "右侵入", time: "04:00", inputOrder: 1 },
+      { eventName: "シュート", time: "04:01", inputOrder: 2 },
+      { eventName: "右侵入", time: "04:02", inputOrder: 3 },
+      { eventName: "シュート", time: "04:04", inputOrder: 4 },
+      { eventName: "右侵入", time: "04:05", inputOrder: 5 },
+      { eventName: "決定機", time: "04:06", inputOrder: 6 },
+      { eventName: "右侵入", time: "04:07", inputOrder: 7 },
+      { eventName: "シュート", time: "04:08", inputOrder: 8 },
+      { eventName: "右侵入", time: "04:09", inputOrder: 9 },
+      { eventName: "シュート", time: "04:10", inputOrder: 10 },
     ],
     expectRuleId: "rule013",
     expectStatus: "green",
-    expectReasonKey: "rule013.green.right_to_finish",
+    expectReasonKey: "rule013.green.finish_rate_fact",
   },
   {
-    name: "rule014 green",
+    name: "rule014 yellow finish rate",
     events: [
-      { eventName: "中央侵入", time: "04:00" },
-      { eventName: "中央侵入", time: "04:10" },
-      { eventName: "シュート", time: "04:20" },
+      { eventName: "中央侵入", time: "04:00", inputOrder: 1 },
+      { eventName: "ロスト", time: "04:01", inputOrder: 2 },
+      { eventName: "中央侵入", time: "04:02", inputOrder: 3 },
+      { eventName: "ロスト", time: "04:03", inputOrder: 4 },
+      { eventName: "中央侵入", time: "04:04", inputOrder: 5 },
+      { eventName: "ロスト", time: "04:05", inputOrder: 6 },
+      { eventName: "中央侵入", time: "04:06", inputOrder: 7 },
+      { eventName: "シュート", time: "04:07", inputOrder: 8 },
+      { eventName: "中央侵入", time: "04:08", inputOrder: 9 },
+      { eventName: "決定機", time: "04:09", inputOrder: 10 },
     ],
     expectRuleId: "rule014",
-    expectStatus: "green",
-    expectReasonKey: "rule014.green.central_to_finish",
+    expectStatus: "yellow",
+    expectReasonKey: "rule014.yellow.finish_rate_fact",
   },
   {
     name: "rule004 green",

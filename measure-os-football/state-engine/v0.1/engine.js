@@ -1,7 +1,7 @@
 (function () {
   // Rules self-register via scripts loaded after engine.js:
   // rule001-attack-left-advantage.js (superseded by rule012)
-  // rule012-attack-left-dominance.js
+  // rule012-attack-left-dominance.js (Attack State v2 via attack-finish-rate.js)
   // rule013-attack-right-dominance.js
   // rule014-attack-central-attack.js
   // rule015-attack-cross-strategy.js

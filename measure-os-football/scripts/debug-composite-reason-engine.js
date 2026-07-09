@@ -7,6 +7,7 @@ load(`${base}/shared/attack-plan.js`);
 load(`${base}/shared/attack-observer.js`);
 load(`${base}/shared/defense-plan.js`);
 load(`${base}/state-engine/v0.1/engine.js`);
+load(`${base}/state-engine/v0.1/shared/attack-finish-rate.js`);
 load(`${base}/reason-engine/v0.1/shared/event-vocabulary.js`);
 load(`${base}/reason-engine/v0.1/shared/fact-builder.js`);
 load(`${base}/reason-engine/v0.1/engine.js`);
