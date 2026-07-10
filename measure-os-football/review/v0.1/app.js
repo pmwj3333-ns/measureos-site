@@ -187,36 +187,34 @@ function resolveCompetitionSource() {
   return liveSetup?.competition ? String(liveSetup.competition).trim() : "";
 }
 
-function hydrateNextMatchSection() {
-  const competition = resolveCompetitionSource() || "-";
-  const display = $("next-competition-display");
-  if (display) display.textContent = competition === "" ? "-" : competition;
+function resolveNextMatchDefaults() {
+  const selected = getSelectedRecord();
+  const previousSetup = selected?.setup || readStorage(setupStorageKey) || {};
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return {
+    opponent: "対戦相手未定",
+    matchDate: `${today.getFullYear()}-${month}-${day}`,
+    kickoffTime: previousSetup.kickoff_time || "10:00",
+    previousSetup,
+  };
 }
 
 function showNextMatchError(message) {
-  let error = document.getElementById("review-next-match-error");
-  if (!error) {
-    error = document.createElement("p");
-    error.id = "review-next-match-error";
-    error.className = "review-next-error";
-    $("next-same-competition")?.before(error);
-  }
+  const error = $("review-next-match-error");
+  if (!error) return;
   error.textContent = message;
   error.hidden = !message;
 }
 
 function startSameCompetitionNext() {
   const competition = resolveCompetitionSource();
-  const opponent = $("next-opponent")?.value.trim() || "";
-  const matchDate = $("next-match-date")?.value || "";
-  const kickoffTime = $("next-kickoff-time")?.value || "";
+  const { opponent, matchDate, kickoffTime, previousSetup } = resolveNextMatchDefaults();
 
   if (!competition) {
-    showNextMatchError("大会名がありません。新しい大会を開始してください。");
-    return;
-  }
-  if (!opponent || !matchDate || !kickoffTime) {
-    showNextMatchError("対戦相手・試合日・キックオフを入力してください。");
+    showNextMatchError("大会名がありません。Match Setupから新しい大会を開始してください。");
     return;
   }
 
@@ -226,7 +224,6 @@ function startSameCompetitionNext() {
   const teamId = getActiveTeamId();
   if (!teamId) return;
 
-  const previousSetup = readStorage(setupStorageKey) || {};
   if (previousSetup.teamId && !window.MO_TEAM_CONTEXT?.canAccessTeamResource?.(previousSetup)) {
     window.MO_TEAM_CONTEXT?.denyAccess?.();
     return;
@@ -717,7 +714,6 @@ function showSearchView() {
   reviewState.selectedId = null;
   $("review-search-view").hidden = false;
   $("review-detail-view").hidden = true;
-  hydrateNextMatchSection();
   if (window.location.hash) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }
@@ -747,7 +743,6 @@ function showDetailView(recordId) {
   $("review-detail-subtitle").textContent = `${formatDisplayDate(setup.match_date)} / Home ${record.match?.home_score ?? 0} - ${record.match?.away_score ?? 0} Away`;
 
   renderDetailTabs(record);
-  hydrateNextMatchSection();
   $("review-search-view").hidden = true;
   $("review-detail-view").hidden = false;
   history.replaceState(null, "", `#match/${encodeURIComponent(recordId)}`);
@@ -800,7 +795,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   refreshRecords();
   renderMatchList();
-  hydrateNextMatchSection();
   bootFromHash();
 
   $("review-search-form")?.addEventListener("submit", (event) => {
@@ -828,8 +822,8 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click", () => setActiveTab(button.dataset.tab));
   });
 
-  $("next-same-competition")?.addEventListener("click", startSameCompetitionNext);
-  $("next-new-competition")?.addEventListener("click", startNewCompetition);
+  $("next-game-plan")?.addEventListener("click", startSameCompetitionNext);
+  $("next-match-setup")?.addEventListener("click", startNewCompetition);
 
   window.addEventListener("hashchange", bootFromHash);
 });

@@ -81,55 +81,26 @@
       </div>
     </section>
 
-    <section id="review-next-match" class="review-next-match panel" aria-label="次のアクション">
-      <h2 class="review-section-title">次のアクション</h2>
+    <section id="review-next-match" class="review-next-match panel" aria-label="次へ">
+      <h2 class="review-section-title">次へ</h2>
+      <p id="review-next-match-error" class="review-next-error" hidden></p>
 
-      <div class="review-learning-memo">
-        <label for="review-learning-notes">今回の学び（任意）</label>
-        <textarea
-          id="review-learning-notes"
-          class="review-learning-textarea"
-          rows="4"
-          placeholder="例:&#10;・前プレが機能しなかった&#10;・左SB裏を使われた&#10;・10番を消せなかった"
-        ></textarea>
-        <p class="review-future-note muted">※ 将来実装予定（保存機能なし）</p>
+      <div class="review-next-choices">
+        <a class="review-next-choice" href="../../team-review/v0.1/index.html">
+          <span class="review-next-choice-icon" aria-hidden="true">📚</span>
+          <span class="review-next-choice-title">TEAM Review</span>
+        </a>
+
+        <button type="button" class="review-next-choice" id="next-game-plan">
+          <span class="review-next-choice-icon" aria-hidden="true">⚽</span>
+          <span class="review-next-choice-title">Game Plan</span>
+        </button>
+
+        <button type="button" class="review-next-choice" id="next-match-setup">
+          <span class="review-next-choice-icon" aria-hidden="true">🆕</span>
+          <span class="review-next-choice-title">Match Setup</span>
+        </button>
       </div>
-
-      <article class="review-next-card review-next-card-team">
-        <h3 class="review-next-card-title">📚 TEAM Review</h3>
-        <p class="review-next-card-lead">レビューの積み重ねから、チーム全体の傾向を確認する。</p>
-        <p class="review-next-flow-note muted">Review → Review → Review → <strong>TEAM Review</strong></p>
-        <a class="primary review-next-team-link" href="../../team-review/v0.1/index.html">TEAM Reviewへ</a>
-      </article>
-
-      <article class="review-next-card">
-        <h3 class="review-next-card-title">同じ大会で続ける</h3>
-        <div class="review-field review-field-readonly">
-          <span>大会名</span>
-          <strong id="next-competition-display">-</strong>
-        </div>
-        <label class="review-next-label">
-          対戦相手
-          <input id="next-opponent" type="text" placeholder="例: ○○高校" autocomplete="off" />
-        </label>
-        <div class="review-next-datetime">
-          <label class="review-next-label">
-            試合日
-            <input id="next-match-date" type="date" />
-          </label>
-          <label class="review-next-label">
-            キックオフ
-            <input id="next-kickoff-time" type="time" />
-          </label>
-        </div>
-        <button id="next-same-competition" type="button" class="primary">Game Planへ</button>
-      </article>
-
-      <article class="review-next-card review-next-card-secondary">
-        <h3 class="review-next-card-title">新しい大会を開始</h3>
-        <p class="muted review-next-card-lead">大会名・対戦相手・試合日時を新規入力してから Game Plan へ進みます。</p>
-        <button id="next-new-competition" type="button">Match Setupへ</button>
-      </article>
     </section>
   </main>
 
