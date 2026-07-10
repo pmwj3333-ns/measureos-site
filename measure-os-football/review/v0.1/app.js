@@ -12,6 +12,7 @@ const planStorageKey = "measure-os-football:plan:v0.1";
 const planReturnStorageKey = "measure-os-football:plan-return:v0.3";
 const matchSetupPath = "../../match-setup/v0.1/index.html";
 const planPath = "../../plan/v0.1/index.html";
+const teamReviewPath = "../../team-review/v0.1/index.html";
 
 const planDisplayCategories = [
   { key: "attack", label: planCategoryLabels.attack },
@@ -267,6 +268,10 @@ function startNewCompetition() {
   resetLiveMatchData();
   removeStorage(setupStorageKey);
   window.location.href = matchSetupPath;
+}
+
+function startTeamReview() {
+  window.location.href = teamReviewPath;
 }
 
 function refreshRecords() {
@@ -822,6 +827,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click", () => setActiveTab(button.dataset.tab));
   });
 
+  $("next-team-review")?.addEventListener("click", startTeamReview);
   $("next-game-plan")?.addEventListener("click", startSameCompetitionNext);
   $("next-match-setup")?.addEventListener("click", startNewCompetition);
 
