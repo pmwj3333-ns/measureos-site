@@ -618,6 +618,31 @@
   border-style: dashed;
 }
 
+.review-next-card-team {
+  border-color: rgba(139, 233, 214, 0.32);
+  background: linear-gradient(180deg, rgba(139, 233, 214, 0.1), rgba(0, 0, 0, 0.12));
+}
+
+.review-next-flow-note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.review-next-flow-note strong {
+  color: var(--accent-2);
+}
+
+.review-next-team-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 42px;
+  padding: 0 18px;
+  text-decoration: none;
+}
+
 .review-next-card-title {
   margin: 0;
   font-size: 0.98rem;
